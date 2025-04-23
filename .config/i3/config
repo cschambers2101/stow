@@ -6,14 +6,14 @@ set $wm_setting_font                 pango:Source Sans Pro, Semibold 11
 set $wm_setting_gap_width            10
 set $wm_setting_gap_heigth           10
 set $wm_setting_gap_inner           10
-set $wm_setting_gap_outer           10
+set $wm_setting_gap_outer           5
 set $wm_setting_border_size          0
 set $wm_setting_key_left             Left
 set $wm_setting_key_down             Down
 set $wm_setting_key_up               Up
 set $wm_setting_key_right            Right
 
-set $wm_setting_app_terminal         gnome-terminal
+set $wm_setting_app_terminal         xfce4-terminal
 set $wm_setting_app_browser          google-chrome
 set $wm_setting_app_launcher         rofi -show drun
 set $wm_setting_app_compositor       picom
@@ -48,7 +48,8 @@ set $bar_color_workspace_urgent_fg   #DDCA7D
 set $background_image_path '/home/craigchambers/src/dotfiles/config/backgrounds/wallhaven-85erok_3440x1440.png'
 
 ### set background with feh ###
-exec_always --no-startup-id /usr/bin/feh --bg-scale $background_image_path 
+#exec_always --no-startup-id /usr/bin/feh --bg-scale $background_image_path 
+exec_always nitrogen --restore &
 
 ### Applications ###
 # Start a terminal emulator
