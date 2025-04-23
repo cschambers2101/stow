@@ -22,6 +22,7 @@ Plug 'vimwiki/vimwiki'
 Plug 'preservim/nerdtree'
 Plug 'michal-h21/vimwiki-sync'
 Plug 'github/copilot.vim'
+Plug 'dracula/vim', { 'name': 'dracula' }
 
 " Initialize plugin system
 " - Automatically executes `filetype plugin indent on` and `syntax enable`.
@@ -121,6 +122,7 @@ set background=dark
 " https://raw.github.com/altercation/vim-colors-solarized/master/colors/solarized.vim
 " " in ~/.vim/colors/ and uncomment:
 " " colorscheme solarized
+colorscheme dracula
 
 " set spell language to proper English
 set spell spelllang=en_gb
