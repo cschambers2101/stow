@@ -45,7 +45,7 @@ set $bar_color_workspace_inactive_fg #B88B4A
 set $bar_color_workspace_urgent_bg   #A27035
 set $bar_color_workspace_urgent_fg   #DDCA7D
 
-set $background_image_path '/home/craigchambers/src/dotfiles/config/backgrounds/wallhaven-85erok_3440x1440.png'
+set $background_image_path $HOME/.local/share/backgrounds/wallhaven-85erok_3440x1440.png
 
 ### set background with feh ###
 #exec_always --no-startup-id /usr/bin/feh --bg-scale $background_image_path 
