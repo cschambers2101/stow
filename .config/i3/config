@@ -68,7 +68,7 @@ exec_always --no-startup-id $wm_setting_app_compositor
 bindsym $Mod+l exec "i3lock -c 000000 -i $background_image_path"
 
 # auto lock the screen
-exec "xautolock -detectsleep -time 3 -locker \"i3lock -c 000000 -i $background_image_path\""
+exec "xautolock -detectsleep -time 3 -locker \"i3lock -i $background_image_path\""
 
 ### Workspaces ###
 # Define names for default workspaces for which we configure key bindings later on.
