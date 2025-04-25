@@ -61,6 +61,9 @@ bindsym $mod+b exec $wm_setting_app_browser
 # Start a program launcher
 bindsym $mod+d exec $wm_setting_app_launcher
 
+# Run PCMANFM
+bindsym $mod+p exec pcmanfm &
+
 # Run a window compositor (for effects like transparency or full VSync)
 exec_always --no-startup-id $wm_setting_app_compositor
 
