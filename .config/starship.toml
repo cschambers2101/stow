@@ -1,31 +1,18 @@
 format = """
-[](#9A348E)\
+[](#6272a4)\
 $os\
 $username\
 $hostname\
-[](bg:#DA627D fg:#9A348E)\
+[](bg:#f1fa8c fg:#6272a4)\
 $directory\
-[](fg:#DA627D bg:#FCA17D)\
+[](fg:#f1fa8c bg:#ffb86c)\
 $git_branch\
-$git_status\
 [](fg:#FCA17D bg:#86BBD8)\
-$c\
-$elixir\
-$elm\
-$golang\
-$gradle\
-$haskell\
-$java\
-$julia\
 $nodejs\
-$nim\
-$rust\
-$scala\
-[](fg:#86BBD8 bg:#06969A)\
 $docker_context\
-[](fg:#06969A bg:#33658A)\
+[](fg:#86bbd8 bg:#bd93f9)\
 $time\
-[ ](fg:#33658A)\
+[ ](fg:#bd93f9)\
 """
 
 # Disable the blank line at the start of the prompt
@@ -35,15 +22,15 @@ $time\
 # and use the os module below
 [username]
 show_always = true
-style_user = "bg:#9A348E"
-style_root = "bg:#9A348E"
+style_user = "bg:#6272a4"
+style_root = "bg:#6272a4"
 format = '[$user ]($style)'
 disabled = false
 
 [hostname]
 ssh_only = true
 format = '[$ssh_symbol at $hostname in]($style)'
-style = 'bg:#9A348E'
+style = 'bg:#6272a4'
 
 # An alternative to the username module which displays a symbol that
 # represents the current operating system
@@ -52,7 +39,7 @@ style = "bg:#9A348E"
 disabled = true # Disabled by default
 
 [directory]
-style = "bg:#DA627D"
+style = "bg:#f1fa8c fg:#282a36"
 format = "[ $path ]($style)"
 truncation_length = 3
 truncation_symbol = "…/"
@@ -92,12 +79,12 @@ format = '[ $symbol ($version) ]($style)'
 
 [git_branch]
 symbol = ""
-style = "bg:#FCA17D"
-format = '[ $symbol $branch ]($style)'
+style = "bg:#ffb86c fg:#282a36"
+format = '[ $symbol $branch]($style)'
 
 [git_status]
-style = "bg:#FCA17D"
-format = '[$all_status$ahead_behind ]($style)'
+style = "bg:#ffb86c fg:#282a36"
+format = '([$all_status]($style) )'
 
 [golang]
 symbol = " "
@@ -146,5 +133,5 @@ format = '[ $symbol ($version) ]($style)'
 [time]
 disabled = false
 time_format = "%R" # Hour:Minute Format
-style = "bg:#33658A"
+style = "bg:#bd93f9 fg:#44475a"
 format = '[ ♥ $time ]($style)'
