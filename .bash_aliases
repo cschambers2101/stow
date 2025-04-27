@@ -17,7 +17,7 @@ alias c="clear"
 alias attach="tmux attach-session -t "
 alias tnew="tmux new -s "
 alias activate="source venv/bin/activate"
-alias projectroom="ssh -i ~/.ssh/id_ed25519 craigchambers@10.1.23.23"
+alias f="cd \$(find ~/ -type d \( -name node_modules -o -name .git \) -prune -o -name '*'  -type d -print | fzf)"
 
 # some more ls aliases
 alias la='ls -A'
