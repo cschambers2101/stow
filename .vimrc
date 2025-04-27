@@ -23,6 +23,9 @@ Plug 'preservim/nerdtree'
 Plug 'michal-h21/vimwiki-sync'
 Plug 'github/copilot.vim'
 Plug 'dracula/vim', { 'name': 'dracula' }
+Plug 'junegunn/fzf', { 'do': { -> fzf#install() } }
+Plug 'junegunn/fzf.vim'
+
 
 " Initialize plugin system
 " - Automatically executes `filetype plugin indent on` and `syntax enable`.
@@ -111,17 +114,13 @@ set listchars=tab:▸\ ,eol:¬
 " Uncomment this to enable by default:
 " set list " To enable by default
 " Or use your leader key + l to toggle on/off
-" map <leader>l :set list!<CR> " Toggle tabs and EOL
+map <leader>l :set list!<CR> " Toggle tabs and EOL
 "
+
+
 " " Color scheme (terminal)
 set t_Co=256
 set background=dark
-" let g:solarized_termcolors=256
-" let g:solarized_termtrans=1
-" put
-" https://raw.github.com/altercation/vim-colors-solarized/master/colors/solarized.vim
-" " in ~/.vim/colors/ and uncomment:
-" " colorscheme solarized
 colorscheme dracula
 
 " set spell language to proper English
@@ -147,5 +146,8 @@ let g:vimwiki_list = [{
 nnoremap <leader>n :NERDTreeFocus<CR>
 nnoremap <C-n> :NERDTree<CR>
 nnoremap <C-t> :NERDTreeToggle<CR>
-nnoremap <C-f> :NERDTreeFind<CR>
+"nnoremap <C-f> :NERDTreeFind<CR>
 
+" FZF
+nnoremap <C-f> :Files<CR> 
+nnoremap <C-b> :Buffers<CR>
