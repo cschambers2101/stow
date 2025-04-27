@@ -24,6 +24,6 @@ alias la='ls -A'
 alias l='ls -CF'
 
 # add logout for terminal
-logout='gnome-session-quit'
-hib='sudo systemctl hibernate'
+alias logout='gnome-session-quit'
+alias hib='sudo systemctl hibernate'
 
