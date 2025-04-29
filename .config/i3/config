@@ -17,6 +17,7 @@ set $wm_setting_app_terminal         xfce4-terminal
 set $wm_setting_app_browser          google-chrome
 set $wm_setting_app_launcher         rofi -show drun
 set $wm_setting_app_compositor       picom
+set $wm_setting_file_manager         pcmanfm
 
 set $wm_color_border_active_bg       #56876D
 set $wm_color_border_active_fg       #D8DEE9
