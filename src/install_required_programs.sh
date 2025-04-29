@@ -18,7 +18,7 @@ while IFS= read -r package || [[ -n "$package" ]]; do
         continue
     fi
     echo "Attempting to install $package..."
-    sudo apt-get install -y -o Acquire::http::Pipeline-Depth "0" "$package"
+    sudo apt-get install -y -o Acquire::http::Pipeline-Depth="0" "$package"
     if [ $? -ne 0 ]; then
         echo "Warning: Failed to install $package. It might not exist or there was an error."
     fi
