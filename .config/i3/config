@@ -18,6 +18,7 @@ set $wm_setting_app_browser          google-chrome
 set $wm_setting_app_launcher         rofi -show drun
 set $wm_setting_app_compositor       picom
 set $wm_setting_file_manager         pcmanfm
+set $wm_setting_mixer                xfce4-terminal -e alsamixer
 
 set $wm_color_border_active_bg       #56876D
 set $wm_color_border_active_fg       #D8DEE9
@@ -64,6 +65,9 @@ bindsym $mod+d exec $wm_setting_app_launcher
 
 # Run PCMANFM
 bindsym $mod+p exec pcmanfm &
+
+# Run Mixer
+bindsym $mod+m exec $wm_setting_mixer
 
 # Run a window compositor (for effects like transparency or full VSync)
 exec_always --no-startup-id $wm_setting_app_compositor
