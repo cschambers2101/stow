@@ -80,70 +80,77 @@ function qtile_scaling() {
 
 md2pdf() {
   # --- Default CSS Path ---
+  # Define the path to the default CSS file, expanding the tilde to the home directory
   local default_css_file="$HOME/.local/share/css/s6c_remarkable_style.css"
 
   # --- Input Validation ---
+  # Check if the number of arguments is correct (1 or 2)
   if [ "$#" -lt 1 ] || [ "$#" -gt 2 ]; then
     echo "Usage: md2pdf <markdown_file.md> [css_file.css]"
     echo "If css_file.css is omitted, '$default_css_file' will be used."
-    return 1 # Return error code
+    return 1 # Return error code for incorrect usage
   fi
 
-  local md_file="$1"
-  local css_file
+  local md_file="$1" # First argument is the markdown file
+  local css_file     # Variable to hold the path to the CSS file
 
-  # Determine which CSS file to use
+  # Determine which CSS file to use based on the number of arguments
   if [ "$#" -eq 2 ]; then
-    # CSS file provided as argument
+    # CSS file provided as the second argument
     css_file="$2"
   else
-    # Use default CSS file
+    # Use the defined default CSS file
     css_file="$default_css_file"
     echo "No CSS file provided, using default: '$css_file'"
   fi
 
-  # Check if markdown file exists and is readable
+  # Check if the markdown file exists and is readable
   if [ ! -f "$md_file" ] || [ ! -r "$md_file" ]; then
     echo "Error: Markdown file '$md_file' not found or not readable."
-    return 1
+    return 1 # Return error code
   fi
 
   # Check if the selected CSS file exists and is readable
   if [ ! -f "$css_file" ] || [ ! -r "$css_file" ]; then
     echo "Error: CSS file '$css_file' not found or not readable."
-    # If it was the default CSS, provide a hint
+    # Provide a hint if the default CSS file is missing
     if [ "$css_file" == "$default_css_file" ]; then
         echo "Hint: Ensure the default CSS file exists at '$default_css_file'."
     fi
-    return 1
+    return 1 # Return error code
   fi
 
-  # --- File Name and Title Extraction ---
+  # --- File Name Extraction ---
   # Get the base name of the markdown file (e.g., "report" from "path/to/report.md")
+  # This removes the directory path and the .md extension
   local base_name
   base_name=$(basename "$md_file" .md)
 
-  # Define the output PDF file name
+  # Define the output PDF file name using the base name
   local pdf_file="${base_name}.pdf"
-  # Use the base name as the PDF title metadata
-  local pdf_title="$base_name"
+  # PDF title metadata is NO LONGER set automatically.
+  # Add title in Markdown source (e.g., YAML front matter like --- title: My Title ---) if needed.
 
   # --- Pandoc Conversion ---
+  # Inform the user about the conversion process
   echo "Converting '$md_file' to '$pdf_file' using '$css_file'..."
 
+  # Execute the pandoc command (without the --metadata title option)
   pandoc "$md_file" \
     --to=html5 \
     --css="$css_file" \
     --standalone \
     --pdf-engine=weasyprint \
-    --metadata title="$pdf_title" \
     --output="$pdf_file"
 
   # --- Check Result ---
+  # Check the exit status of the pandoc command
   if [ $? -eq 0 ]; then
+    # Success message
     echo "Successfully created '$pdf_file'."
     return 0 # Return success code
   else
+    # Error message
     echo "Error: Pandoc conversion failed."
     return 1 # Return error code
   fi

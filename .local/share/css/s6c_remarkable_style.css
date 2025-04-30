@@ -260,9 +260,6 @@ table td {
 @media print {
   * {
     background: transparent !important;
-    color: black !important;
-    filter: none !important;
-    -ms-filter: none !important;
   }
 
   body {
