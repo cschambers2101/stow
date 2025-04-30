@@ -19,6 +19,7 @@ set $wm_setting_app_launcher         rofi -show drun
 set $wm_setting_app_compositor       picom
 set $wm_setting_file_manager         pcmanfm
 set $wm_setting_mixer                xfce4-terminal -e alsamixer
+set $wm_bambu_studio                 .local/bin/bambu/Bambu_Studio_ubuntu-24.04_PR-6688.AppImage
 
 set $wm_color_border_active_bg       #56876D
 set $wm_color_border_active_fg       #D8DEE9
@@ -68,6 +69,9 @@ bindsym $mod+p exec pcmanfm &
 
 # Run Mixer
 bindsym $mod+m exec $wm_setting_mixer
+
+# Run Bambu Studio - appimage 
+bindsym $mod+$smod+b exec $wm_bambu_studio &
 
 # Run a window compositor (for effects like transparency or full VSync)
 exec_always --no-startup-id $wm_setting_app_compositor
