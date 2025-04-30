@@ -79,14 +79,28 @@ function qtile_scaling() {
 }
 
 md2pdf() {
+  # --- Default CSS Path ---
+  local default_css_file="$HOME/.local/share/css/s6c_remarkable_style.css"
+
   # --- Input Validation ---
-  if [ "$#" -ne 2 ]; then
-    echo "Usage: md2pdf <markdown_file.md> <css_file.css>"
+  if [ "$#" -lt 1 ] || [ "$#" -gt 2 ]; then
+    echo "Usage: md2pdf <markdown_file.md> [css_file.css]"
+    echo "If css_file.css is omitted, '$default_css_file' will be used."
     return 1 # Return error code
   fi
 
   local md_file="$1"
-  local css_file="$2"
+  local css_file
+
+  # Determine which CSS file to use
+  if [ "$#" -eq 2 ]; then
+    # CSS file provided as argument
+    css_file="$2"
+  else
+    # Use default CSS file
+    css_file="$default_css_file"
+    echo "No CSS file provided, using default: '$css_file'"
+  fi
 
   # Check if markdown file exists and is readable
   if [ ! -f "$md_file" ] || [ ! -r "$md_file" ]; then
@@ -94,9 +108,13 @@ md2pdf() {
     return 1
   fi
 
-  # Check if CSS file exists and is readable
+  # Check if the selected CSS file exists and is readable
   if [ ! -f "$css_file" ] || [ ! -r "$css_file" ]; then
     echo "Error: CSS file '$css_file' not found or not readable."
+    # If it was the default CSS, provide a hint
+    if [ "$css_file" == "$default_css_file" ]; then
+        echo "Hint: Ensure the default CSS file exists at '$default_css_file'."
+    fi
     return 1
   fi
 
