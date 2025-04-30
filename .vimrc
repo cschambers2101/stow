@@ -22,7 +22,7 @@ Plug 'vimwiki/vimwiki'
 Plug 'preservim/nerdtree'
 Plug 'michal-h21/vimwiki-sync'
 Plug 'github/copilot.vim'
-Plug 'dracula/vim', { 'name': 'dracula' }
+Plug 'dracula/vim', { 'as': 'dracula' }
 Plug 'junegunn/fzf', { 'do': { -> fzf#install() } }
 Plug 'junegunn/fzf.vim'
 
