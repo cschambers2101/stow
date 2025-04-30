@@ -77,3 +77,56 @@ function update_os() {
 function qtile_scaling() {
     xrandr --output eDP-1 --scale 0.5x0.5
 }
+
+md2pdf() {
+  # --- Input Validation ---
+  if [ "$#" -ne 2 ]; then
+    echo "Usage: md2pdf <markdown_file.md> <css_file.css>"
+    return 1 # Return error code
+  fi
+
+  local md_file="$1"
+  local css_file="$2"
+
+  # Check if markdown file exists and is readable
+  if [ ! -f "$md_file" ] || [ ! -r "$md_file" ]; then
+    echo "Error: Markdown file '$md_file' not found or not readable."
+    return 1
+  fi
+
+  # Check if CSS file exists and is readable
+  if [ ! -f "$css_file" ] || [ ! -r "$css_file" ]; then
+    echo "Error: CSS file '$css_file' not found or not readable."
+    return 1
+  fi
+
+  # --- File Name and Title Extraction ---
+  # Get the base name of the markdown file (e.g., "report" from "path/to/report.md")
+  local base_name
+  base_name=$(basename "$md_file" .md)
+
+  # Define the output PDF file name
+  local pdf_file="${base_name}.pdf"
+  # Use the base name as the PDF title metadata
+  local pdf_title="$base_name"
+
+  # --- Pandoc Conversion ---
+  echo "Converting '$md_file' to '$pdf_file' using '$css_file'..."
+
+  pandoc "$md_file" \
+    --to=html5 \
+    --css="$css_file" \
+    --standalone \
+    --pdf-engine=weasyprint \
+    --metadata title="$pdf_title" \
+    --output="$pdf_file"
+
+  # --- Check Result ---
+  if [ $? -eq 0 ]; then
+    echo "Successfully created '$pdf_file'."
+    return 0 # Return success code
+  else
+    echo "Error: Pandoc conversion failed."
+    return 1 # Return error code
+  fi
+}
