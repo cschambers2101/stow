@@ -1,0 +1,8 @@
+faenza-icon-theme
+figlet
+materia-gtk-theme
+numix-gtk-theme
+numix-icon-theme
+numix-icon-theme-circle
+papirus-icon-theme
+usb-creator-gtk
