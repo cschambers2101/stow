@@ -3,11 +3,10 @@ build-essential
 caca-utils
 curl
 dunst
-faenza-icon-theme
 feh
 ffmpeg
-figlet
 fonts-noto-core
+fuse
 fzf
 gimp
 git
@@ -17,14 +16,9 @@ libreoffice
 libvirt-clients
 libvirt-daemon-system
 lxappearance
-materia-gtk-theme
 nitrogen
-numix-gtk-theme
-numix-icon-theme
-numix-icon-theme-circle
 obs-studio
 pandoc
-papirus-icon-theme
 pcmanfm
 picom
 polybar
@@ -39,7 +33,6 @@ stow
 sxhkd
 tmux
 ttf-mscorefonts-installer
-usb-creator-gtk
 v4l-utils
 vim-gtk3
 virt-manager
