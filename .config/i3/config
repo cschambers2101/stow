@@ -205,6 +205,9 @@ client.background       $wm_color_background
 ### Polybar ###
 exec_always --no-startup-id $HOME/.config/polybar/launch.sh
 
+# Autostart XDG applications (including gnome-keyring)
+exec --no-startup-id dex -a -s /etc/xdg/autostart/:~/.config/autostart/
+
 ### Miscellaneous settings ###
 # Set the font used for titlebars (which are hidden here)
 font $wm_setting_font
