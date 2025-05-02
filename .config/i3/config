@@ -206,7 +206,11 @@ client.background       $wm_color_background
 exec_always --no-startup-id $HOME/.config/polybar/launch.sh
 
 # Autostart XDG applications (including gnome-keyring)
-exec --no-startup-id dex -a -s /etc/xdg/autostart/:~/.config/autostart/
+exec --no-startup-id /etc/xdg/autostart/gnome-keyring-pkcs11.desktop
+exec --no-startup-id /etc/xdg/autostart/gnome-keyring-secrets.desktop`
+exec --no-startup-id /etc/xdg/autostart/gnome-keyring--ssh.desktop
+
+
 
 ### Miscellaneous settings ###
 # Set the font used for titlebars (which are hidden here)
