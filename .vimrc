@@ -19,7 +19,6 @@ call plug#begin()
 
 Plug 'mattn/emmet-vim'
 Plug 'vimwiki/vimwiki'
-Plug 'preservim/nerdtree'
 Plug 'michal-h21/vimwiki-sync'
 Plug 'github/copilot.vim'
 Plug 'dracula/vim', { 'as': 'dracula' }
@@ -41,17 +40,17 @@ filetype plugin indent on
 let mapleader = ","
 
 " Security
-set modelines=0
+"set modelines=0
 
 " Show line numbers
 set number
 set relativenumber
 
 " Show file stats
-set ruler
+"set ruler
 
 " Blink cursor on error instead of beeping (grr)
-set visualbell
+"set visualbell
 
 " Encoding
 set encoding=utf-8
@@ -77,17 +76,17 @@ nnoremap j gj
 nnoremap k gk
 
 " Allow hidden buffers
-set hidden
+"set hidden
 
 " Rendering
-set ttyfast
+"set ttyfast
 
 " Status bar
 set laststatus=2
 
 " Last line
-set showmode
-set showcmd
+"set showmode
+"set showcmd
 
 " Searching
 nnoremap / /\v
@@ -100,25 +99,11 @@ set showmatch
 map <leader><space> :let @/=''<cr> " clear search
 
 " Remap help key.
-inoremap <F1> <ESC>:set invfullscreen<CR>a
-nnoremap <F1> :set invfullscreen<CR>
-vnoremap <F1> :set invfullscreen<CR>
+"inoremap <F1> <ESC>:set invfullscreen<CR>a
+"nnoremap <F1> :set invfullscreen<CR>
+"vnoremap <F1> :set invfullscreen<CR>
 
-" Textmate holdouts
-
-" Formatting
-map <leader>q gqip
-
-" Visualize tabs and newlines
-set listchars=tab:▸\ ,eol:¬
-" Uncomment this to enable by default:
-" set list " To enable by default
-" Or use your leader key + l to toggle on/off
-map <leader>l :set list!<CR> " Toggle tabs and EOL
-"
-
-
-" " Color scheme (terminal)
+" Color scheme (terminal)
 set t_Co=256
 set background=dark
 colorscheme dracula
@@ -141,12 +126,6 @@ let g:vimwiki_list = [{
 	\ 'path_html': '~/vimwiki/site_html/',
 	\ 'custom_wiki2html': 'vimwiki_markdown',
 	\ 'template_ext': '.html'}]
-
-" Nerdtree
-nnoremap <leader>n :NERDTreeFocus<CR>
-nnoremap <C-n> :NERDTree<CR>
-nnoremap <C-t> :NERDTreeToggle<CR>
-"nnoremap <C-f> :NERDTreeFind<CR>
 
 " FZF
 nnoremap <C-f> :Files<CR> 
