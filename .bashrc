@@ -108,6 +108,10 @@ fi
 if [ -f ~/.bash_profile ]; then
     . ~/.bash_profile
 fi
+
+if [ -f ~/.bash_functions ]; then
+    . ~/.bash_functions
+fi
 # enable programmable completion features (you don't need to enable
 # this, if it's already enabled in /etc/bash.bashrc and /etc/profile
 # sources /etc/bash.bashrc).
@@ -120,4 +124,11 @@ if ! shopt -oq posix; then
 fi
 
 eval "$(starship init bash)"
+
+
+export NVM_DIR="$HOME/.nvm"
+[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm
+[ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"  # This loads nvm bash_completion
+
+export NODE_EXTRA_CA_CERTS="~/.local/share/ca-certificates/oakford.crt"
 
