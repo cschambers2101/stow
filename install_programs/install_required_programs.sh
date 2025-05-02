@@ -29,5 +29,7 @@ while IFS= read -r package || [[ -n "$package" ]]; do
     fi
 done < "programs_to_install.txt"
 
+sudo apt autoremove -y
+
 echo "Script finished."
 exit 0
