@@ -1,5 +1,10 @@
 #!/bin/bash
 
+# Create required directories
+mkdir -p ~/.config/i3 ~/.config/pcmanfm ~/.config/picom ~/.config polybar ~/.config/qtile ~/.config/rofi ~/.config/xfce4
+mkdir -p ~/.local/bambu ~/.local/share/backgrounds ~/.local/share/ca-certificates ~/.local/css ~/.local/fonts ~/.local/icons ~/.local/share/qtile ~/.local/share/rofi ~/.local/share/xfce4
+
+
 # Check if the package list file exists
 if [ ! -f "programs_to_install.txt" ]; then
     echo "Error: installed.txt not found!"
