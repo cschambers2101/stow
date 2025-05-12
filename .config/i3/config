@@ -236,3 +236,6 @@ bindsym $mod+$smod+e exec "i3-nagbar -t warning -m 'You pressed the exit shortcu
 
 # Sceenshot
 bindsym --release $mod+Shift+p exec xfce4-screenshooter -r
+# set keyboard map
+exec_always --no-startup-id setxkbmap -layout gb
+
