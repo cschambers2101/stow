@@ -210,9 +210,8 @@ exec --no-startup-id /etc/xdg/autostart/gnome-keyring-pkcs11.desktop
 exec --no-startup-id /etc/xdg/autostart/gnome-keyring-secrets.desktop`
 exec --no-startup-id /etc/xdg/autostart/gnome-keyring--ssh.desktop
 
+exec --no-startup-id gnome-keyring-daemon --start --components=pkcs11,secrets,ssh
 
-
-### Miscellaneous settings ###
 # Set the font used for titlebars (which are hidden here)
 font $wm_setting_font
 
