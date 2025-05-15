@@ -12,7 +12,7 @@ body {
   font-family: "Ubuntu", sans-serif;
   font-size: 12px;
   line-height: 1.7;
-  padding: 1em;
+  padding: 1rem;
   margin: auto;
   background: #fefefe;
 }
@@ -59,7 +59,7 @@ a::selection {
 }
 
 p {
-  margin: 1em 0;
+  margin: 1rem 0;
 }
 
 img {
@@ -69,7 +69,7 @@ img {
 h1, h2, h3, h4, h5, h6 {
   color: #4400ad;
   line-height: 125%;
-  margin-top: 2em;
+  margin-top: 2rem;
   font-weight: normal;
 }
 
@@ -78,34 +78,34 @@ h4, h5, h6 {
 }
 
 h1 {
-  font-size: 2.5em;
+  font-size: 2.5rem;
 }
 
 h2 {
-  font-size: 2em;
+  font-size: 2rem;
 }
 
 h3 {
-  font-size: 1.5em;
+  font-size: 1.5rem;
 }
 
 h4 {
-  font-size: 1.2em;
+  font-size: 1.2rem;
 }
 
 h5 {
-  font-size: 1em;
+  font-size: 1rem;
 }
 
 h6 {
-  font-size: 0.9em;
+  font-size: 0.9rem;
 }
 
 blockquote {
   color: #666666;
   margin: 0;
-  padding-left: 3em;
-  border-left: 0.5em #EEE solid;
+  padding-left: 3rem;
+  border-left: 0.5rem #EEE solid;
 }
 
 hr {
@@ -114,7 +114,7 @@ hr {
   border: 0;
   border-top: 1px solid #aaa;
   border-bottom: 1px solid #eee;
-  margin: 1em 0;
+  margin: 1rem 0;
   padding: 0;
 }
 
@@ -122,7 +122,7 @@ pre, code, kbd, samp {
   color: #000;
   font-family: monospace, monospace;
   _font-family: 'courier new', monospace;
-  font-size: 0.98em;
+  font-size: 0.98rem;
 }
 
 pre {
@@ -160,16 +160,16 @@ sub, sup {
 }
 
 sup {
-  top: -0.5em;
+  top: -0.5rem;
 }
 
 sub {
-  bottom: -0.25em;
+  bottom: -0.25rem;
 }
 
 ul, ol {
-  margin: 1em 0;
-  padding: 0 0 0 2em;
+  margin: 1rem 0;
+  padding: 0 0 0 2rem;
 }
 
 li p:last-child {
@@ -177,20 +177,20 @@ li p:last-child {
 }
 
 ul ul, ol ol {
-  margin: .3em 0;
+  margin: .3rem 0;
 }
 
 dl {
-  margin-bottom: 1em;
+  margin-bottom: 1rem;
 }
 
 dt {
   font-weight: bold;
-  margin-bottom: .8em;
+  margin-bottom: .8rem;
 }
 
 dd {
-  margin: 0 0 .8em 2em;
+  margin: 0 0 .8rem 2rem;
 }
 
 dd:last-child {
@@ -206,7 +206,7 @@ img {
 figure {
   display: block;
   text-align: center;
-  margin: 1em 0;
+  margin: 1rem 0;
 }
 
 figure img {
@@ -215,13 +215,13 @@ figure img {
 }
 
 figcaption {
-  font-size: 0.8em;
+  font-size: 0.8rem;
   font-style: italic;
-  margin: 0 0 .8em;
+  margin: 0 0 .8rem;
 }
 
 table {
-  margin-bottom: 2em;
+  margin-bottom: 2rem;
   border-bottom: 1px solid #ddd;
   border-right: 1px solid #ddd;
   border-spacing: 0;
@@ -229,21 +229,21 @@ table {
 }
 
 table th {
-  padding: .2em 1em;
+  padding: .2rem 1rem;
   background-color: #eee;
   border-top: 1px solid #ddd;
   border-left: 1px solid #ddd;
 }
 
 table td {
-  padding: .2em 1em;
+  padding: .2rem 1rem;
   border-top: 1px solid #ddd;
   border-left: 1px solid #ddd;
   vertical-align: top;
 }
 
 .author {
-  font-size: 1.2em;
+  font-size: 1.2rem;
   text-align: center;
 }
 
@@ -291,7 +291,7 @@ table td {
 
   pre, blockquote {
     border: 1px solid #999;
-    padding-right: 1em;
+    padding-right: 1rem;
     page-break-inside: avoid;
   }
 
@@ -304,11 +304,11 @@ table td {
   }
 
   @page :left {
-    margin: 15mm 20mm 15mm 10mm;
+    margin: 10mm 15mm 10mm 10mm;
 }
 
   @page :right {
-    margin: 15mm 10mm 15mm 20mm;
+    margin: 10mm 15mm 10mm 10mm;
 }
 
   p, h2, h3 {
