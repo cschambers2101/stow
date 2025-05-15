@@ -235,3 +235,7 @@ bindsym --release $mod+Shift+p exec xfce4-screenshooter -r
 exec --no-startup-id setxkbmap -layout gb
 # Run Screensetup script
 exec --no-startup-id $HOME/.local/bin/set_screen_layout.sh
+
+
+# Make sure bash is sourced as have been having trouble on load
+exec --no-startup-id bash -c "source $HOME/.bashrc"
