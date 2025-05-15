@@ -206,10 +206,6 @@ client.background       $wm_color_background
 exec_always --no-startup-id $HOME/.config/polybar/launch.sh
 
 # Autostart XDG applications (including gnome-keyring)
-exec --no-startup-id /etc/xdg/autostart/gnome-keyring-pkcs11.desktop
-exec --no-startup-id /etc/xdg/autostart/gnome-keyring-secrets.desktop`
-exec --no-startup-id /etc/xdg/autostart/gnome-keyring--ssh.desktop
-
 exec --no-startup-id gnome-keyring-daemon --start --components=pkcs11,secrets,ssh
 
 # Set the font used for titlebars (which are hidden here)
@@ -236,5 +232,6 @@ bindsym $mod+$smod+e exec "i3-nagbar -t warning -m 'You pressed the exit shortcu
 # Sceenshot
 bindsym --release $mod+Shift+p exec xfce4-screenshooter -r
 # set keyboard map
-exec_always --no-startup-id setxkbmap -layout gb
-
+exec --no-startup-id setxkbmap -layout gb
+# Run Screensetup script
+exec --no-startup-id $HOME/.local/bin/set_screen_layout.sh
