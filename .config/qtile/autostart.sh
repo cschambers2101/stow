@@ -1,8 +1,7 @@
 #!/bin/sh
-nm-applet &
 
 # background
-# feh --bg-scale /usr/share/backgrounds/Monument_valley_by_orbitelambda.jpg &
+#feh --bg-scale ~/.local/share/backgrounds/wallhaven-85erok_3440x1440.png &
 nitrogen --restore &
 
 # compositor
