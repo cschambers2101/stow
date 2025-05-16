@@ -232,9 +232,9 @@ bindsym $mod+$smod+e exec "i3-nagbar -t warning -m 'You pressed the exit shortcu
 # Sceenshot
 bindsym --release $mod+Shift+p exec xfce4-screenshooter -r
 # set keyboard map
-exec --no-startup-id setxkbmap -layout gb
+exec_always --no-startup-id setxkbmap -layout gb
 # Run Screensetup script
-exec --no-startup-id $HOME/.local/bin/set_screen_layout.sh
+exec_always --no-startup-id $HOME/.local/bin/set_screen_layout.sh
 
 
 # Make sure bash is sourced as have been having trouble on load
