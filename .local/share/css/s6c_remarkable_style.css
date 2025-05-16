@@ -68,37 +68,33 @@ img {
 
 h1, h2, h3, h4, h5, h6 {
   color: #4400ad;
-  line-height: 125%;
-  margin-top: 2rem;
+  line-height: 1.2rem;
+  margin-top: 1rem;
+  margin-bottom: 0;
   font-weight: normal;
 }
 
-h4, h5, h6 {
-  font-weight: bold;
+h2, h3, h4, h5, h6 {
+  margin-top: 0.5rem;
+  line-height: 110%;
+  color: #0077C8;
+  font-weight: normal;
 }
 
 h1 {
-  font-size: 2.5rem;
+  font-size: 2.074rem;
 }
 
 h2 {
-  font-size: 2rem;
+  font-size: 1.728rem;
 }
 
 h3 {
-  font-size: 1.5rem;
+  font-size: 1.44rem;
 }
 
-h4 {
+h4, h5, h6 {
   font-size: 1.2rem;
-}
-
-h5 {
-  font-size: 1rem;
-}
-
-h6 {
-  font-size: 0.9rem;
 }
 
 blockquote {
