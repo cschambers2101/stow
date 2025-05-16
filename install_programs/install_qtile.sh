@@ -20,7 +20,7 @@ sudo apt-get install -y python3-cffi libpangocairo-1.0-0 --reinstall
 # Install Qtile
 # pip3 install qtile==0.22.1 --force-reinstall
 pip install git+https://github.com/qtile/qtile --break-system-packages --force-reinstall
-
+pip install psutil --break-system-packages --force-reinstall
 
 
 # Create a desktop entry for Qtile
