@@ -15,3 +15,7 @@ dunst &
 
 # Network Manager
 nm-applet &
+
+# Disable tap to click on Dell XPS Touchpad
+subprocess.call(['xinput', 'set-prop', '9', 'Synaptics Tap Action', '0', '0', '0', '0', '0', '0', '0'])
+

@@ -169,8 +169,9 @@ keys = [
     Key([mod], "Return", lazy.spawn(terminal)), # Launch Gnome Terminal
     Key([mod], "r", lazy.spawn("rofi -show run")), # Launch Rofi
     Key([mod, "shift"], "l", lazy.spawn("i3lock -i /home/craigchambers/Pictures/i3lock.png")), # Launch i3lock
-    Key([mod, "shift"], "f", lazy.spawn("pcmanfm")) # Launch PCManFM
-    ]
+    Key([mod, "shift"], "f", lazy.spawn("pcmanfm")), # Launch PCManFM
+    Key([mod, "shift"], "m", lazy.spawn("xfce4-terminal -e alsamixer")) # Launch alsamixer
+]
 # end of keys
 
 #groups = [Group(i) for i in ["", "", "", "", "阮", "", "", "", ""]]
@@ -275,7 +276,8 @@ screens = [
                widget.Volume(
 					fmt="󰕾 {}",
 					mute_command="amixer -D pulse set Master toggle",
-					foreground=color_schema['red']
+					foreground=color_schema['red'],
+                    volume_app="xfce4-terminal -e alsamixer"
                 ),
 				separator,
 				widget.CurrentLayoutIcon(
