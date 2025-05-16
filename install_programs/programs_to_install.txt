@@ -1,3 +1,4 @@
+apt-show-versions
 btop
 build-essential
 caca-utils
