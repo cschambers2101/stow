@@ -70,7 +70,7 @@ h1, h2, h3, h4, h5, h6 {
   color: #4400ad;
   line-height: 1.2rem;
   margin-top: 1rem;
-  margin-bottom: 0;
+  margin-bottom: 0.6rem;
   font-weight: normal;
 }
 
@@ -86,15 +86,15 @@ h1 {
 }
 
 h2 {
-  font-size: 1.728rem;
-}
-
-h3 {
   font-size: 1.44rem;
 }
 
-h4, h5, h6 {
+h3 {
   font-size: 1.2rem;
+}
+
+h4, h5, h6 {
+  font-size: 1rem;
 }
 
 blockquote {
