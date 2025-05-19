@@ -73,7 +73,6 @@ _gruvbox = {
 
 color_schema = _gruvbox
 
-
 keys = [
 
 # Add dedicated sxhkdrc to autostart.sh script
@@ -220,7 +219,7 @@ layouts = [
 ]
 
 widget_defaults = dict(
-	font='Hack Nerd Font Regular',
+    font='Hack Nerd Font Regular',
     background=color_schema['bg'],
     foreground=color_schema['fg'],
     fontsize=14,
@@ -230,72 +229,96 @@ extension_defaults = widget_defaults.copy()
 separator = widget.Sep(size_percent=50, foreground=color_schema['fg3'], linewidth =1, padding =10)
 spacer = widget.Sep(size_percent=50, foreground=color_schema['fg3'], linewidth =0, padding =10)
 
-screens = [
-    Screen(
-        top=bar.Bar(
-            [
-                widget.GroupBox(
-                    disable_drag=True,
-                    use_mouse_wheel=False,
-                    active=color_schema['fg'],
-                    inactive=color_schema['fg3'],
-                    highlight_method='line',
-                    this_current_screen_border=color_schema['dark-yellow'],
-                    hide_unused = False,
-                    rounded = False,
-                    urgent_alert_method='line',
-                    urgent_text=color_schema['dark-red']
-                ),
-                widget.WindowName(),
-					widget.CheckUpdates(
-					distro='Debian',
-					colour_have_updates=color_schema['yellow'],
-					colour_no_updates=color_schema['dark-yellow'],
-					display_format='  Updates: {updates}',
-					no_update_string= '  Updates: 0'
-               ),
-               separator,
-               widget.CPU(
-					format="  {load_percent:04}%",
-					foreground=color_schema['dark-magenta'],
-			   ),
-			   separator,
-               widget.Memory(
-                format='󰻠 {MemUsed: .0f}{mm}/{MemTotal: .0f}{mm}',
-                measure_mem='G',
-                foreground=color_schema['magenta']
-               ),
-               separator,
-                widget.Clock(format=' %a, %b %-d',
-					foreground=color_schema['fg3']
-				),
-				widget.Clock(format='%-I:%M %p',
-					foreground=color_schema['fg9']
-				),
-				separator,
-               widget.Volume(
-					fmt="󰕾 {}",
-					mute_command="amixer -D pulse set Master toggle",
-					foreground=color_schema['red'],
-                    volume_app="xfce4-terminal -e alsamixer"
-                ),
-				separator,
-				widget.CurrentLayoutIcon(
-                    custom_icon_paths=["/home/drew/.config/qtile/icons/layouts"],
-                    scale=0.5,
-                    padding=0
-                ),
-                separator,
-                widget.Systray(
-					padding = 6,
-				),
-				spacer,
-            ],
-            40,
-            # border_width=[2, 0, 2, 0],  # Draw top and bottom borders
-            # border_color=["ff00ff", "000000", "ff00ff", "000000"]  # Borders are magenta
-        ),
+# Initialize the base widgets list
+widgets_list = [
+    widget.GroupBox(
+        disable_drag=True,
+        use_mouse_wheel=False,
+        active=color_schema['fg'],
+        inactive=color_schema['fg3'],
+        highlight_method='line',
+        this_current_screen_border=color_schema['dark-yellow'],
+        hide_unused = False,
+        rounded = False,
+        urgent_alert_method='line',
+        urgent_text=color_schema['dark-red']
     ),
+    widget.WindowName(),
+    widget.CheckUpdates(
+        distro='Debian',
+        colour_have_updates=color_schema['yellow'],
+        colour_no_updates=color_schema['dark-yellow'],
+        display_format='  Updates: {updates}',
+        no_update_string= '  Updates: 0'
+    ),
+    separator,
+    widget.CPU(
+        format="  {load_percent:04}%",
+        foreground=color_schema['dark-magenta'],
+    ),
+    separator,
+    widget.Memory(
+        format='󰻠 {MemUsed: .0f}{mm}/{MemTotal: .0f}{mm}',
+        measure_mem='G',
+        foreground=color_schema['magenta']
+    ),
+    separator,
+    widget.Clock(format=' %a, %b %-d',
+        foreground=color_schema['fg3']
+    ),
+    widget.Clock(format='%-I:%M %p',
+        foreground=color_schema['fg9']
+    ),
+    separator,
+    widget.Volume(
+        fmt="󰕾 {}",
+        mute_command="amixer -D pulse set Master toggle",
+        foreground=color_schema['red'],
+        volume_app="xfce4-terminal -e alsamixer"
+    ),
+    separator,
+    widget.CurrentLayoutIcon(
+        custom_icon_paths=["/home/drew/.config/qtile/icons/layouts"],
+        scale=0.5,
+        padding=0
+    ),
+    separator,
+    widget.Systray(
+        padding = 6,
+    ),
+    spacer,
+]
+
+# Check if the battery directory exists and insert the Battery widget
+if os.path.exists('/sys/class/power_supply/BAT0'):
+    widgets_list.insert(8, widget.Battery( # Insert at the desired position
+        fmt="{percent:.0f}% ({time_remaining})",
+        charge_char='↑',
+        discharge_char='↓',
+        full_char='●',
+        low_percentage=0.20,
+        low_foreground='ff0000',
+        foreground='ffffff',
+        update_interval=30,
+        visible_when_no_battery=True,
+    ))
+elif os.path.exists('/sys/class/power_supply/battery'):
+    widgets_list.insert(8, widget.Battery( # Insert at the desired position
+        fmt="{percent:.0f}% ({time_remaining})",
+        charge_char='↑',
+        discharge_char='↓',
+        full_char='●',
+        low_percentage=0.20,
+        low_foreground='ff0000',
+        foreground='ffffff',
+        update_interval=30,
+        visible_when_no_battery=True,
+    ))
+else:
+    print("No Battery found, Battery widget will not be added.")
+
+screens = [
+    Screen(top=bar.Bar(widgets=widgets_list, size=40)),
 ]
 
 # Drag floating layouts.
