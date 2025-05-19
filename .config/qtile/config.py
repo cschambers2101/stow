@@ -266,7 +266,7 @@ widgets_list = [
     separator,
     widget.BatteryIcon(
         battery='BAT0',
-        scale=1,
+        scale=1.4,
         theme_path='/usr/share/icons/Papirus-Dark/24x24/panel',
         show_charge=True,
         show_discharge=True,
