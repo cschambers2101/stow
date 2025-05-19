@@ -229,6 +229,7 @@ extension_defaults = widget_defaults.copy()
 separator = widget.Sep(size_percent=50, foreground=color_schema['fg3'], linewidth =1, padding =10)
 spacer = widget.Sep(size_percent=50, foreground=color_schema['fg3'], linewidth =0, padding =10)
 
+
 # Initialize the base widgets list
 widgets_list = [
     widget.GroupBox(
@@ -263,11 +264,18 @@ widgets_list = [
         foreground=color_schema['magenta']
     ),
     separator,
-    widget.Clock(format=' %a, %b %-d',
-        foreground=color_schema['fg3']
-    ),
-    widget.Clock(format='%-I:%M %p',
-        foreground=color_schema['fg9']
+    widget.BatteryIcon(
+        battery='BAT0',
+        scale=1,
+        theme_path='/usr/share/icons/Papirus-Dark/24x24/panel',
+        show_charge=True,
+        show_discharge=True,
+        show_full=True,
+        show_low=True,
+        show_ac=True,
+        show_battery=True,
+        show_empty=True,
+        update_interval=30
     ),
     separator,
     widget.Volume(
@@ -275,6 +283,13 @@ widgets_list = [
         mute_command="amixer -D pulse set Master toggle",
         foreground=color_schema['red'],
         volume_app="xfce4-terminal -e alsamixer"
+    ),
+    separator,
+    widget.Clock(format=' %a, %b %-d',
+        foreground=color_schema['fg3']
+    ),
+    widget.Clock(format='%-I:%M %p',
+        foreground=color_schema['fg9']
     ),
     separator,
     widget.CurrentLayoutIcon(
@@ -288,34 +303,6 @@ widgets_list = [
     ),
     spacer,
 ]
-
-# Check if the battery directory exists and insert the Battery widget
-if os.path.exists('/sys/class/power_supply/BAT0'):
-    widgets_list.insert(8, widget.Battery( # Insert at the desired position
-        fmt="{percent:.0f}% ({time_remaining})",
-        charge_char='↑',
-        discharge_char='↓',
-        full_char='●',
-        low_percentage=0.20,
-        low_foreground='ff0000',
-        foreground='ffffff',
-        update_interval=30,
-        visible_when_no_battery=True,
-    ))
-elif os.path.exists('/sys/class/power_supply/battery'):
-    widgets_list.insert(8, widget.Battery( # Insert at the desired position
-        fmt="{percent:.0f}% ({time_remaining})",
-        charge_char='↑',
-        discharge_char='↓',
-        full_char='●',
-        low_percentage=0.20,
-        low_foreground='ff0000',
-        foreground='ffffff',
-        update_interval=30,
-        visible_when_no_battery=True,
-    ))
-else:
-    print("No Battery found, Battery widget will not be added.")
 
 screens = [
     Screen(top=bar.Bar(widgets=widgets_list, size=40)),
