@@ -13,3 +13,5 @@ dunst &
 # Network Manager
 nm-applet &
 
+# Set keymap
+setxkbmap -layout gb
