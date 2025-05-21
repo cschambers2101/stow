@@ -57,4 +57,23 @@ else
 fi
 
 echo "Script finished."
+
+# Install Node
+script_to_run="install_node.sh"
+
+if [ -e "$script_to_run" ]; then
+  echo "Script '$script_to_run' exists. Executing..."
+  bash "$script_to_run"
+  if [ $? -eq 0 ]; then
+    echo "Script '$script_to_run' executed successfully."
+  else
+    echo "Script '$script_to_run' failed with exit code $?."
+  fi
+else
+  echo "Error: Script '$script_to_run' does not exist. Continuing with the main script."
+fi
+
+echo "Script finished."
+
+
 exit 0
