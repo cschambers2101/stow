@@ -76,4 +76,7 @@ fi
 echo "Script finished."
 
 
+# Install Starship prompt
+curl -sS https://starship.rs/install.sh | sh
+
 exit 0
