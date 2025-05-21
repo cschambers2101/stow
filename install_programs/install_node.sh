@@ -1,4 +1,4 @@
-!/bin/bash
+#!/bin/bash
 
 # Script to clone a repository and run its install script
 
@@ -41,7 +41,7 @@ chmod +x "$INSTALL_SCRIPT"
 
 # 5. Run the install script
 echo "Running '$INSTALL_SCRIPT' ..."
-./"$INSTALL_SCRIPT"
+bash ./"$INSTALL_SCRIPT"
 
 echo "Process completed successfully."
 

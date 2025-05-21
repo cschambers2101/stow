@@ -39,5 +39,6 @@ vim-gtk3
 virt-manager
 vlc
 weasyprint
+wget
 xautolock
 xfce4-terminal
