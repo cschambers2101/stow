@@ -3,10 +3,10 @@
 set $mod                             Mod4
 set $smod                            Shift
 set $wm_setting_font                 pango:Source Sans Pro, Semibold 11
-set $wm_setting_gap_width            10
-set $wm_setting_gap_heigth           10
-set $wm_setting_gap_inner            10
-set $wm_setting_gap_outer            5
+set $wm_setting_gap_width            2
+set $wm_setting_gap_heigth           2
+set $wm_setting_gap_inner            2
+set $wm_setting_gap_outer            0
 set $wm_setting_border_size          4
 set $wm_setting_key_left             Left
 set $wm_setting_key_down             Down
