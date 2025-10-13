@@ -12,7 +12,7 @@ set $wm_setting_key_left             Left
 set $wm_setting_key_down             Down
 set $wm_setting_key_up               Up
 set $wm_setting_key_right            Right
-
+set $wm_setting_app_launcher         rofi -show drun
 set $wm_setting_app_terminal         xfce4-terminal
 set $wm_setting_app_browser          google-chrome
 set $wm_setting_app_compositor       picom
