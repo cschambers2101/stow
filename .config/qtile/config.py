@@ -292,7 +292,7 @@ widgets_list = [
         foreground=color_schema['fg9']
     ),
     separator,
-    widget.CurrentLayoutIcon(
+    widget.CurrentLayout(
         custom_icon_paths=["/home/drew/.config/qtile/icons/layouts"],
         scale=0.5,
         padding=0
