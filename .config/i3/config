@@ -2,7 +2,7 @@
 ### Variables for settings (This makes changing them WAY easyer!) ###
 set $mod                             Mod4
 set $smod                            Shift
-set $wm_setting_font                 pango:Source Sans Pro, Semibold 11
+set $wm_setting_font                 pango:Ubuntu Nerd Font Regular 16
 set $wm_setting_gap_width            2
 set $wm_setting_gap_heigth           2
 set $wm_setting_gap_inner            2
@@ -15,7 +15,6 @@ set $wm_setting_key_right            Right
 
 set $wm_setting_app_terminal         xfce4-terminal
 set $wm_setting_app_browser          google-chrome
-set $wm_setting_app_launcher         rofi -show drun
 set $wm_setting_app_compositor       picom
 set $wm_setting_file_manager         pcmanfm
 set $wm_setting_mixer                xfce4-terminal -e alsamixer
@@ -29,7 +28,7 @@ set $wm_color_background             #2E3440
 
 set $bar_setting_position            top
 set $bar_setting_mode                dock
-set $bar_setting_font                pango:Source Sans Pro, Semibold 11
+set $bar_setting_font                pango:Ubuntu Nerd Font Regular 11
 set $bar_setting_separator           " - "
 set $bar_setting_statusCommand       i3status
 set $bar_setting_trayoutput          full
