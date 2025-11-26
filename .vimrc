@@ -152,6 +152,6 @@ nnoremap <leader>p :execute '!bash -ic "md2pdf %"'<CR>
 nnoremap <leader>n :NERDTreeFocus<CR>
 nnoremap <C-n> :NERDTree<CR>
 nnoremap <C-t> :NERDTreeToggle<CR>
-nnoremap <C-f> :NERDTreeFind<CR>
+" nnoremap <C-f> :NERDTreeFind<CR>
 " This setting tells NERDTree to always show dot files (hidden files).
 let g:NERDTreeShowHidden=1
