@@ -41,4 +41,5 @@ vlc
 weasyprint
 wget
 xautolock
+xclip
 xfce4-terminal
