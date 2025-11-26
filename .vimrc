@@ -146,3 +146,11 @@ vnoremap <A-k> :m '<-2<CR>gv=gv
 
 " Map <leader>p to convert current markdown file to PDF using md2pdf bash function
 nnoremap <leader>p :execute '!bash -ic "md2pdf %"'<CR>
+
+
+" NERDTree commands
+nnoremap <leader>n :NERDTreeFocus<CR>
+nnoremap <C-n> :NERDTree<CR>
+nnoremap <C-t> :NERDTreeToggle<CR>
+nnoremap <C-f> :NERDTreeFind<CR>
+
