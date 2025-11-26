@@ -64,6 +64,7 @@ function myhelp() {
     echo 'c -> clear'
     echo 'qtile_scaling -> Sets scaling to 0.5 for Qtile on HDPI displays'
     echo 'myhelp -> prints this help file'
+    echo 'fcp or filecopy -> copy the given filename to the clipboard'
     # echo 'server -> browser-sync start --server --files . --no-notify --host $SERVER_IP --port 9000 #requires node to be installed'
 }
 
@@ -154,4 +155,40 @@ md2pdf() {
     echo "Error: Pandoc conversion failed."
     return 1 # Return error code
   fi
+}
+
+# Usage:
+#   filecopy <filename>
+#
+# Example:
+#   filecopy ~/.vimrc
+#   filecopy ~/Documents/report.txt
+#
+function filecopy() {
+    # Check if a filename was provided as an argument
+    if [ -z "$1" ]; then
+        echo "Error: Please specify a file to copy." >&2
+        return 1
+    fi
+
+    local FILE_PATH="$1"
+
+    # Check if the file exists and is readable
+    if [ ! -r "$FILE_PATH" ]; then
+        echo "Error: File not found or is unreadable: $FILE_PATH" >&2
+        return 1
+    fi
+
+    # Check if xclip is available
+    if ! command -v xclip &> /dev/null
+    then
+        echo "Error: xclip is not installed. Please install it using 'sudo apt install xclip'." >&2
+        return 1
+    fi
+
+    # Use cat to output the file content and pipe it to xclip
+    # -selection clipboard ensures it goes to the Ctrl+C/Ctrl+V buffer.
+    cat "$FILE_PATH" | xclip -selection clipboard
+
+    echo "Copied content of '$FILE_PATH' to clipboard."
 }

@@ -20,6 +20,7 @@ alias activate="source venv/bin/activate"
 alias f="cd \$(find ~/ -type d \( -name node_modules -o -name .git \) -prune -o -name '*'  -type d -print | fzf)"
 alias ss='xrandr --output eDP-1 --scale 0.5x0.5'
 alias mkdir='mkdir -p'
+alias fcp='filecopy' # alais to function in ~/.bash_functions
 
 # some more ls aliases
 alias la='ls -A'
