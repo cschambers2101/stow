@@ -24,6 +24,7 @@ Plug 'github/copilot.vim'
 Plug 'dracula/vim', { 'as': 'dracula' }
 Plug 'junegunn/fzf', { 'do': { -> fzf#install() } }
 Plug 'junegunn/fzf.vim'
+Plug 'preservim/nerdtree'
 
 
 " Initialize plugin system
