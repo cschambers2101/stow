@@ -6,6 +6,7 @@ curl
 dunst
 feh
 ffmpeg
+flameshot
 fonts-noto-core
 fuse
 fzf
