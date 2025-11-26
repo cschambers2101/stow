@@ -169,7 +169,8 @@ keys = [
     Key([mod], "r", lazy.spawn("rofi -show run")), # Launch Rofi
     Key([mod, "shift"], "l", lazy.spawn("i3lock -i /home/craigchambers/Pictures/i3lock.png")), # Launch i3lock
     Key([mod, "shift"], "f", lazy.spawn("pcmanfm")), # Launch PCManFM
-    Key([mod, "shift"], "m", lazy.spawn("xfce4-terminal -e alsamixer")) # Launch alsamixer
+    Key([mod, "shift"], "m", lazy.spawn("xfce4-terminal -e alsamixer")), # Launch alsamixer,
+    Key([mod], "Print", lazy.spawn("flameshot gui"), desc="Launch Flameshot GUI")
 ]
 # end of keys
 
