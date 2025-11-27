@@ -130,7 +130,7 @@ let g:vimwiki_list = [{
 
 " FZF
 nnoremap <C-f> :Files<CR> 
-nnoremap <C-b> :Buffers<CR>
+nnoremap <C-B> :Buffers<CR>
 
 
 " Copilot - set completion to Ctrl+Tab
