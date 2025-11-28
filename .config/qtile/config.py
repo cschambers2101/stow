@@ -71,7 +71,26 @@ _gruvbox = {
     'fg9':          '#ebdbb2'
 }
 
-color_schema = _gruvbox
+_craig = {
+    'bg':           '#242325',
+    'fg':           '#F4F4F9',
+    'dark-red':     '#A52422',
+    'red':          '#DE1A1A',
+    'dark-green':   '#0B6E4F',
+    'green':        '#36827F',
+    'dark-yellow':  '#FCAF58',
+    'yellow':       '#F9DC5C',
+    'dark-blue':    '#007090',
+    'blue':         '#01A7C2',
+    'dark-magenta': '#C47AC0',
+    'magenta':      '#E072A4',
+    'dark-cyan':    '#119DA4',
+    'cyan':         '#94E0F0',
+    'dark-gray':    '#45545E',
+    'gray':         '#6F8695',
+}
+
+color_schema = _craig
 
 keys = [
 
@@ -227,7 +246,7 @@ widget_defaults = dict(
     padding=6,
 )
 extension_defaults = widget_defaults.copy()
-separator = widget.Sep(size_percent=50, foreground=color_schema['fg3'], linewidth =1, padding =10)
+separator = widget.Sep(size_percent=50, foreground=color_schema['dark-gray'], linewidth =1, padding =10)
 spacer = widget.Sep(size_percent=50, foreground=color_schema['fg3'], linewidth =0, padding =10)
 
 
@@ -237,9 +256,9 @@ widgets_list = [
         disable_drag=True,
         use_mouse_wheel=False,
         active=color_schema['fg'],
-        inactive=color_schema['fg3'],
+        inactive=color_schema['dark-gray'],
         highlight_method='line',
-        this_current_screen_border=color_schema['dark-yellow'],
+        this_current_screen_border=color_schema['dark-green'],
         hide_unused = False,
         rounded = False,
         urgent_alert_method='line',
@@ -249,20 +268,20 @@ widgets_list = [
     widget.CheckUpdates(
         distro='Debian',
         colour_have_updates=color_schema['yellow'],
-        colour_no_updates=color_schema['dark-yellow'],
+        colour_no_updates=color_schema['fg'],
         display_format='  Updates: {updates}',
         no_update_string= '  Updates: 0'
     ),
     separator,
     widget.CPU(
         format="  {load_percent:04}%",
-        foreground=color_schema['dark-magenta'],
+        foreground=color_schema['fg'],
     ),
     separator,
     widget.Memory(
         format='󰻠 {MemUsed: .0f}{mm}/{MemTotal: .0f}{mm}',
         measure_mem='G',
-        foreground=color_schema['magenta']
+        foreground=color_schema['fg']
     ),
     separator,
     widget.Battery(
@@ -275,34 +294,36 @@ widgets_list = [
     
         update_interval=5,
         # --- COLORS ---
-        foreground="#F4F4F9",       # White text normally
-        background="#242325",       # Dark blue/grey background
-        low_foreground="#F7934C",   # Red text when battery is low
-        low_percentage=0.20,        # Turn red when below 20%
+        foreground=color_schema['fg'],
+        background=color_schema['bg'],
+        low_foreground=color_schema['red'],
+        low_percentage=0.20,
     ),
     separator,
     widget.Volume(
         fmt="󰕾 {}",
         mute_command="amixer -D pulse set Master toggle",
-        foreground=color_schema['red'],
+        foreground=color_schema['fg'],
         volume_app="xfce4-terminal -e alsamixer"
     ),
     separator,
     widget.Clock(format=' %a, %b %-d',
-        foreground=color_schema['fg3']
+        foreground=color_schema['fg']
     ),
     widget.Clock(format='%-I:%M %p',
-        foreground=color_schema['fg9']
+        foreground=color_schema['fg']
     ),
     separator,
     widget.CurrentLayout(
         custom_icon_paths=["/home/drew/.config/qtile/icons/layouts"],
         scale=0.5,
-        padding=0
+        padding=0,
+        foreground=color_schema['fg']
     ),
     separator,
     widget.Systray(
         padding = 6,
+        foreground=color_schema['fg']
     ),
     spacer,
 ]
