@@ -265,18 +265,13 @@ widgets_list = [
         foreground=color_schema['magenta']
     ),
     separator,
-    widget.BatteryIcon(
-        battery='BAT0',
-        scale=1.4,
-        theme_path='/usr/share/icons/Papirus-Dark/24x24/panel',
-        show_charge=True,
-        show_discharge=True,
-        show_full=True,
-        show_low=True,
-        show_ac=True,
-        show_battery=True,
-        show_empty=True,
-        update_interval=30
+    widget.Battery(
+        format='{char} {percent:2.0%}',
+        charge_char='^',      # Character when charging
+        discharge_char='v',   # Character when discharging
+        full_char='=',        # Character when full
+        empty_char='x',
+        update_interval=5,    # Update every 5 seconds
     ),
     separator,
     widget.Volume(
