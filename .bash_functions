@@ -75,6 +75,12 @@ function update_os() {
     sudo apt install --fix-broken -y
 }
 
+function update_firmware() {
+    fwupdmgr refresh
+    fwupdmgr get-updates
+    sudo fwupdmgr update
+}
+
 function qtile_scaling() {
     xrandr --output eDP-1 --scale 0.5x0.5
 }
