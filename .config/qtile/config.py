@@ -267,11 +267,18 @@ widgets_list = [
     separator,
     widget.Battery(
         format='{char} {percent:2.0%}',
-        charge_char='^',      # Character when charging
-        discharge_char='v',   # Character when discharging
-        full_char='=',        # Character when full
-        empty_char='x',
-        update_interval=5,    # Update every 5 seconds
+        # --- ICONS ---
+        charge_char='󰂄',      # Icon when plugged in
+        discharge_char='󰁹',   # Icon when unplugged
+        full_char='󰚥',        # Icon when 100% full
+        empty_char='󰂎',       # Icon when 0%
+    
+        update_interval=5,
+        # --- COLORS ---
+        foreground="#F4F4F9",       # White text normally
+        background="#242325",       # Dark blue/grey background
+        low_foreground="#F7934C",   # Red text when battery is low
+        low_percentage=0.20,        # Turn red when below 20%
     ),
     separator,
     widget.Volume(
