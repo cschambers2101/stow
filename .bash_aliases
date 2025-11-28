@@ -21,6 +21,9 @@ alias f="cd \$(find ~/ -type d \( -name node_modules -o -name .git \) -prune -o 
 alias ss='xrandr --output eDP-1 --scale 0.5x0.5'
 alias mkdir='mkdir -p'
 alias fcp='filecopy' # alais to function in ~/.bash_functions
+alias build='dotnet restore && dotnet clean && dotnet build'
+alias run='dotnet run --urls http://localhost:5001'
+alias watch='dotnet watch run --urls http://localhost:5001'
 
 # some more ls aliases
 alias la='ls -A'
