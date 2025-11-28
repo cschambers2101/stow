@@ -39,7 +39,7 @@ def autostart():
     subprocess.Popen([home])
 
 mod = "mod4"
-terminal = guess_terminal()
+terminal = "xfce4-terminal" #guess_terminal()
 """
 Color schemes live here
 """
@@ -247,7 +247,7 @@ widget_defaults = dict(
 )
 extension_defaults = widget_defaults.copy()
 separator = widget.Sep(size_percent=50, foreground=color_schema['dark-gray'], linewidth =1, padding =10)
-spacer = widget.Sep(size_percent=50, foreground=color_schema['fg3'], linewidth =0, padding =10)
+spacer = widget.Sep(size_percent=50, foreground=color_schema['fg'], linewidth =0, padding =10)
 
 
 # Initialize the base widgets list
