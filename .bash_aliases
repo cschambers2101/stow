@@ -24,6 +24,9 @@ alias fcp='filecopy' # alais to function in ~/.bash_functions
 alias build='dotnet restore && dotnet clean && dotnet build'
 alias run='dotnet run --urls http://localhost:5001'
 alias watch='dotnet watch run --urls http://localhost:5001'
+alias s6cmon='bash ~/.screenlayout/s6c_monitors.sh'
+alias lapmon='bash ~/.screenlayout/laptop_monitor.sh'
+alias ms='toggle_monitors' # alias to function in ~/.bash_functions for switching monitor layouts between s6c and laptop
 
 # some more ls aliases
 alias la='ls -A'
