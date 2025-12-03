@@ -132,3 +132,6 @@ export NVM_DIR="$HOME/.nvm"
 
 export NODE_EXTRA_CA_CERTS="~/.local/share/ca-certificates/oakford.crt"
 
+if [ -f ~/.dev_exports.sh ]; then
+    source ~/.dev_exports.sh
+fi
