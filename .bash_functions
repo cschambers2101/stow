@@ -65,6 +65,7 @@ function myhelp() {
     echo 'qtile_scaling -> Sets scaling to 0.5 for Qtile on HDPI displays'
     echo 'myhelp -> prints this help file'
     echo 'fcp or filecopy -> copy the given filename to the clipboard'
+    echo 'ms -> switches between monitors at S6C and the laptop'
     # echo 'server -> browser-sync start --server --files . --no-notify --host $SERVER_IP --port 9000 #requires node to be installed'
 }
 
@@ -197,4 +198,41 @@ function filecopy() {
     cat "$FILE_PATH" | xclip -selection clipboard
 
     echo "Copied content of '$FILE_PATH' to clipboard."
+}
+
+
+# ===============================================
+# Reliable Monitor Toggling Function (FIXED)
+# ===============================================
+
+# Function to safely toggle between monitor configurations.
+# It uses the 'touch' command to update the timestamp of the executed file,
+# ensuring the logic reliably alternates on the next run.
+
+function toggle_monitors() {
+    # Define the full paths to your configuration scripts
+    local LAPTOP_CONF="$HOME/.screenlayout/laptop_monitor.sh"
+    local S6C_CONF="$HOME/.screenlayout/s6c_monitors.sh"
+
+    echo "Checking current configuration..."
+
+    # The -nt operator checks if the first file is Newer Than the second.
+    # This determines which setup was run last.
+    if [ "$S6C_CONF" -nt "$LAPTOP_CONF" ]; then
+        # S6C was run last (it has the newer timestamp), so we switch to Laptop.
+        echo "--> Switching to Laptop-Only Configuration..."
+        bash "$LAPTOP_CONF"
+        
+        # CRITICAL FIX: Update the timestamp of the Laptop script. 
+        # This makes LAPTOP_CONF the 'newer' file, so the next toggle runs S6C.
+        touch "$LAPTOP_CONF"
+    else
+        # Laptop was run last, or both are the same age, so we switch to S6C.
+        echo "--> Switching to S6C Multi-Monitor Configuration..."
+        bash "$S6C_CONF"
+        
+        # CRITICAL FIX: Update the timestamp of the S6C script.
+        # This makes S6C_CONF the 'newer' file, so the next toggle runs Laptop.
+        touch "$S6C_CONF"
+    fi
 }

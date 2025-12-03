@@ -182,6 +182,13 @@ keys = [
     Key([mod, "shift"], "space", lazy.window.toggle_floating()),
 	Key([mod, "shift"], "z", lazy.layout.normalize(), desc="Reset all window sizes"),
 
+# Switch Monitors
+    Key(
+        ["control", "shift"], 
+        "m", 
+        # Use bash -c to source the environment and run the function
+        lazy.spawn("/home/craigchambers/.screenlayout/monitor_toggle.sh") 
+    ),
 # LAUNCH PROGRAMS
     Key([mod], "b", lazy.spawn("google-chrome")), # Launch Chrome
     Key([mod], "Return", lazy.spawn(terminal)), # Launch Gnome Terminal
