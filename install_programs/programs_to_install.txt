@@ -1,4 +1,5 @@
 apt-show-versions
+autorandr
 btop
 build-essential
 caca-utils
