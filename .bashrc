@@ -135,3 +135,9 @@ export NODE_EXTRA_CA_CERTS="~/.local/share/ca-certificates/oakford.crt"
 if [ -f ~/.dev_exports.sh ]; then
     source ~/.dev_exports.sh
 fi
+
+if which tmux 2>&1 >/dev/null; then
+      if [ $TERM != "screen-256color" ] && [  $TERM != "screen" ]; then
+              tmux attach -t default || tmux new -s default; exit
+                fi
+fi
