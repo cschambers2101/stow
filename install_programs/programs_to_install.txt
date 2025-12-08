@@ -44,4 +44,3 @@ wget
 xautolock
 xclip
 xfce4-terminal
-ubuntu-desktop-minimal
