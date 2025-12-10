@@ -56,6 +56,7 @@ function myhelp() {
     echo 'mp3 -> downloads mp3 file from youtube'
     echo 'tnew -> tmux new -s '
     echo 'attach -> tmux attach-session -t '
+    echo 'upgrade -> runs update_os function'
     echo
     echo 'Functions'
     echo
@@ -66,6 +67,8 @@ function myhelp() {
     echo 'myhelp -> prints this help file'
     echo 'fcp or filecopy -> copy the given filename to the clipboard'
     echo 'ms -> switches between monitors at S6C and the laptop'
+    echo 'md2pdf -> converts markdown file to pdf using pandoc and a custom css file'
+    echo 'update_firmware -> updates firmware using fwupdmgr'
     # echo 'server -> browser-sync start --server --files . --no-notify --host $SERVER_IP --port 9000 #requires node to be installed'
 }
 
