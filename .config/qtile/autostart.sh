@@ -2,7 +2,13 @@
 
 # background
 #feh --bg-scale ~/.local/share/backgrounds/wallhaven-85erok_3440x1440.png &
-nitrogen --restore &
+feh --no-fehbg \
+    --output DVI-I-1-1 --bg-scale ~/.local/share/backgrounds/wallhaven-85erok_3440x1440.png \
+    --output eDP-1 --bg-scale ~/.local/share/backgrounds/wallhaven-85erok_3440x1440.png
+
+
+
+# nitrogen --restore &
 
 # compositor
 picom --config ~/.config/picom/picom.conf &
@@ -15,3 +21,10 @@ nm-applet &
 
 # Set keymap
 setxkbmap -layout gb
+
+# Kill any potentially running screen locker/screensaver
+killall xscreensaver &
+#
+# # Start the xscreensaver daemon (silently)
+xscreensaver -no-splash &
+#

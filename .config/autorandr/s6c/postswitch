@@ -1,0 +1,3 @@
+#!/bin/bash
+# Reloads Qtile to apply screen changes seamlessly
+qtile cmd-obj -o cmd -f reload
