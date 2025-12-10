@@ -193,7 +193,7 @@ keys = [
     Key([mod], "b", lazy.spawn("google-chrome")), # Launch Chrome
     Key([mod], "Return", lazy.spawn(terminal)), # Launch Gnome Terminal
     Key([mod], "r", lazy.spawn("rofi -show run")), # Launch Rofi
-    Key([mod, "shift"], "l", lazy.spawn("i3lock -i /home/craigchambers/Pictures/i3lock.png")), # Launch i3lock
+    Key([mod, "shift"], "l", lazy.spawn("i3lock -i .local/share/backgrounds/wallhaven-85erok_3440x1440.png")), # Launch i3lock
     Key([mod, "shift"], "f", lazy.spawn("pcmanfm")), # Launch PCManFM
     Key([mod, "shift"], "m", lazy.spawn("xfce4-terminal -e alsamixer")), # Launch alsamixer,
     Key([mod], "Print", lazy.spawn("flameshot gui"), desc="Launch Flameshot GUI")
