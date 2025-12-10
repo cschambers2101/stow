@@ -39,7 +39,8 @@ syntax on
 filetype plugin indent on
 
 " TODO: Pick a leader key
-let mapleader = ","
+"let mapleader = ","
+let mapleader = " "
 
 " Security
 "set modelines=0
@@ -133,9 +134,8 @@ let g:vimwiki_list = [{
 nnoremap <C-f> :Files<CR> 
 nnoremap <C-B> :Buffers<CR>
 
-
 " Copilot - set completion to Ctrl+Tab
-imap <silent><script><expr> <C-N> copilot#Accept("\<CR>")
+imap <silent><script><expr> <C-Tab> copilot#Accept("\<CR>")
 
 " Moving lines up and down
 nnoremap <A-j> :m .+1<CR>==
