@@ -135,7 +135,7 @@ nnoremap <C-f> :Files<CR>
 nnoremap <C-B> :Buffers<CR>
 
 " Copilot - set completion to Ctrl+Tab
-imap <silent><script><expr> <C-Tab> copilot#Accept("\<CR>")
+imap <silent><script><expr> <C-E> copilot#Accept("\<CR>")
 
 " Moving lines up and down
 nnoremap <A-j> :m .+1<CR>==
