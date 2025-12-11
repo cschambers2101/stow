@@ -1,0 +1,1 @@
+/home/craigchambers/.dotfiles/.local/bin/set-wallpaper.sh
