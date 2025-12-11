@@ -31,6 +31,7 @@ python3-venv
 python3-xcffib
 qemu-system-x86
 rofi
+scrot
 ssh
 stow
 sxhkd
