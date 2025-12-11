@@ -198,7 +198,8 @@ keys = [
     Key([mod, "shift"], "f", lazy.spawn("pcmanfm")), # Launch PCManFM
     Key([mod, "shift"], "m", lazy.spawn("xfce4-terminal -e alsamixer")), # Launch alsamixer,
     Key([mod], "Print", lazy.spawn("flameshot gui"), desc="Launch FlameshotGUI"),
-    Key([mod, "shift"], "s", lazy.spawn(os.path.expanduser("~/.local/bin/set-wallpaper.sh")), desc="Launch custom wallpaper changer script")
+    Key([mod, "shift"], "s", lazy.spawn(os.path.expanduser("~/.local/bin/set-wallpaper.sh")), desc="Launch custom wallpaper changer script"),
+    Key([mod, "shift"], "n", lazy.spawn("dunstctl set-paused toggle"), desc="Toggle Do Not Disturb")
 ]
 # end of keys
 
@@ -258,6 +259,42 @@ extension_defaults = widget_defaults.copy()
 separator = widget.Sep(size_percent=50, foreground=color_schema['dark-gray'], linewidth =1, padding =10)
 spacer = widget.Sep(size_percent=50, foreground=color_schema['fg'], linewidth =0, padding =10)
 
+# --- BATTERY WIDGET CONDITIONAL CHECK ---
+# Define the path to check. Use 'BAT0' as a starting point.
+# You may need to change 'BAT0' to 'BAT1' or another path depending on your laptop.
+BATTERY_DIR = '/sys/class/power_supply/BAT0'
+battery_widget = []
+
+if os.path.isdir(BATTERY_DIR):
+    # If the directory exists (on the laptop), define the widget
+    print("Battery detected. Including Battery widget.")
+    battery_widget = [
+        separator, # Add a separator before the battery widget
+        widget.Battery(
+            format='{char} {percent:2.0%}',
+            # --- ICONS ---
+            charge_char='󰂄',       # Icon when plugged in
+            discharge_char='󰁹',    # Icon when unplugged
+            full_char='󰚥',         # Icon when 100% full
+            empty_char='󰂎',         # Icon when 0%
+            
+            update_interval=5,
+            # --- COLORS ---
+            foreground=color_schema['fg'],
+            background=color_schema['bg'],
+            low_foreground=color_schema['red'],
+            low_percentage=0.20,
+            
+            # Since the path exists, it should auto-detect. 
+            # If you still get an error, uncomment the line below 
+            # and verify the path you found in the previous answer.
+            # battery='BAT0',
+        ),
+    ]
+else:
+    # If the directory does NOT exist (on the desktop), define an empty list
+    print("No battery detected. Skipping Battery widget.")
+    battery_widget = []
 
 # Initialize the base widgets list
 widgets_list = [
@@ -293,21 +330,7 @@ widgets_list = [
         foreground=color_schema['fg']
     ),
     separator,
-    widget.Battery(
-        format='{char} {percent:2.0%}',
-        # --- ICONS ---
-        charge_char='󰂄',      # Icon when plugged in
-        discharge_char='󰁹',   # Icon when unplugged
-        full_char='󰚥',        # Icon when 100% full
-        empty_char='󰂎',       # Icon when 0%
-    
-        update_interval=5,
-        # --- COLORS ---
-        foreground=color_schema['fg'],
-        background=color_schema['bg'],
-        low_foreground=color_schema['red'],
-        low_percentage=0.20,
-    ),
+    *battery_widget,
     separator,
     widget.Volume(
         fmt="󰕾 {}",
