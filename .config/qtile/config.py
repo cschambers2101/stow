@@ -197,7 +197,8 @@ keys = [
     Key([mod, "shift"], "l", lazy.spawn(os.path.expanduser("~/.local/bin/i3lock-screensaver.sh")), desc="Launch custom lockscreen script"),
     Key([mod, "shift"], "f", lazy.spawn("pcmanfm")), # Launch PCManFM
     Key([mod, "shift"], "m", lazy.spawn("xfce4-terminal -e alsamixer")), # Launch alsamixer,
-    Key([mod], "Print", lazy.spawn("flameshot gui"), desc="Launch Flameshot GUI")
+    Key([mod], "Print", lazy.spawn("flameshot gui"), desc="Launch FlameshotGUI"),
+    Key([mod, "shift"], "s", lazy.spawn(os.path.expanduser("~/.local/bin/set-wallpaper.sh")), desc="Launch custom wallpaper changer script")
 ]
 # end of keys
 
