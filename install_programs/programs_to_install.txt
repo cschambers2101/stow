@@ -30,6 +30,10 @@ python3-pip
 python3-venv
 python3-xcffib
 qemu-system-x86
+qml-module-qtquick-controls
+qml-module-qtquick-controls2
+qml-module-qtgraphicaleffects
+qml-module-qtquick-layouts
 rofi
 scrot
 ssh
