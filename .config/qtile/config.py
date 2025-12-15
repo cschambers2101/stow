@@ -45,18 +45,18 @@ Color schemes live here
 """
 
 _gruvbox = {
-    'bg':           '#282828',
-    'fg':           '#d4be98',
+    'bg':           '#22181c',
+    'fg':           '#f6e8ea',
     'dark-red':     '#ea6962',
-    'red':          '#ea6962',
+    'red':          '#e03c00',
     'dark-green':   '#a9b665',
-    'green':        '#a9b665',
+    'green':        '#878e76',
     'dark-yellow':  '#e78a4e',
     'yellow':       '#d8a657',
     'dark-blue':    '#7daea3',
     'blue':         '#7daea3',
     'dark-magenta': '#d3869b',
-    'magenta':      '#d3869b',
+    'magenta':      '#7f6a93',
     'dark-cyan':    '#89b482',
     'cyan':         '#89b482',
     'dark-gray':    '#665c54',
@@ -232,8 +232,8 @@ for i in groups:
     )
 
 layouts = [
-    layout.MonadTall(margin = 10, border_focus="#bd93f9", border_normal="#282836", border_width=4),
-    layout.MonadWide(margin = 10, border_focus="#db93f9", border_normal="#282836", border_width=4),
+    layout.MonadTall(margin = 10, border_focus="#ffd700", border_normal="#282836", border_width=4),
+    layout.MonadWide(margin = 10, border_focus="#ffd700", border_normal="#282836", border_width=4),
     # layout.Columns(margin=10, num_columns=4, insert_position=1, border_focus="#bd93f9", border_normal="#282836", border_width=4),
     # layout.Matrix(),
     layout.Max(margin = 10, border_normal="#282836"),
