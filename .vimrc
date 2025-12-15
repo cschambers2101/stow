@@ -26,6 +26,7 @@ Plug 'junegunn/fzf', { 'do': { -> fzf#install() } }
 Plug 'junegunn/fzf.vim'
 Plug 'preservim/nerdtree'
 Plug 'tpope/vim-obsession'
+Plug 'jlcrochet/vim-razor'
 
 
 " Initialize plugin system
@@ -156,3 +157,5 @@ nnoremap <C-t> :NERDTreeToggle<CR>
 " nnoremap <C-f> :NERDTreeFind<CR>
 " This setting tells NERDTree to always show dot files (hidden files).
 let g:NERDTreeShowHidden=1
+
+let g:copilot_filetypes = {'razor.cshtml': v:true, 'html': v:true, 'markdown': v:true, 'text': v:true, 'css': v:true, 'javascript': v:true, 'typescript': v:true, 'python': v:true}
