@@ -87,6 +87,7 @@ _craig = {
     'dark-cyan':    '#119DA4',
     'cyan':         '#94E0F0',
     'dark-gray':    '#45545E',
+    'golden-bronze':'#B19206',
     'gray':         '#6F8695',
 }
 
@@ -232,11 +233,13 @@ for i in groups:
     )
 
 layouts = [
-    layout.MonadTall(margin = 10, border_focus="#ffd700", border_normal="#282836", border_width=4),
-    layout.MonadWide(margin = 10, border_focus="#ffd700", border_normal="#282836", border_width=4),
-    # layout.Columns(margin=10, num_columns=4, insert_position=1, border_focus="#bd93f9", border_normal="#282836", border_width=4),
+    layout.MonadTall(margin = 10, border_focus=color_schema['golden-bronze'], border_normal=color_schema['bg'], border_width=4),
+    layout.MonadWide(margin = 10, border_focus=color_schema['golden-bronze'], border_normal=color_schema['bg'], border_width=4),
+    # layout.Columns(margin=10, num_columns=4, insert_position=1,
+    # border_focus=color_schema['golden-bronze'],
+    # border_normal=color_schema['bg'], border_width=4),
     # layout.Matrix(),
-    layout.Max(margin = 10, border_normal="#282836"),
+    layout.Max(margin = 10, border_normal=color_scheme['bg']),
     # Try more layouts by unleashing below layouts.
     # layout.Stack(num_stacks=2),
     # layout.Bsp(),
