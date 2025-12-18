@@ -51,7 +51,7 @@ set number
 set relativenumber
 
 " Show file stats
-"set ruler
+set ruler
 
 " Blink cursor on error instead of beeping (grr)
 "set visualbell
