@@ -54,7 +54,7 @@ set relativenumber
 set ruler
 
 " Blink cursor on error instead of beeping (grr)
-"set visualbell
+set visualbell
 
 " Encoding
 set encoding=utf-8
@@ -89,8 +89,8 @@ nnoremap k gk
 set laststatus=2
 
 " Last line
-"set showmode
-"set showcmd
+set showmode
+set showcmd
 
 " Searching
 nnoremap / /\v
@@ -119,6 +119,25 @@ noremap <Leader>y "*y
 noremap <Leader>p "*p
 noremap <Leader>Y "+y
 noremap <Leader>P "+p
+
+" Markdown settings
+augroup MarkdownProse
+        autocmd!
+        autocmd FileType markdown setlocal 
+            \ wrap 
+            \ linebreak 
+            \ textwidth=0 
+            \ breakindent 
+            \ breakindentopt=list:-1
+            \ showbreak=↳\ 
+            \ cpoptions+=n  " Keeps the number column clean during wrapping
+
+            " Move through visual lines, not logical lines
+            autocmd FileType markdown nnoremap <buffer> j gj
+            autocmd FileType markdown nnoremap <buffer> k gk
+            autocmd FileType markdown vnoremap <buffer> j gj
+            autocmd FileType markdown vnoremap <buffer> k gk
+augroup END
 
 " vimwiki-markdown
 let g:vimwiki_list = [{
