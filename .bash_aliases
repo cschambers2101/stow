@@ -37,6 +37,6 @@ alias logout='gnome-session-quit'
 alias hib='sudo systemctl hibernate'
 
 # Notes
-alias note='create_note.sh' # alias to script in ~/bin to create a dated note in ~/Notes and open it in vim
+alias cn='create_note.sh' # alias to script in ~/bin to create a dated note in ~/Notes and open it in vim
 alias snf='search_notes_file.sh' # alias to script in ~/bin to search notes using fzf and open selected note in vim
 alias snt='search_notes_tag.sh' # alias to script in ~/bin to search notes by tag using fzf and open selected note in vim
