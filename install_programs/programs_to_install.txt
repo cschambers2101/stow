@@ -34,6 +34,7 @@ qml-module-qtquick-controls
 qml-module-qtquick-controls2
 qml-module-qtgraphicaleffects
 qml-module-qtquick-layouts
+ripgrep
 rofi
 scrot
 ssh
