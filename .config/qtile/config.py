@@ -202,8 +202,11 @@ keys = [
     Key([mod, "shift"], "m", lazy.spawn("xfce4-terminal -e alsamixer")), # Launch alsamixer,
     Key([mod], "Print", lazy.spawn("flameshot gui"), desc="Launch FlameshotGUI"),
     Key([mod, "shift"], "s", lazy.spawn(os.path.expanduser("~/.local/bin/set-wallpaper.sh")), desc="Launch custom wallpaper changer script"),
-    Key([mod, "shift"], "n", lazy.spawn("dunstctl set-paused toggle"), desc="Toggle Do Not Disturb")
+    Key([mod, "shift"], "n", lazy.spawn("dunstctl set-paused toggle"), desc="Toggle Do Not Disturb"),
+    Key([mod], "n", lazy.spawn(terminal + " -e " + os.path.expanduser("~/.local/bin/create_note.sh")), desc="Create a new note"),
+    Key([mod], "s", lazy.spawn(terminal + " -e " + os.path.expanduser("~/.local/bin/find_note_tag.sh")), desc="Search note tags")
 ]
+
 # end of keys
 
 #groups = [Group(i) for i in ["", "", "", "", "阮", "", "", "", ""]]
