@@ -79,4 +79,8 @@ echo "Script finished."
 # Install Starship prompt
 curl -sS https://starship.rs/install.sh | sh
 
+# Install yt-dsl
+sudo wget https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -O /usr/local/bin/yt-dlp
+sudo chmod a+rx /usr/local/bin/yt-dlp
+
 exit 0
