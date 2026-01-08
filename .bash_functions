@@ -239,3 +239,11 @@ function toggle_monitors() {
         touch "$S6C_CONF"
     fi
 }
+
+mp3() {
+    yt-dlp -x --audio-format mp3 --audio-quality 0 -o "~/Music/%(uploader)s/%(title)s.%(ext)s" "$1"
+}
+
+aac() {
+    yt-dlp -x --audio-format aac --audio-quality 0 -o "~/Music/%(uploader)s/%(title)s.%(ext)s" "$1"
+}
