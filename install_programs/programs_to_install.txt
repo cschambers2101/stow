@@ -46,6 +46,7 @@ v4l-utils
 vim-gtk3
 virt-manager
 vlc
+yt-dlp
 weasyprint
 wget
 xautolock
