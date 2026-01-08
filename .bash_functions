@@ -241,9 +241,17 @@ function toggle_monitors() {
 }
 
 mp3() {
-    yt-dlp -x --audio-format mp3 --audio-quality 0 -o "~/Music/%(uploader)s/%(title)s.%(ext)s" "$1"
+    # Run the download
+    yt-dlp -x --audio-format mp3 --audio-quality 0 --no-playlist\
+        --restrict-filenames \
+        --paths "$HOME/Music" \
+        -o "%(uploader)s/%(title)s.%(ext)s" \
+            "$1"
 }
 
 aac() {
-    yt-dlp -x --audio-format aac --audio-quality 0 -o "~/Music/%(uploader)s/%(title)s.%(ext)s" "$1"
+    yt-dlp -x --audio-format aac --audio-quality 0 -o "$HOME/Music/%(uploader)s/%(title)s.%(ext)s" "$1"
 }
+
+
+
