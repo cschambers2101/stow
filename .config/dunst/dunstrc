@@ -1,0 +1,17 @@
+[global]
+
+	# Use Rofi as the action handler
+	dmenu = /usr/bin/rofi -dmenu -p dunst:
+
+    # This makes Left Click trigger the app's default action 
+    # and then close the notification.
+    mouse_left_click = do_action, close_current
+    
+    # Optional: Keep Middle Click for the context menu (if multiple actions exist)
+    mouse_middle_click = context
+    
+    # Optional: Right Click to close all notifications
+    mouse_right_click = close_all
+
+    scripts = $HOME/.config/dunst/handler.sh
+
