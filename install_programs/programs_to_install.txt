@@ -1,4 +1,5 @@
 apt-show-versions
+arandr
 autorandr
 btop
 build-essential
@@ -7,6 +8,7 @@ curl
 dunst
 feh
 ffmpeg
+firefox
 flameshot
 fonts-noto-core
 fuse
