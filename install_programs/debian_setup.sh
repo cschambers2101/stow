@@ -36,13 +36,14 @@ else
         echo "----------------------------------------------------"
         echo "SUCCESS: Sudo installed and $USER added to sudo group."
         echo "IMPORTANT: You must LOG OUT and LOG BACK IN for changes to take effect."
+        echo "RESTART YOUR COMPUTER NOW AND RE RUN THIS SCRIPT
         echo "----------------------------------------------------"
         exit 0
     fi
 fi
 
 # switch to logged in user context for next operations 
-sudo -u "$actual_user" bash <<EOF
+# sudo -u "$actual_user" bash <<EOF
 
 echo "Now running as: \$(whoami)"
 echo "My home directory is: \$HOME"
@@ -86,7 +87,7 @@ echo
 echo "Setup complete for $actual_user."
 echo
 echo "You will need to reboot now. type 'sudo reboot' to restart your system."
-EOF
+# EOF
 
 # Explicitly exit the script so no root commands accidentally run below
 exit 0
