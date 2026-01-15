@@ -18,8 +18,6 @@ git
 i3
 i3lock
 libreoffice
-libvirt-clients
-libvirt-daemon-system
 lxappearance
 nitrogen
 obs-studio
@@ -31,7 +29,6 @@ python3-cairocffi
 python3-pip
 python3-venv
 python3-xcffib
-qemu-system-x86
 qml-module-qtquick-controls
 qml-module-qtquick-controls2
 qml-module-qtgraphicaleffects
@@ -46,10 +43,8 @@ tmux
 ttf-mscorefonts-installer
 v4l-utils
 vim-gtk3
-virt-manager
 vlc
 weasyprint
 wget
-xautolock
 xclip
 xfce4-terminal
