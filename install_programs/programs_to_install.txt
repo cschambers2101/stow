@@ -8,7 +8,6 @@ curl
 dunst
 feh
 ffmpeg
-firefox-esr
 flameshot
 fonts-noto-core
 fuse
