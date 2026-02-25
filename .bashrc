@@ -112,13 +112,6 @@ fi
 if [ -f ~/.bash_functions ]; then
     . ~/.bash_functions
 fi
-
-# used to add S6C Interventions app shell variables for Google
-if [ -f ~/.s6cinterventions ]; then
-    . ~/.s6cinterventions
-fi
-
-
 # enable programmable completion features (you don't need to enable
 # this, if it's already enabled in /etc/bash.bashrc and /etc/profile
 # sources /etc/bash.bashrc).
