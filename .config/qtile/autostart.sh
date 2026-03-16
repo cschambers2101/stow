@@ -28,3 +28,4 @@ setxkbmap -layout gb
 # # Start the xscreensaver daemon (silently)
 # xscreensaver -no-splash &
 #
+xrandr --output DP-2 --primary --mode 1920x1080 --pos 0x0 --rotate normal --output DP-0 --mode 1920x1080 --left-of DP-2 --rotate normal

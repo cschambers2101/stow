@@ -373,10 +373,34 @@ widgets_list = [
     spacer,
 ]
 
-screens = [
-    Screen(top=bar.Bar(widgets=widgets_list, size=40)),
-    Screen(top=bar.Bar(widgets=widgets_list, size=40)),
-]
+# Detect monitors and screens accordingly
+def get_num_monitors():
+        num_monitors = 0
+            try:
+                # This command lists connected monitors in X11
+                output = subprocess.check_output("xrandr --query | grep ' connected'",shell=True).decode("utf-8")
+                num_monitors = output.count("connected")
+            except Exception:
+                # Fallback to 1 if xrandr fails
+                num_monitors = 1
+            return num_monitors
+
+num_monitors = get_num_monitors()
+screens = []
+
+# Primary Monitor (with Systray)
+screens.append(
+    Screen(top=bar.Bar(widgets=widgets_list, size=40))
+)
+
+# Secondary Monitors (without Systray to avoid crashes)
+if num_monitors > 1:
+    for i in range(num_monitors - 1):
+        # We create a copy of the widgets but remove the Systray
+        secondary_widgets = widgets_list[:-2] # Adjust this slice to remove Systray/Spacers at the end
+        screens.append(
+            Screen(top=bar.Bar(widgets=secondary_widgets,size=40))
+        )
 
 # Drag floating layouts.
 mouse = [
