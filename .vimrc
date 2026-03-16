@@ -177,4 +177,17 @@ nnoremap <C-t> :NERDTreeToggle<CR>
 " This setting tells NERDTree to always show dot files (hidden files).
 let g:NERDTreeShowHidden=1
 
-let g:copilot_filetypes = {'razor.cshtml': v:true, 'html': v:true, 'markdown': v:true, 'text': v:true, 'css': v:true, 'javascript': v:true, 'typescript': v:true, 'python': v:true}
+" --- Clipboard Mappings ---
+
+" Enable clipboard support (uses the system clipboard for all operations)
+set clipboard=unnamedplus
+
+" Ctrl+C to Copy in Visual Mode
+vnoremap <C-c> "+y
+
+" Ctrl+V to Paste in Normal and Visual Mode
+nnoremap <C-v> "+p
+vnoremap <C-v> "+p
+
+" Ctrl+V to Paste in Insert Mode (like a normal editor)
+inoremap <C-v> <C-r>+
