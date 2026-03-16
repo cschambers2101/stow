@@ -192,6 +192,10 @@ keys = [
         # Use bash -c to source the environment and run the function
         lazy.spawn("/home/craigchambers/.screenlayout/monitor_toggle.sh") 
     ),
+# Switch focus to the next monitor
+    Key(["mod1"], "period", lazy.next_screen(), desc="Move focus to next monitor"),         
+# Switch focus to the previous monitor
+    Key(["mod1"], "comma", lazy.prev_screen(), desc="Move focus to prev monitor"),
 # LAUNCH PROGRAMS
     Key([mod], "b", lazy.spawn("google-chrome")), # Launch Chrome
     Key([mod], "Return", lazy.spawn(terminal)), # Launch Gnome Terminal
@@ -370,6 +374,7 @@ widgets_list = [
 ]
 
 screens = [
+    Screen(top=bar.Bar(widgets=widgets_list, size=40)),
     Screen(top=bar.Bar(widgets=widgets_list, size=40)),
 ]
 
