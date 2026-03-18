@@ -16,6 +16,7 @@ gimp
 git
 i3
 i3lock
+imagemagick
 libreoffice
 lxappearance
 nala
