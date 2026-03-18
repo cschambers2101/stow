@@ -375,15 +375,15 @@ widgets_list = [
 
 # Detect monitors and screens accordingly
 def get_num_monitors():
-        num_monitors = 0
-            try:
-                # This command lists connected monitors in X11
-                output = subprocess.check_output("xrandr --query | grep ' connected'",shell=True).decode("utf-8")
-                num_monitors = output.count("connected")
-            except Exception:
-                # Fallback to 1 if xrandr fails
-                num_monitors = 1
-            return num_monitors
+    num_monitors = 0
+    try:
+        # This command lists connected monitors in X11
+        output = subprocess.check_output("xrandr --query | grep ' connected'",shell=True).decode("utf-8")
+        num_monitors = output.count("connected")
+    except Exception:
+        # Fallback to 1 if xrandr fails
+        num_monitors = 1
+    return num_monitors
 
 num_monitors = get_num_monitors()
 screens = []

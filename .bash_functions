@@ -252,6 +252,16 @@ mp3() {
 aac() {
     yt-dlp -x --audio-format aac --audio-quality 0 -o "$HOME/Music/%(uploader)s/%(title)s.%(ext)s" "$1"
 }
-
-
-
+apt() {
+    case "$1" in
+        install|remove|purge|update|upgrade|autoremove|list)
+            sudo nala "$@"
+            ;;
+        search|show)
+            nala "$@"
+            ;;
+        *)
+            command apt "$@"
+            ;;
+    esac
+}
