@@ -38,3 +38,6 @@ alias hib='sudo systemctl hibernate'
 alias cn='create_note.sh' # alias to script in ~/bin to create a dated note in ~/Notes and open it in vim
 alias snf='find_note_file.sh' # alias to script in ~/bin to search notes using fzf and open selected note in vim
 alias snt='find_note_tag.sh' # alias to script in ~/bin to search notes by tag using fzf and open selected note in vim
+
+# Which Terminal
+alias whichterminal='ps -p $(ps -p $$ -o ppid=) -o args'
