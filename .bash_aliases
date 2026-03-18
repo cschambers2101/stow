@@ -41,3 +41,4 @@ alias snt='find_note_tag.sh' # alias to script in ~/bin to search notes by tag u
 
 # Which Terminal
 alias whichterminal='ps -p $(ps -p $$ -o ppid=) -o args'
+
