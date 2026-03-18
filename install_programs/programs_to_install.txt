@@ -18,6 +18,7 @@ i3
 i3lock
 libreoffice
 lxappearance
+nala
 nitrogen
 obs-studio
 pandoc
