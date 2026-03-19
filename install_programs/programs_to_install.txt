@@ -49,3 +49,5 @@ weasyprint
 wget
 xclip
 xfce4-terminal
+xset
+xss-lock
