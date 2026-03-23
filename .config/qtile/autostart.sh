@@ -34,4 +34,6 @@ xset dpms 180 180 180
 # 3. Start the listener with the correct filename
 xss-lock --transfer-sleep-lock -- /bin/bash /home/craigchambers/.local/bin/i3lock-screensaver.sh &
 
-xrandr --output DP-2 --primary --mode 1920x1080 --pos 0x0 --rotate normal --output DP-0 --mode 1920x1080 --left-of DP-2 --rotate normal
+if [ -f ~/.screenlayout/screens.sh ]; then
+    . ~/.screenlayout/screens.sh
+fi
