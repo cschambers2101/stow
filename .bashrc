@@ -137,11 +137,22 @@ if [ -f ~/.dev_exports.sh ]; then
     source ~/.dev_exports.sh
 fi
 
-# Auto-attach to the most recent session, or start a new one
-if [[ -z "$TMUX" ]] && [ "$PS1" ]; then
-    tmux attach-session -d || tmux new-session
-fi
 
+# Only run if: 
+# 1. $TMUX is empty
+# 2. $TERM_PROGRAM is not tmux
+# 3. $TERM does not start with 'screen' or 'tmux'
+# 4. The shell is interactive ($PS1 is set)
+
+if [ -z "$TMUX" ] && \
+   [ "$TERM_PROGRAM" != "tmux" ] && \
+   [[ "$TERM" != screen* ]] && \
+   [[ "$TERM" != tmux* ]] && \
+   [ -n "$PS1" ]; then
+    
+    # Use 'exec' so tmux REPLACES this bash process instead of sitting on top of it
+    exec tmux attach-session -d || exec tmux new-session
+fi
 
 fastfetch
 
