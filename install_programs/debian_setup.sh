@@ -2,92 +2,93 @@
 
 # Script to setup a Debian-based system with essential packages and configurations.
 
-# Set font size for TTY
-setfont /usr/share/consolefonts/Lat2-Terminus32x16.psf.gz
-
-# This logic handles both: regular run AND sudo run
+# 1. Identify the real user (even if running via sudo)
 if [ -n "$SUDO_USER" ]; then
     actual_user=$SUDO_USER
 else
     actual_user=$(whoami)
 fi
 
-echo "The script is being managed for: $actual_user"
-
-#!/bin/bash
-
-# 1. Check if the user is already root
-if [ "$(id -u)" -eq 0 ]; then
-    echo "Running as root..."
-else
-    # 2. Check if sudo is installed
+# 2. Elevation Logic: Ensure we are running as root for system tasks
+if [ "$(id -u)" -ne 0 ]; then
     if command -v sudo >/dev/null 2>&1; then
         echo "Sudo is installed. Elevating..."
         exec sudo "$0" "$@"
     else
-        # 3. Sudo is missing. Ask the user to install it via 'su'
         echo "Error: 'sudo' is not installed and you are not root."
-        echo "I need to install 'sudo' and add you to the sudo group."
-        echo "Please enter the ROOT password when prompted below:"
-        
-        # This command switches to root just to run the install and setup
-        su -c "apt update && apt install -y sudo && usermod -aG sudo $USER"
+        echo "Please enter the ROOT password to install sudo and add $actual_user to the group:"
+        su -c "apt update && apt install -y sudo && usermod -aG sudo $actual_user"
         
         echo "----------------------------------------------------"
-        echo "SUCCESS: Sudo installed and $USER added to sudo group."
-        echo "IMPORTANT: You must LOG OUT and LOG BACK IN for changes to take effect."
-        echo "RESTART YOUR COMPUTER NOW AND RE RUN THIS SCRIPT
+        echo "SUCCESS: Sudo installed and $actual_user added to sudo group."
+        echo "IMPORTANT: You MUST log out or restart for changes to take effect."
+        echo "RESTART YOUR COMPUTER NOW AND RE-RUN THIS SCRIPT."
         echo "----------------------------------------------------"
         exit 0
     fi
 fi
 
-# switch to logged in user context for next operations 
-# sudo -u "$actual_user" bash <<EOF
+echo "The script is being managed for: $actual_user"
 
+# 3. System-Level Tasks (Running as ROOT)
+# ---------------------------------------
+# Silence setfont error if not in a real TTY
+setfont /usr/share/consolefonts/Lat2-Terminus32x16.psf.gz 2>/dev/null
+
+echo "Updating repositories and installing system packages..."
+# Enable contrib repository
+sed -i '/^deb .* main/ s/$/ contrib/' /etc/apt/sources.list
+apt update
+
+# Install core system software
+apt install -y xorg xinit x11-xserver-utils xterm menu sddm qtile \
+               python3-xcffib python3-cairocffi git stow curl
+
+# Enable login manager
+systemctl enable sddm
+
+# 4. User-Level Tasks (Running as $actual_user)
+# ---------------------------------------------
+# We use a Here-Doc to run these commands in the context of the regular user
+sudo -u "$actual_user" bash <<EOF
 echo "Now running as: \$(whoami)"
-echo "My home directory is: \$HOME"
+echo "Target home directory is: \$HOME"
 
-# Add user to sudo group
-sudo usermod -aG sudo $actual_user
-# enable contrib repository
-sudo sed -i '/^deb .* main/ s/$/ contrib/' /etc/apt/sources.list && sudo apt update
-# Install Xorg with qtile and sddm
-sudo apt install xorg xinit x11-xserver-utils xterm menu sddm qtile python3-xcffib python3-cairocffi -y
-# enable sddm
-sudo systemctl enable sddm
-# create source folder in home directory
+# Create source folder
 mkdir -p \$HOME/src
 cd \$HOME/src
-# clone dotfiles repository
-if [ ! -d "\$HOME/src/dotfiles" ]; then
-    git clone https://github.com/cschambers2101/stow.git $HOME/.dotfiles
+
+# Clone or update dotfiles
+if [ ! -d "\$HOME/.dotfiles" ]; then
+    echo "Cloning dotfiles..."
+    git clone https://github.com/cschambers2101/stow.git \$HOME/.dotfiles
 else
+    echo "Dotfiles already exist. Pulling updates..."
+    cd \$HOME/.dotfiles
     git pull origin main
 fi
-cd $HOME/.dotfiles
-# Install stow if not present
-if ! command -v stow >/dev/null 2>&1; then
-    sudo apt install stow -y
-fi
-# rm existing config files
+
+# Prepare for Stowing
+cd \$HOME/.dotfiles
+echo "Removing old config files to prevent stow conflicts..."
 rm -rf \$HOME/.config/qtile \$HOME/.bashrc
-# stow dotfiles
+
+# Run Stow
+echo "Applying dotfiles with GNU Stow..."
 stow .
-# reload the bashrc
-source \$HOME/.bashrc
-# Install required programs
-cd \$HOME/.dotfiles/install_programs
-echo "Installing required programs..."
-echo 
-echo "This will take a while. Please be patient. When asked to install Starship, press 'y' to confirm."
-echo
-./install_required_programs.sh
+
+# Run the nested install script
+if [ -f "./install_programs/install_required_programs.sh" ]; then
+    cd install_programs
+    chmod +x install_required_programs.sh
+    echo "Starting required programs installation..."
+    ./install_required_programs.sh
+else
+    echo "Warning: install_required_programs.sh not found."
+fi
 
 echo "Setup complete for $actual_user."
-echo
-echo "You will need to reboot now. type 'sudo reboot' to restart your system."
-# EOF
+echo "You should reboot your system now."
+EOF
 
-# Explicitly exit the script so no root commands accidentally run below
 exit 0
