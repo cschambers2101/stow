@@ -137,11 +137,10 @@ if [ -f ~/.dev_exports.sh ]; then
     source ~/.dev_exports.sh
 fi
 
-#if which tmux 2>&1 >/dev/null; then
-#      if [ $TERM != "screen-256color" ] && [  $TERM != "screen" ]; then
-#              tmux attach -t default || tmux new -s default; exit
-#                fi
-#fi
+# Auto-attach to the most recent session, or start a new one
+if [[ -z "$TMUX" ]] && [ "$PS1" ]; then
+    tmux attach-session -d || tmux new-session
+fi
 
 
 fastfetch
