@@ -57,6 +57,9 @@ function myhelp() {
     echo 'tnew -> tmux new -s '
     echo 'attach -> tmux attach-session -t '
     echo 'upgrade -> runs update_os function'
+    echo 'cn <tag, tag> -> Create a new note'
+    echo 'snf <value> -> Find in note'
+    echo 'snt <tag> -> Find tag in note'
     echo
     echo 'Functions'
     echo
