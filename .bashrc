@@ -76,8 +76,8 @@ esac
 if [ -x /usr/bin/dircolors ]; then
     test -r ~/.dircolors && eval "$(dircolors -b ~/.dircolors)" || eval "$(dircolors -b)"
     alias ls='ls --color=auto'
-    alias dir='dir --color=auto'
-    alias vdir='vdir --color=auto'
+    #alias dir='dir --color=auto'
+    #alias vdir='vdir --color=auto'
 
     alias grep='grep --color=auto'
     alias fgrep='fgrep --color=auto'
@@ -105,14 +105,6 @@ if [ -f ~/.bash_aliases ]; then
     . ~/.bash_aliases
 fi
 
-if [ -f ~/.bash_profile ]; then
-    . ~/.bash_profile
-fi
-
-if [ -f ~/.bash_functions ]; then
-    . ~/.bash_functions
-fi
-
 # enable programmable completion features (you don't need to enable
 # this, if it's already enabled in /etc/bash.bashrc and /etc/profile
 # sources /etc/bash.bashrc).
@@ -123,36 +115,3 @@ if ! shopt -oq posix; then
     . /etc/bash_completion
   fi
 fi
-
-eval "$(starship init bash)"
-
-
-export NVM_DIR="$HOME/.nvm"
-[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm
-[ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"  # This loads nvm bash_completion
-
-export NODE_EXTRA_CA_CERTS="~/.local/share/ca-certificates/oakford.crt"
-
-if [ -f ~/.dev_exports.sh ]; then
-    source ~/.dev_exports.sh
-fi
-
-
-# Only run if: 
-# 1. $TMUX is empty
-# 2. $TERM_PROGRAM is not tmux
-# 3. $TERM does not start with 'screen' or 'tmux'
-# 4. The shell is interactive ($PS1 is set)
-
-if [ -z "$TMUX" ] && \
-   [ "$TERM_PROGRAM" != "tmux" ] && \
-   [[ "$TERM" != screen* ]] && \
-   [[ "$TERM" != tmux* ]] && \
-   [ -n "$PS1" ]; then
-    
-    # Use 'exec' so tmux REPLACES this bash process instead of sitting on top of it
-    exec tmux attach-session -d || exec tmux new-session
-fi
-
-fastfetch
-
