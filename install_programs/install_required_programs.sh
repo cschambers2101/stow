@@ -59,6 +59,15 @@ fi
 sudo wget https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -O /usr/local/bin/yt-dlp
 sudo chmod a+rx /usr/local/bin/yt-dlp
 
+# install tpm manager for tmux
+git clone https://github.com/tmux-plugins/tpm ~/.tmux/plugins/tpm
+
+# install claude code
+curl -fsSL https://claude.ai/install.sh | bash
+
+#install gemini cli
+npm install -g @google/gemini-cli
+
 echo "Script finished."
 
 exit 0
