@@ -40,24 +40,6 @@ fi
 
 sudo apt autoremove -y
 
-
-# Install Qtile
-script_to_run="install_qtile.sh"
-
-if [ -e "$script_to_run" ]; then
-  echo "Script '$script_to_run' exists. Executing..."
-  bash "$script_to_run"
-  if [ $? -eq 0 ]; then
-    echo "Script '$script_to_run' executed successfully."
-  else
-    echo "Script '$script_to_run' failed with exit code $?."
-  fi
-else
-  echo "Error: Script '$script_to_run' does not exist. Continuing with the main script."
-fi
-
-echo "Script finished."
-
 # Install Node
 script_to_run="install_node.sh"
 
@@ -73,14 +55,10 @@ else
   echo "Error: Script '$script_to_run' does not exist. Continuing with the main script."
 fi
 
-echo "Script finished."
-
-
-# Install Starship prompt
-curl -sS https://starship.rs/install.sh | sh
-
 # Install yt-dsl
 sudo wget https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -O /usr/local/bin/yt-dlp
 sudo chmod a+rx /usr/local/bin/yt-dlp
+
+echo "Script finished."
 
 exit 0

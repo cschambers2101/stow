@@ -37,6 +37,7 @@ ripgrep
 rofi
 scrot
 ssh
+starship
 stow
 sxhkd
 tmux
