@@ -1,6 +1,5 @@
 apt-show-versions
 arandr
-autorandr
 btop
 build-essential
 caca-utils
@@ -10,6 +9,7 @@ feh
 ffmpeg
 flameshot
 fonts-noto-core
+fonts-font-awesome
 fuse
 fzf
 gimp
