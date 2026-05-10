@@ -68,8 +68,23 @@ curl -fsSL https://claude.ai/install.sh | bash
 #install gemini cli
 npm install -g @google/gemini-cli
 
+# Install Eucalyptus Drop SDDM theme
+script_to_run="install_eucalyptus_drop_sddm_theme.sh"
+
+if [ -e "$script_to_run" ]; then
+  echo "Script '$script_to_run' exists. Executing..."
+  sudo bash "$script_to_run"
+  if [ $? -eq 0 ]; then
+    echo "Script '$script_to_run' executed successfully."
+  else
+    echo "Script '$script_to_run' failed with exit code $?."
+  fi
+else
+  echo "Error: Script '$script_to_run' does not exist. Continuing with the main script."
+fi
+
 # clear screen
-clear
+# clear
 
 echo "Script finished"
 echo "Reboot your PC"
