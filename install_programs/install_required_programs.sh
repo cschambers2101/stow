@@ -68,6 +68,10 @@ curl -fsSL https://claude.ai/install.sh | bash
 #install gemini cli
 npm install -g @google/gemini-cli
 
-echo "Script finished."
+# clear screen
+clear
+
+echo "Script finished"
+echo "Reboot your PC"
 
 exit 0
