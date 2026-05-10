@@ -26,9 +26,11 @@ pandoc
 pcmanfm
 picom
 polybar
+psutils
 python3-cairocffi
 python3-pip
 python3-psutil
+python3-psutils
 python3-venv
 python3-xcffib
 qml6-module-qt5compat-graphicaleffects
