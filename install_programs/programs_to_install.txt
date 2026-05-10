@@ -20,7 +20,6 @@ imagemagick
 libreoffice
 lxappearance
 nala
-nitrogen
 obs-studio
 pandoc
 pcmanfm
@@ -49,5 +48,4 @@ weasyprint
 wget
 xclip
 xfce4-terminal
-xset
 xss-lock
