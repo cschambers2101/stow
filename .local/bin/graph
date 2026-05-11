@@ -1,0 +1,42 @@
+#!/bin/bash
+
+BASE_DIR="$HOME/Documents/notes"
+SUBJECTS_DIR="$BASE_DIR/Subjects"
+
+echo "[TOPIC CONNECTIVITY REPORT]"
+echo "=========================="
+echo ""
+
+# List all subjects and count notes
+for SUB in "$SUBJECTS_DIR"/*.md; do
+    [ -e "$SUB" ] || continue
+    NAME=$(basename "$SUB" .md)
+    COUNT=$(grep "\[\[" "$SUB" | wc -l)
+    echo "$NAME ($COUNT notes)"
+    
+    # List the notes in this subject (briefly)
+    grep "\[\[" "$SUB" | head -n 3 | while read LINE; do
+        TITLE=$(echo "$LINE" | sed 's/.*|//;s/\].*//')
+        echo "  |-- $TITLE"
+    done
+    if [ $COUNT -gt 3 ]; then
+        echo "  |-- ... and $(($COUNT - 3)) more"
+    fi
+    echo ""
+done
+
+echo "[STRENGTH OF CONNECTIONS]"
+echo "========================="
+
+# Find notes that appear in multiple subjects
+grep -rh "\[\[" "$SUBJECTS_DIR" | sort | uniq -c | sort -nr | head -n 10 | while read LINE; do
+    COUNT=$(echo $LINE | awk '{print $1}')
+    if [ $COUNT -gt 1 ]; then
+        NOTE=$(echo $LINE | cut -d' ' -f2-)
+        # Extract title from aliased link
+        TITLE=$(echo "$NOTE" | sed 's/.*|//;s/\].*//')
+        BAR=""
+        for i in $(seq 1 $COUNT); do BAR="$BAR#"; done
+        printf "%-40s [%-10s] %d links\n" "$TITLE" "$BAR" "$COUNT"
+    fi
+done
