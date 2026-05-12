@@ -22,7 +22,7 @@ REAL_USER=${SUDO_USER:-$USER}
 # 2. Dependency Check
 echo -e "${BLUE}Ensuring dependencies are installed...${NC}"
 apt update
-apt install -y sddm qml-module-qtgraphicaleffects qml-module-qtquick-controls2 qml-module-qtquick-layouts git
+apt install -y sddm qml6-module-qt5compat-graphicaleffects qml6-module-qtquick-controls qml6-module-qtquick-layouts git
 
 # 3. Path Definitions
 THEME_DIR="/usr/share/sddm/themes"
