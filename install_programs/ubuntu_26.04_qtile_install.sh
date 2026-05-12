@@ -207,6 +207,7 @@ network:
   version: 2
   renderer: NetworkManager
 EOF
+sudo chmod 600 /etc/netplan/01-network-manager-all.yaml
 sudo netplan apply
 
 # -----------------------------------------------------------------
@@ -220,9 +221,9 @@ sudo update-ca-certificates
 
 # Add to Chrome/Chromium NSS store so Chrome trusts internal services
 mkdir -p "$HOME/.pki/nssdb"
-certutil -d sql:"$HOME/.pki/nssdb" -N --empty-password 2>/dev/null || true
+certutil -d sql:"$HOME/.pki/nssdb" -N -f /dev/null 2>/dev/null || true
 certutil -d sql:"$HOME/.pki/nssdb" -A -t "CT,," -n "Oakford CA" \
-    -i /usr/local/share/ca-certificates/oakford.crt || true
+    -f /dev/null -i /usr/local/share/ca-certificates/oakford.crt || true
 
 # Drop S6C connection profile — NetworkManager picks it up on first start
 sudo mkdir -p /etc/NetworkManager/system-connections
