@@ -11,7 +11,13 @@
 # nitrogen --restore &
 
 # compositor
-picom --config ~/.config/picom/picom.conf &
+# picom --config ~/.config/picom/picom.conf &
+# Detect if nvidia-smi exists to determine the backend
+if command -v nvidia-smi &> /dev/null; then
+    picom --backend glx --vsync &
+else
+    picom --vsync &
+fi
 
 # Notifications
 dunst &
