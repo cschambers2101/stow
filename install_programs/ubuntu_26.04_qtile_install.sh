@@ -160,16 +160,26 @@ sudo apt install -y --no-install-recommends \
     caca-utils
 
 # -----------------------------------------------------------------
-# 11. HEAVY APPS
+# 11. GOOGLE CHROME
+# Not in Ubuntu repos — add Google's signing key and repo first.
+# -----------------------------------------------------------------
+wget -q -O - https://dl.google.com/linux/linux_signing_key.pub \
+    | sudo gpg --dearmor -o /usr/share/keyrings/google-chrome-keyring.gpg
+echo "deb [arch=amd64 signed-by=/usr/share/keyrings/google-chrome-keyring.gpg] http://dl.google.com/linux/chrome/deb/ stable main" \
+    | sudo tee /etc/apt/sources.list.d/google-chrome.list
+sudo apt update
+sudo apt install -y --no-install-recommends google-chrome-stable
+
+# -----------------------------------------------------------------
+# 12. HEAVY APPS
 # -----------------------------------------------------------------
 sudo apt install -y --no-install-recommends \
     gimp \
     libreoffice \
-    obs-studio \
-    google-chrome-stable
+    obs-studio
 
 # -----------------------------------------------------------------
-# 12. WIFI & NETWORKING
+# 13. WIFI & NETWORKING
 # -----------------------------------------------------------------
 sudo add-apt-repository -y restricted
 sudo add-apt-repository -y multiverse
@@ -200,7 +210,7 @@ EOF
 sudo netplan apply
 
 # -----------------------------------------------------------------
-# 13. OAKFORD CERTIFICATE & S6C WIFI PROFILE
+# 14. OAKFORD CERTIFICATE & S6C WIFI PROFILE
 # -----------------------------------------------------------------
 
 # Download and trust the Oakford CA certificate system-wide
@@ -241,7 +251,7 @@ EOF
 sudo chmod 600 /etc/NetworkManager/system-connections/S6C.nmconnection
 
 # -----------------------------------------------------------------
-# 14. NODE.JS
+# 15. NODE.JS
 # -----------------------------------------------------------------
 if [ -f "$SCRIPT_DIR/install_node.sh" ]; then
     bash "$SCRIPT_DIR/install_node.sh"
@@ -254,33 +264,33 @@ export NVM_DIR="$HOME/.nvm"
 [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
 
 # -----------------------------------------------------------------
-# 15. YT-DLP
+# 16. YT-DLP
 # -----------------------------------------------------------------
 sudo wget -q https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp \
     -O /usr/local/bin/yt-dlp
 sudo chmod a+rx /usr/local/bin/yt-dlp
 
 # -----------------------------------------------------------------
-# 16. TMUX PLUGIN MANAGER (tpm)
+# 17. TMUX PLUGIN MANAGER (tpm)
 # -----------------------------------------------------------------
 if [ ! -d "$HOME/.tmux/plugins/tpm" ]; then
     git clone https://github.com/tmux-plugins/tpm "$HOME/.tmux/plugins/tpm"
 fi
 
 # -----------------------------------------------------------------
-# 17. CLAUDE CODE CLI
+# 18. CLAUDE CODE CLI
 # -----------------------------------------------------------------
 curl -fsSL https://claude.ai/install.sh | bash || \
     echo "WARNING: Claude Code install failed — install manually after reboot."
 
 # -----------------------------------------------------------------
-# 18. GEMINI CLI (requires Node from step 14)
+# 19. GEMINI CLI (requires Node from step 15)
 # -----------------------------------------------------------------
 npm install -g @google/gemini-cli || \
     echo "WARNING: Gemini CLI install failed — run 'npm install -g @google/gemini-cli' after reboot."
 
 # -----------------------------------------------------------------
-# 19. SDDM EUCALYPTUS DROP THEME
+# 20. SDDM EUCALYPTUS DROP THEME
 # -----------------------------------------------------------------
 if [ -f "$SCRIPT_DIR/install_eucalyptus_drop_sddm_theme.sh" ]; then
     sudo bash "$SCRIPT_DIR/install_eucalyptus_drop_sddm_theme.sh" || \
@@ -290,7 +300,7 @@ else
 fi
 
 # -----------------------------------------------------------------
-# 20. DIRECTORY SCAFFOLDING
+# 21. DIRECTORY SCAFFOLDING
 # -----------------------------------------------------------------
 mkdir -p \
     ~/.config/qtile \
@@ -305,7 +315,7 @@ mkdir -p \
     ~/.local/bin
 
 # -----------------------------------------------------------------
-# 21. POST-INSTALL CONFIGURATION
+# 22. POST-INSTALL CONFIGURATION
 # -----------------------------------------------------------------
 xdg-user-dirs-update
 sudo systemctl enable sddm
