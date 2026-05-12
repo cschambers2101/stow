@@ -25,6 +25,9 @@ dunst &
 # Network Manager
 nm-applet &
 
+# USB automount (shows drives in PCManFM)
+udiskie -t &
+
 # Set keymap
 setxkbmap -layout gb
 
@@ -38,7 +41,7 @@ xset s noblank
 xset dpms 180 180 180
 
 # 3. Start the listener with the correct filename
-xss-lock --transfer-sleep-lock -- /bin/bash /home/craigchambers/.local/bin/i3lock-screensaver.sh &
+xss-lock --transfer-sleep-lock -- /bin/bash "$HOME/.local/bin/i3lock-screensaver.sh" &
 
 if [ -f ~/.screenlayout/screens.sh ]; then
     . ~/.screenlayout/screens.sh
