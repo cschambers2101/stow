@@ -40,25 +40,20 @@ sudo -u "$REAL_USER" git clone https://gitlab.com/Matt.Jolly/sddm-eucalyptus-dro
 # Move to system directory
 mv "$TEMP_CLONE" "$TARGET_DIR"
 
+# Abort config if the clone didn't actually produce a valid theme
+if [ ! -f "$TARGET_DIR/Main.qml" ]; then
+    echo -e "${RED}Error: theme clone appears incomplete — Main.qml missing.${NC}"
+    exit 1
+fi
+
 # 5. SDDM Configuration
-CONF_FILE="/etc/sddm.conf"
-echo -e "${BLUE}Updating SDDM configuration...${NC}"
-
-[ -f "$CONF_FILE" ] && cp "$CONF_FILE" "${CONF_FILE}.bak"
-
-# Create the file if it doesn't exist
-if [ ! -f "$CONF_FILE" ]; then
-    touch "$CONF_FILE"
-fi
-
-# Modern Section-Aware Editing
-if ! grep -q "^\[Theme\]" "$CONF_FILE" 2>/dev/null; then
-    echo -e "\n[Theme]\nCurrent=eucalyptus-drop" >> "$CONF_FILE"
-else
-    # Delete everything inside existing [Theme] section and reset it
-    sed -i '/^\[Theme\]/,/^\[/ { /^\[Theme\]/! { /^\[/! d } }' "$CONF_FILE"
-    sed -i '/^\[Theme\]/a Current=eucalyptus-drop' "$CONF_FILE"
-fi
+# Overwrite sddm.conf directly — this is a fresh machine and /etc/sddm.conf
+# has the highest config precedence, so this is the most reliable approach.
+echo -e "${BLUE}Writing SDDM theme configuration...${NC}"
+cat > /etc/sddm.conf <<EOF
+[Theme]
+Current=eucalyptus-drop
+EOF
 
 # 6. Set Permissions
 chmod -R 755 "$TARGET_DIR"
