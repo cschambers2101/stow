@@ -37,7 +37,6 @@ sudo apt install -y --no-install-recommends \
 if lspci | grep -qi nvidia; then
     echo "NVIDIA GPU detected — installing drivers..."
     sudo ubuntu-drivers install --include-dkms nvidia:595
-    sudo nvidia-xconfig
     sudo tee /etc/modprobe.d/blacklist-nouveau.conf <<EOF
 blacklist nouveau
 options nouveau modeset=0
@@ -183,7 +182,7 @@ sudo apt install -y --no-install-recommends \
     network-manager-gnome \
     gnome-keyring \
     wpasupplicant \
-    wireless-tools \
+    iw \
     rfkill
 
 sudo rfkill unblock wifi
