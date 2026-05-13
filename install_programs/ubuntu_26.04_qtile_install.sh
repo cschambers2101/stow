@@ -157,7 +157,8 @@ sudo apt install -y --no-install-recommends \
     vlc \
     imagemagick \
     fuse \
-    caca-utils
+    caca-utils \
+    alsa-utils
 
 # -----------------------------------------------------------------
 # 11. GOOGLE CHROME
