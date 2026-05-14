@@ -37,14 +37,7 @@ sudo apt install -y \
 # -----------------------------------------------------------------
 # 4. TERMINAL & PRODUCTIVITY
 # -----------------------------------------------------------------
-sudo apt install -y alacritty xfce4-terminal xclip xsel
-
-# -----------------------------------------------------------------
-# 5. GOOGLE CHROME (Optional - for Web Dev Testing)
-# Note: Students have the host browser, but some need a Linux-native
-# version for Selenium or specific dev-tools extensions.
-# -----------------------------------------------------------------
-# [Same logic as previous script for Google's repo]
+sudo apt install -y xclip xsel
 
 # -----------------------------------------------------------------
 # 6. MEDIA & UTILITIES (No VLC usually needed, ChromeOS handles it)
