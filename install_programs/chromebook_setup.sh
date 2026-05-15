@@ -97,16 +97,17 @@ sudo apt update
 sudo apt install -y gh
 
 # -----------------------------------------------------------------
-# 9. NODE.JS
+# 9. NODE.JS (via nvm)
+# Install nvm directly — no external repo dependency, and ensures
+# nvm.sh is present before the Claude installer tries to use nvm.
 # -----------------------------------------------------------------
-if [ -f "$SCRIPT_DIR/install_node.sh" ]; then
-    bash "$SCRIPT_DIR/install_node.sh"
-else
-    echo "WARNING: install_node.sh not found at $SCRIPT_DIR — skipping Node.js install."
-fi
-
 export NVM_DIR="$HOME/.nvm"
-[ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
+if [ ! -s "$NVM_DIR/nvm.sh" ]; then
+    curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.3/install.sh | bash
+fi
+. "$NVM_DIR/nvm.sh"
+nvm install --lts
+nvm use --lts
 
 # -----------------------------------------------------------------
 # 10. CLAUDE & GEMINI CLI
