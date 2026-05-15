@@ -22,7 +22,7 @@ echo 'APT::Install-Recommends "false";' | sudo tee /etc/apt/apt.conf.d/99no-reco
 sudo apt install -y \
     build-essential \
     git curl wget ripgrep fzf tmux stow btop nala \
-    python3-pip python3-venv python3-full \
+    python3-pip python3-venv python3-full python3-psutil \
     apt-show-versions ssh v4l-utils libnss3-tools \
     bash-completion \
     vim-gtk3 \
@@ -40,6 +40,11 @@ sudo apt install -y \
     gnome-keyring \
     libgl1-mesa-dri mesa-utils
 
+# Pre-accept the Microsoft fonts EULA (avoids interactive prompt)
+echo "ttf-mscorefonts-installer msttcorefonts/accepted-mscorefonts-eula select true" \
+    | sudo debconf-set-selections
+sudo apt install -y ttf-mscorefonts-installer
+
 # -----------------------------------------------------------------
 # 4. TERMINAL & PRODUCTIVITY
 # -----------------------------------------------------------------
@@ -48,7 +53,7 @@ sudo apt install -y xclip xsel
 # -----------------------------------------------------------------
 # 5. MEDIA & UTILITIES (No VLC usually needed, ChromeOS handles it)
 # -----------------------------------------------------------------
-sudo apt install -y ffmpeg imagemagick fuse3
+sudo apt install -y ffmpeg imagemagick fuse3 caca-utils weasyprint
 
 # -----------------------------------------------------------------
 # 6. .NET SDK 10
