@@ -41,7 +41,9 @@ sudo apt install -y \
     libgl1-mesa-dri mesa-utils
 
 # ttf-mscorefonts-installer lives in Debian contrib, not enabled by default in Crostini
-echo "deb http://deb.debian.org/debian $(lsb_release -cs) contrib" \
+# Use VERSION_CODENAME from /etc/os-release — lsb_release is not installed in Crostini
+. /etc/os-release
+echo "deb http://deb.debian.org/debian ${VERSION_CODENAME} contrib" \
     | sudo tee /etc/apt/sources.list.d/contrib.list
 sudo apt update
 # Pre-accept the Microsoft fonts EULA (avoids interactive prompt)
