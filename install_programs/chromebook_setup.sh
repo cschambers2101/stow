@@ -12,8 +12,13 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # -----------------------------------------------------------------
 # 1. APT OPTIMIZATION
 # -----------------------------------------------------------------
-sudo apt update
+# Enable contrib before the first apt update — ttf-mscorefonts-installer lives there.
+# Source /etc/os-release for VERSION_CODENAME; lsb_release is not present in Crostini.
+. /etc/os-release
+echo "deb http://deb.debian.org/debian ${VERSION_CODENAME} contrib" \
+    | sudo tee /etc/apt/sources.list.d/contrib.list
 echo 'APT::Install-Recommends "false";' | sudo tee /etc/apt/apt.conf.d/99no-recommends
+sudo apt update
 
 # -----------------------------------------------------------------
 # 2. CORE DEV TOOLS
@@ -40,12 +45,6 @@ sudo apt install -y \
     gnome-keyring \
     libgl1-mesa-dri mesa-utils
 
-# ttf-mscorefonts-installer lives in Debian contrib, not enabled by default in Crostini
-# Use VERSION_CODENAME from /etc/os-release — lsb_release is not installed in Crostini
-. /etc/os-release
-echo "deb http://deb.debian.org/debian ${VERSION_CODENAME} contrib" \
-    | sudo tee /etc/apt/sources.list.d/contrib.list
-sudo apt update
 # Pre-accept the Microsoft fonts EULA (avoids interactive prompt)
 echo "ttf-mscorefonts-installer msttcorefonts/accepted-mscorefonts-eula select true" \
     | sudo debconf-set-selections
