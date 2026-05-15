@@ -98,15 +98,15 @@ sudo apt install -y gh
 
 # -----------------------------------------------------------------
 # 9. NODE.JS (via nvm)
-# Unset NVM_DIR before installing — the nvm installer exits with
-# code 1 if NVM_DIR is set but the directory doesn't exist, which
-# happens when the value is inherited from the parent login shell.
+# Pre-create the target directory so the nvm installer doesn't exit
+# on "NVM_DIR set but doesn't exist" when the var is inherited from
+# the parent login shell.
 # -----------------------------------------------------------------
-if [ ! -f "$HOME/.nvm/nvm.sh" ]; then
-    unset NVM_DIR
+export NVM_DIR="$HOME/.config/nvm"
+if [ ! -f "$NVM_DIR/nvm.sh" ]; then
+    mkdir -p "$NVM_DIR"
     curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.3/install.sh | bash
 fi
-export NVM_DIR="$HOME/.nvm"
 . "$NVM_DIR/nvm.sh"
 nvm install --lts
 nvm use --lts
