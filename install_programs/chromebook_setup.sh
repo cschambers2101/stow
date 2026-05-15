@@ -62,14 +62,16 @@ sudo apt install -y ffmpeg imagemagick fuse3 caca-utils weasyprint
 
 # -----------------------------------------------------------------
 # 6. .NET SDK 10
-# Not in Debian default repos — add the Microsoft package feed.
+# Microsoft's apt repo signing key uses SHA1 binding, rejected by
+# Debian's sqv verifier since 2026-02-01. Use the install script instead.
+# Installs to ~/.dotnet; shell config (via stow) should export DOTNET_ROOT.
 # -----------------------------------------------------------------
-wget -q https://packages.microsoft.com/config/debian/12/packages-microsoft-prod.deb \
-    -O /tmp/packages-microsoft-prod.deb
-sudo dpkg -i /tmp/packages-microsoft-prod.deb
-rm /tmp/packages-microsoft-prod.deb
-sudo apt update
-sudo apt install -y dotnet-sdk-10.0
+curl -fsSL https://dot.net/v1/dotnet-install.sh -o /tmp/dotnet-install.sh
+chmod +x /tmp/dotnet-install.sh
+/tmp/dotnet-install.sh --channel 10.0
+rm /tmp/dotnet-install.sh
+export DOTNET_ROOT="$HOME/.dotnet"
+export PATH="$PATH:$DOTNET_ROOT"
 
 # -----------------------------------------------------------------
 # 7. CA CERTIFICATES (Oakford)
