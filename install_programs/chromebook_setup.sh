@@ -12,6 +12,10 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # -----------------------------------------------------------------
 # 1. APT OPTIMIZATION
 # -----------------------------------------------------------------
+# Remove the Microsoft apt source if it was left behind by a previous run —
+# its SHA1-bound key is rejected by Debian's sqv verifier since 2026-02-01.
+sudo rm -f /etc/apt/sources.list.d/microsoft-prod.list
+
 # Enable contrib before the first apt update — ttf-mscorefonts-installer lives there.
 # Source /etc/os-release for VERSION_CODENAME; lsb_release is not present in Crostini.
 . /etc/os-release
