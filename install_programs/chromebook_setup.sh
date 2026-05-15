@@ -98,13 +98,15 @@ sudo apt install -y gh
 
 # -----------------------------------------------------------------
 # 9. NODE.JS (via nvm)
-# Install nvm directly — no external repo dependency, and ensures
-# nvm.sh is present before the Claude installer tries to use nvm.
+# Unset NVM_DIR before installing — the nvm installer exits with
+# code 1 if NVM_DIR is set but the directory doesn't exist, which
+# happens when the value is inherited from the parent login shell.
 # -----------------------------------------------------------------
-export NVM_DIR="$HOME/.nvm"
-if [ ! -s "$NVM_DIR/nvm.sh" ]; then
+if [ ! -f "$HOME/.nvm/nvm.sh" ]; then
+    unset NVM_DIR
     curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.3/install.sh | bash
 fi
+export NVM_DIR="$HOME/.nvm"
 . "$NVM_DIR/nvm.sh"
 nvm install --lts
 nvm use --lts
