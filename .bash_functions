@@ -76,10 +76,10 @@ function myhelp() {
 }
 
 function update_os() {
-    sudo apt update
-    sudo apt upgrade -y
-    sudo apt autoremove -y
-    sudo apt install --fix-broken -y
+    apt update
+    apt upgrade -y
+    apt autoremove -y
+    apt install --fix-broken -y
 }
 
 function update_firmware() {
