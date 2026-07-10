@@ -118,8 +118,8 @@ keys = [
 # MOVE WINDOWS UP OR DOWN,LEFT OR RIGHT USING VIM KEYS
     Key([mod, "shift"], "k", lazy.layout.shuffle_up()),
     Key([mod, "shift"], "j", lazy.layout.shuffle_down()),
-    Key([mod, "shift"], "h", lazy.layout.swap_column_left()),
-    Key([mod, "shift"], "l", lazy.layout.swap_column_right()),
+    Key([mod, "shift"], "h", lazy.layout.swap_left()),
+    Key([mod, "shift"], "l", lazy.layout.swap_right()),
 
 # MOVE WINDOWS UP OR DOWN,LEFT OR RIGHT USING DIRECTIONAL KEYS
     Key([mod, "shift"], "Up", lazy.layout.shuffle_up()),
@@ -201,7 +201,7 @@ keys = [
     Key([mod], "Return", lazy.spawn(terminal)), # Launch Gnome Terminal
     Key([mod], "r", lazy.spawn("rofi -show run")), # Launch Rofi
 #    Key([mod, "shift"], "l", lazy.spawn("i3lock -i .local/share/backgrounds/wallhaven-85erok_3440x1440.png")), # Launch i3lock
-    Key([mod, "shift"], "l", lazy.spawn(os.path.expanduser("~/.local/bin/i3lock-screensaver.sh")), desc="Launch custom lockscreen script"),
+    Key([mod, "shift"], "x", lazy.spawn(os.path.expanduser("~/.local/bin/i3lock-screensaver.sh")), desc="Launch custom lockscreen script"),
     Key([mod, "shift"], "f", lazy.spawn("pcmanfm")), # Launch PCManFM
     Key([mod, "shift"], "m", lazy.spawn("xfce4-terminal -e alsamixer")), # Launch alsamixer,
     Key([mod], "Print", lazy.spawn("flameshot gui"), desc="Launch FlameshotGUI"),
