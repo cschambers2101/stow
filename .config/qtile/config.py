@@ -209,8 +209,9 @@ keys = [
     Key([mod, "shift"], "n", lazy.spawn("dunstctl set-paused toggle"), desc="Toggle Do Not Disturb"),
     Key([mod], "n", lazy.spawn(terminal + " -e " + os.path.expanduser("~/.local/bin/create_note.sh")), desc="Create a new note"),
     Key([mod], "s", lazy.spawn(terminal + " -e" + os.path.expanduser("~/.local/bin/find_note_tag.sh")), desc="Search note tags"),
-    Key([mod, "control"], "h",
-        lazy.spawn(os.path.expanduser("~/.local/bin/i3lock-screensaver.sh")),lazy.spawn("systemctl hibernate"), desc="Hibernate")
+    Key([mod, "control"], "h", lazy.spawn(os.path.expanduser("~/.local/bin/i3lock-screensaver.sh")),lazy.spawn("systemctl hibernate"),desc="Hibernate"),
+    Key([mod, "shift"], "b", lazy.spawn("flatpak run com.bambulab.BambuStudio")), # Launch Bambu Studio Flatpak install,
+    Key([mod], "f", lazy.spawn("flatpak run org.freecad.FreeCAD")), # Launch Freecad Flatpak install
 ]
 
 # end of keys
