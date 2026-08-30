@@ -162,8 +162,17 @@ fonts-inter-variable
 #              Carlito, Calibri falls back to Noto Sans, whose metrics differ,
 #              so titles sized to fit a slide reflow and overflow.
 #   Arial   -- the brand fallback, provided by ttf-mscorefonts-installer below.
+#   Atkinson Hyperlegible Next -- the Braille Institute's legibility face,
+#              designed so that easily-confused characters (I l 1, O 0, b d p q)
+#              stay distinguishable. Relevant to the SEND and dyslexia intent
+#              behind brand.md 9A. NOTE the family name is exactly
+#              "Atkinson Hyperlegible Next": ask for plain "Atkinson
+#              Hyperlegible" and fontconfig silently hands back Noto Sans.
+#              The older v1 packages (fonts-atkinson-hyperlegible*) are a
+#              different family and are deliberately not installed.
 fonts-ubuntu
 fonts-crosextra-carlito
+fonts-atkinson-hyperlegible-next
 fonts-noto-core
 fonts-font-awesome
 fonts-cascadia-code
