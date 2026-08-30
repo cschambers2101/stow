@@ -292,6 +292,31 @@ recent-windows {
     }
 }
 
+// Laptop function keys not covered by dms/binds.kdl.
+//
+// dms/binds.kdl already handles volume up/down/mute, mic mute, media
+// play/pause/prev/next and screen brightness (XF86MonBrightness*, via
+// DMS's logind backend — no helper tool needed).
+//
+// Keyboard backlight is the gap: DMS's brightness IPC takes a device id
+// (DisplayService.qml `set(percentage, device)`), but those ids differ
+// per machine, so we shell out to brightnessctl with a glob instead.
+// Harmless on desktops — the keys simply don't exist there.
+//
+// This lives here rather than in dms/binds.kdl because that file is
+// DMS-generated and gets rewritten.
+binds {
+    XF86KbdBrightnessUp allow-when-locked=true {
+        spawn "sh" "-c" "brightnessctl -d '*kbd_backlight' set +10%";
+    }
+    XF86KbdBrightnessDown allow-when-locked=true {
+        spawn "sh" "-c" "brightnessctl -d '*kbd_backlight' set 10%-";
+    }
+    XF86AudioStop allow-when-locked=true {
+        spawn "dms" "ipc" "call" "mpris" "stop";
+    }
+}
+
 // Include dms files
 include optional=true "dms/colors.kdl"
 include optional=true "dms/layout.kdl"
@@ -299,3 +324,4 @@ include optional=true "dms/alttab.kdl"
 include optional=true "dms/binds.kdl"
 include optional=true "dms/outputs.kdl"
 include optional=true "dms/cursor.kdl"
+include "dms/windowrules.kdl"

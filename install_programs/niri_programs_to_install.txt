@@ -1,0 +1,117 @@
+# =================================================================
+# PACKAGE LIST — NIRI / DANK WAYLAND DESKTOP (Ubuntu 26.04)
+# Consumed by ubuntu_26.04_niri_install.sh via xargs.
+# Blank lines and # comments are stripped before install.
+#
+# NOT listed here (installed separately by the script):
+#   - the Dank stack (niri, dms, quickshell, ...) -> dankinstall
+#   - ubuntu-desktop -> needs --install-recommends, see script section 4
+#   - google-chrome-stable -> needs Google's apt repo, section 7
+# =================================================================
+
+# --- core / dev ---
+apt-show-versions
+btop
+build-essential
+curl
+dotnet-sdk-10.0
+fastfetch
+fzf
+git
+nala
+pandoc
+python3-libtmux
+python3-pip
+python3-psutil
+python3-venv
+ripgrep
+ssh
+starship
+stow
+tmux
+v4l-utils
+vim-gtk3
+weasyprint
+wget
+
+# --- wayland session ---
+# grim + jq are REQUIRED by .local/bin/dank-lock.sh (lock screen background).
+# Do not drop them: on a stock install they only arrive as transitive deps
+# and are therefore apt-autoremove-able.
+grim
+jq
+imagemagick
+wl-clipboard
+swaylock
+fuzzel
+cava
+xdg-desktop-portal-gtk
+policykit-1-gnome
+gnome-keyring
+
+# --- laptop function keys ---
+# Screen brightness (XF86MonBrightness*) and volume/media keys are bound
+# in dms/binds.kdl and need no helper: DMS drives brightness through the
+# logind backend and audio through pipewire.
+# brightnessctl is only for the KEYBOARD backlight binds in config.kdl,
+# because DMS's brightness IPC needs a machine-specific device id.
+brightnessctl
+acpi
+# power-profiles-daemon backs the DMS power profile widget. Do NOT add
+# tlp as well - the two conflict.
+power-profiles-daemon
+
+# --- networking / vpn ---
+# Students add their own VPN profiles. DMS shows and toggles them
+# (Modules/DankBar/Widgets/Vpn.qml) but cannot create them --
+# nm-connection-editor (in network-manager-gnome) does that.
+network-manager
+network-manager-gnome
+network-manager-openvpn-gnome
+network-manager-openconnect-gnome
+network-manager-l2tp-gnome
+network-manager-vpnc-gnome
+network-manager-pptp-gnome
+wireguard-tools
+
+# --- printing ---
+# cups/avahi/cups-browsed arrive with ubuntu-desktop; these add the
+# drivers and the GUI students need for school printers.
+system-config-printer
+printer-driver-all
+
+# --- storage / archives ---
+udisks2
+udiskie
+gvfs
+fuse
+p7zip-full
+unzip
+zip
+xz-utils
+zram-tools
+
+# --- media / apps ---
+alacritty
+pcmanfm
+lxappearance
+ffmpeg
+vlc
+gimp
+libreoffice
+hunspell-en-gb
+obs-studio
+caca-utils
+xclip
+
+# --- fonts & qt ---
+fonts-noto-core
+fonts-font-awesome
+fonts-cascadia-code
+fonts-dejavu-core
+ttf-mscorefonts-installer
+libqt6svg6
+qml6-module-qt5compat-graphicaleffects
+qml6-module-qtquick-layouts
+qml6-module-qtquick-controls
+qml6-module-qtquick-templates
