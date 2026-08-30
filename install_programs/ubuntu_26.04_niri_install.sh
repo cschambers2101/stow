@@ -522,8 +522,15 @@ xdg-user-dirs-update
 if [ -f /etc/default/zramswap ]; then
     sudo sed -i 's/^ALGO=.*/ALGO=zstd/'   /etc/default/zramswap
     sudo sed -i 's/^PERCENT=.*/PERCENT=50/' /etc/default/zramswap
-    sudo systemctl enable --now zramswap.service || \
-        echo "WARNING: zramswap did not start — check 'swapon --show' after reboot."
+    # `enable --now` is NOT enough. zram-tools' postinst already started
+    # zramswap when the package was installed back in the package sweep, and
+    # `--now` is a no-op on a unit that is already running -- so the ALGO edit
+    # above never reached the running device and every machine silently kept
+    # the default lz4. Verified on dell-ubuntu 30 Aug 2026: zramctl reported
+    # lz4 with ALGO=zstd sitting in the config file; a restart produced zstd.
+    sudo systemctl enable zramswap.service || true
+    sudo systemctl restart zramswap.service || \
+        echo "WARNING: zramswap did not start — check 'zramctl' after reboot."
 else
     echo "WARNING: /etc/default/zramswap missing — is zram-tools installed?"
 fi
