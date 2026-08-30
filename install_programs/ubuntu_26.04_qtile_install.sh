@@ -241,7 +241,7 @@ ssid=S6C
 [wifi-security]
 auth-alg=open
 key-mgmt=wpa-psk
-psk=BY0DS6C
+psk=${S6C_PSK:?set S6C_PSK before running - the PSK is not stored in this public repo}
 
 [ipv4]
 method=auto

@@ -254,11 +254,29 @@ certutil -d sql:"$HOME/.pki/nssdb" -N -f /dev/null 2>/dev/null || true
 certutil -d sql:"$HOME/.pki/nssdb" -A -t "CT,," -n "Oakford CA" \
     -f /dev/null -i /usr/local/share/ca-certificates/oakford.crt || true
 
-# School wifi profile. autoconnect-priority is negative so a student's own
-# home network wins whenever both are in range; NetworkManager would
-# otherwise pick arbitrarily between two autoconnect profiles.
-sudo mkdir -p /etc/NetworkManager/system-connections
-sudo tee /etc/NetworkManager/system-connections/S6C.nmconnection > /dev/null <<'EOF'
+# School wifi profile.
+#
+# The PSK is NOT stored in this repo: the repo is public, so anything
+# committed here is world-readable and cannot be un-published.
+# Supply it at install time instead, either way round:
+#
+#     S6C_PSK='...' ./ubuntu_26.04_niri_install.sh      (unattended)
+#     ./ubuntu_26.04_niri_install.sh                    (prompts once)
+#
+# If it is not supplied the profile is skipped entirely and students just
+# add the school network from the DMS control centre like any other.
+#
+# autoconnect-priority is negative so a student's own home network wins
+# whenever both are in range; NetworkManager would otherwise pick
+# arbitrarily between two autoconnect profiles.
+if [ -z "${S6C_PSK:-}" ] && [ -t 0 ]; then
+    read -r -s -p "School wifi (S6C) password, or blank to skip: " S6C_PSK
+    echo ""
+fi
+
+if [ -n "${S6C_PSK:-}" ]; then
+    sudo mkdir -p /etc/NetworkManager/system-connections
+    sudo tee /etc/NetworkManager/system-connections/S6C.nmconnection > /dev/null <<EOF
 [connection]
 id=S6C
 type=wifi
@@ -272,7 +290,7 @@ ssid=S6C
 [wifi-security]
 auth-alg=open
 key-mgmt=wpa-psk
-psk=BY0DS6C
+psk=${S6C_PSK}
 
 [ipv4]
 method=auto
@@ -281,7 +299,11 @@ method=auto
 method=auto
 addr-gen-mode=stable-privacy
 EOF
-sudo chmod 600 /etc/NetworkManager/system-connections/S6C.nmconnection
+    sudo chmod 600 /etc/NetworkManager/system-connections/S6C.nmconnection
+    echo "School wifi profile installed."
+else
+    echo "No S6C password supplied — skipping the school wifi profile."
+fi
 
 # -----------------------------------------------------------------
 # 10. DOTFILES — DE-CONFLICT, THEN STOW
