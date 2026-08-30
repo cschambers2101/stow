@@ -5,6 +5,7 @@ caca-utils
 curl
 dotnet-sdk-10.0
 dunst
+fastfetch
 feh
 ffmpeg
 flameshot
