@@ -11,7 +11,7 @@ echo "--- Initializing NVIDIA Setup for Ubuntu 26.04 (Kernel 7.0+) ---"
 # 1. Install Kernel Headers and Build Essentials
 # Crucial for building the NVIDIA modules against the new Kernel 7.0
 apt update
-apt install -y build-essential dkms linux-headers-$(uname -r)
+apt install -y build-essential dkms "linux-headers-$(uname -r)"
 
 # 2. Install the NVIDIA 595 Production Driver
 # We use --include-dkms to ensure the driver signs correctly for Secure Boot

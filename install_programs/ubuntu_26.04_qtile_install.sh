@@ -24,7 +24,7 @@ sudo apt update
 # ubuntu-drivers-common is not pre-installed on Ubuntu Server.
 # -----------------------------------------------------------------
 sudo apt install -y --no-install-recommends \
-    linux-headers-$(uname -r) \
+    "linux-headers-$(uname -r)" \
     build-essential \
     dkms \
     ubuntu-drivers-common \
@@ -215,16 +215,37 @@ sudo netplan apply
 # 14. OAKFORD CERTIFICATE & S6C WIFI PROFILE
 # -----------------------------------------------------------------
 
-# Download and trust the Oakford CA certificate system-wide
-sudo wget -q http://oakfordhelp.co.uk/oakford.crt \
-    -O /usr/local/share/ca-certificates/oakford.crt
-sudo update-ca-certificates
+# Download and trust the Oakford CA certificate system-wide.
+#
+# This installs a ROOT CA, so anything able to substitute the file can
+# intercept every TLS connection this machine makes. https:// (not the
+# http:// URL, which only 301-redirects and so starts in cleartext) plus a
+# SHA-256 pin that fails CLOSED. See the long note in
+# ubuntu_26.04_niri_install.sh. Verified 30 Aug 2026.
+OAKFORD_SHA256="70:0D:4D:BA:40:46:29:25:31:7F:9E:C3:33:D5:D7:52:D4:C6:B5:C9:A1:BD:7B:27:BA:B7:12:5C:9C:13:C5:A3"
+OAKFORD_TMP="$(mktemp)"
+trap 'rm -f "$OAKFORD_TMP"' EXIT
 
-# Add to Chrome/Chromium NSS store so Chrome trusts internal services
-mkdir -p "$HOME/.pki/nssdb"
-certutil -d sql:"$HOME/.pki/nssdb" -N -f /dev/null 2>/dev/null || true
-certutil -d sql:"$HOME/.pki/nssdb" -A -t "CT,," -n "Oakford CA" \
-    -f /dev/null -i /usr/local/share/ca-certificates/oakford.crt || true
+if wget -q --tries=3 --retry-connrefused --waitretry=5 --timeout=20 \
+        https://oakfordhelp.co.uk/oakford.crt -O "$OAKFORD_TMP" &&
+   [ "$(openssl x509 -in "$OAKFORD_TMP" -noout -fingerprint -sha256 2>/dev/null | cut -d= -f2)" = "$OAKFORD_SHA256" ]; then
+    sudo install -m 0644 -o root -g root "$OAKFORD_TMP" \
+        /usr/local/share/ca-certificates/oakford.crt
+    sudo update-ca-certificates
+
+    # Chrome/Chromium NSS store. Only reached when the fingerprint matched.
+    mkdir -p "$HOME/.pki/nssdb"
+    certutil -d sql:"$HOME/.pki/nssdb" -N -f /dev/null 2>/dev/null || true
+    certutil -d sql:"$HOME/.pki/nssdb" -A -t "CT,," -n "Oakford CA" \
+        -f /dev/null -i /usr/local/share/ca-certificates/oakford.crt || true
+else
+    echo "ERROR: Oakford CA not installed - download failed or fingerprint mismatch." >&2
+    echo "  Internal HTTPS services will not be trusted. Confirm the new" >&2
+    echo "  fingerprint with Oakford before changing OAKFORD_SHA256." >&2
+fi
+
+rm -f "$OAKFORD_TMP"
+trap - EXIT
 
 # Drop S6C connection profile — NetworkManager picks it up on first start
 sudo mkdir -p /etc/NetworkManager/system-connections

@@ -49,7 +49,7 @@ sudo apt update
 # 2. KERNEL HEADERS, BUILD TOOLS & DRIVER UTILITIES
 # -----------------------------------------------------------------
 sudo apt install -y --no-install-recommends \
-    linux-headers-$(uname -r) \
+    "linux-headers-$(uname -r)" \
     build-essential \
     dkms \
     ubuntu-drivers-common \
@@ -336,19 +336,67 @@ if ! nm-online -q --timeout=60; then
 fi
 
 # Download and trust the Oakford CA certificate system-wide.
+#
+# This installs a ROOT CA (CN=Oakford Internet Services CA, CA:TRUE, valid
+# 16 Aug 2024 - 14 Aug 2034). Anything able to substitute this file can
+# transparently intercept every TLS connection the machine makes, with no
+# browser warning, so it gets two independent protections:
+#
+#   1. https://, not http://. The plain http:// URL 301-redirects here and
+#      wget follows redirects, so the right file did arrive -- but the
+#      request STARTED in cleartext, which means an active attacker on the
+#      path (school wifi included) could answer with their own CA instead
+#      of the redirect and have it trusted fleet-wide. Demanding TLS closes
+#      that: the stock Ubuntu trust store validates oakfordhelp.co.uk
+#      before a single byte of the certificate is read.
+#
+#   2. A SHA-256 pin. Fails CLOSED -- on any mismatch the certificate is
+#      not installed at all. This also catches a legitimate re-issue, which
+#      is deliberate: a new CA should be a conscious decision, not a silent
+#      one. When Oakford re-issue, verify the new fingerprint out of band
+#      and update the line below. Do not delete the check.
+#
+# Verified 30 Aug 2026 against both the live host and the copy already
+# trusted on dell-ubuntu; the two matched.
+OAKFORD_SHA256="70:0D:4D:BA:40:46:29:25:31:7F:9E:C3:33:D5:D7:52:D4:C6:B5:C9:A1:BD:7B:27:BA:B7:12:5C:9C:13:C5:A3"
+
 # Retries as well as the wait above: this is the first network access after
 # the stack was rebuilt, so it is the most likely thing in the script to hit
 # a half-ready connection.
-sudo wget -q --tries=3 --retry-connrefused --waitretry=5 --timeout=20 \
-    http://oakfordhelp.co.uk/oakford.crt \
-    -O /usr/local/share/ca-certificates/oakford.crt
-sudo update-ca-certificates
+#
+# Downloaded as the normal user, not root: only the install needs privilege.
+# No EXIT trap here: this script already owns EXIT for the sudo keepalive
+# set up at the top, and re-arming it would silently discard that, leaving a
+# stray keepalive loop running after the install finished.
+OAKFORD_TMP="$(mktemp)"
 
-# Add to Chrome/Chromium NSS store so Chrome trusts internal services
-mkdir -p "$HOME/.pki/nssdb"
-certutil -d sql:"$HOME/.pki/nssdb" -N -f /dev/null 2>/dev/null || true
-certutil -d sql:"$HOME/.pki/nssdb" -A -t "CT,," -n "Oakford CA" \
-    -f /dev/null -i /usr/local/share/ca-certificates/oakford.crt || true
+if wget -q --tries=3 --retry-connrefused --waitretry=5 --timeout=20 \
+        https://oakfordhelp.co.uk/oakford.crt -O "$OAKFORD_TMP"; then
+    OAKFORD_GOT="$(openssl x509 -in "$OAKFORD_TMP" -noout -fingerprint -sha256 2>/dev/null | cut -d= -f2)"
+    if [ "$OAKFORD_GOT" = "$OAKFORD_SHA256" ]; then
+        sudo install -m 0644 -o root -g root "$OAKFORD_TMP" \
+            /usr/local/share/ca-certificates/oakford.crt
+        sudo update-ca-certificates
+
+        # Add to Chrome/Chromium NSS store so Chrome trusts internal
+        # services. Only reached when the fingerprint matched.
+        mkdir -p "$HOME/.pki/nssdb"
+        certutil -d sql:"$HOME/.pki/nssdb" -N -f /dev/null 2>/dev/null || true
+        certutil -d sql:"$HOME/.pki/nssdb" -A -t "CT,," -n "Oakford CA" \
+            -f /dev/null -i /usr/local/share/ca-certificates/oakford.crt || true
+    else
+        echo "ERROR: Oakford CA fingerprint did NOT match. Certificate NOT installed." >&2
+        echo "  expected: $OAKFORD_SHA256" >&2
+        echo "  received: ${OAKFORD_GOT:-<not a certificate>}" >&2
+        echo "  Internal HTTPS services will not be trusted. Do not work around" >&2
+        echo "  this by installing it manually until the new fingerprint is" >&2
+        echo "  confirmed with Oakford." >&2
+    fi
+else
+    echo "WARNING: could not download the Oakford CA certificate." >&2
+fi
+
+rm -f "$OAKFORD_TMP"
 
 # School wifi profile.
 #

@@ -24,7 +24,7 @@ rclone config
 
 # 4. Create the systemd Service File
 echo "[4/5] Creating background service..."
-mkdir -p $(dirname "$SERVICE_FILE")
+mkdir -p "$(dirname "$SERVICE_FILE")"
 
 cat <<EOF > "$SERVICE_FILE"
 [Unit]
