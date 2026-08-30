@@ -1,0 +1,8 @@
+// DMS Window Rules - Managed by DankMaterialShell
+// Do not edit manually - changes may be overwritten
+
+// @id=wr_1788084513678219657 @name=BambuStudio
+window-rule {
+    match app-id="^BambuStudio$" is-floating=false
+    open-maximized true
+}
