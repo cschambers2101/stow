@@ -18,6 +18,9 @@ dotnet-sdk-10.0
 fastfetch
 fzf
 git
+# gh: students clone/fork over HTTPS and authenticate with "gh auth login",
+# which avoids needing an SSH key at all. See section 15 of the install script.
+gh
 nala
 pandoc
 python3-libtmux
@@ -25,7 +28,11 @@ python3-pip
 python3-psutil
 python3-venv
 ripgrep
-ssh
+# openssh-client only. The "ssh" metapackage also pulls openssh-server,
+# which would leave a listening sshd on every student laptop. Uncomment
+# openssh-server below only if you need to reach the machines remotely.
+openssh-client
+# openssh-server
 starship
 stow
 tmux
@@ -61,6 +68,21 @@ acpi
 # tlp as well - the two conflict.
 power-profiles-daemon
 
+# --- laptop hardware & maintenance ---
+# fwupd ships laptop firmware/BIOS updates over LVFS - worth having on a
+# fleet you will not physically revisit often.
+fwupd
+# bluez arrives with ubuntu-desktop but has no GUI under niri; DMS has a
+# bluetooth widget, blueman is the fallback for stubborn pairings.
+blueman
+gnome-disk-utility
+simple-scan
+# seahorse manages the gnome-keyring where NM wifi/VPN secrets and any
+# SSH key passphrases end up.
+seahorse
+# security updates apply themselves; students will not run apt.
+unattended-upgrades
+
 # --- networking / vpn ---
 # Students add their own VPN profiles. DMS shows and toggles them
 # (Modules/DankBar/Widgets/Vpn.qml) but cannot create them --
@@ -85,7 +107,9 @@ udisks2
 udiskie
 gvfs
 fuse
-p7zip-full
+# p7zip-full was REMOVED in Ubuntu 26.04 - replaced by 7zip (7zz/7z).
+7zip
+7zip-rar
 unzip
 zip
 xz-utils

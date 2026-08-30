@@ -341,13 +341,22 @@ fc-cache -f
 # 11. NODE.JS
 # -----------------------------------------------------------------
 if [ -f "$SCRIPT_DIR/install_node.sh" ]; then
-    bash "$SCRIPT_DIR/install_node.sh"
+    # install_node.sh git-clones node_install into the CURRENT directory, and
+    # section 10 left us in $DOTFILES_DIR. Run it from install_programs/ so the
+    # clone lands where .gitignore expects it, not in the repo root.
+    ( cd "$SCRIPT_DIR" && bash ./install_node.sh )
 else
     echo "WARNING: install_node.sh not found at $SCRIPT_DIR — skipping Node.js install."
 fi
 
 export NVM_DIR="$HOME/.nvm"
-[ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
+# NOT `[ -s ... ] && . ...` : under `set -e` a false test makes the whole
+# AND-list return non-zero and aborts the script silently.
+if [ -s "$NVM_DIR/nvm.sh" ]; then
+    . "$NVM_DIR/nvm.sh"
+else
+    echo "WARNING: nvm not found — skipping the npm-based installs below."
+fi
 
 # -----------------------------------------------------------------
 # 12. YT-DLP, TPM, CLAUDE CODE, GEMINI CLI
@@ -375,6 +384,11 @@ npm install -g @google/gemini-cli || \
 sudo localectl set-x11-keymap gb pc105
 sudo localectl set-locale LANG=en_GB.UTF-8
 
+# The Desktop installer asks for a timezone, but an unattended/preseeded
+# install can land on UTC, which silently skews every timestamp students see.
+sudo timedatectl set-timezone Europe/London
+sudo timedatectl set-ntp true
+
 # -----------------------------------------------------------------
 # 14. POST-INSTALL CONFIGURATION
 #     greetd is enabled LAST so that a failure earlier in this script
@@ -386,6 +400,48 @@ sudo systemctl enable cups          || true
 sudo systemctl enable avahi-daemon  || true
 sudo systemctl enable greetd
 sudo systemctl set-default graphical.target
+
+# -----------------------------------------------------------------
+# 15. PER-STUDENT GIT IDENTITY & GITHUB ACCESS
+#
+#     IMPORTANT: nothing in this script uses the maintainer's GitHub key,
+#     and it must stay that way. A shared private key across a fleet of
+#     student laptops is a shared credential: it cannot be attributed to
+#     anyone, any one lost laptop exposes it, and revoking it breaks every
+#     machine at once.
+#
+#     bootstrap.sh therefore clones this repo over HTTPS, so no key at all
+#     is needed to INSTALL. A credential is only needed to PUSH, and each
+#     student sets up their own below.
+# -----------------------------------------------------------------
+
+# Make sure the clone is on an HTTPS remote. If someone cloned with SSH
+# using a borrowed key, rewrite it so pushes prompt for the student's own
+# GitHub credentials instead of silently using that key.
+if git -C "$DOTFILES_DIR" remote get-url origin 2>/dev/null | grep -q '^git@github.com:'; then
+    OLD_URL="$(git -C "$DOTFILES_DIR" remote get-url origin)"
+    NEW_URL="https://github.com/${OLD_URL#git@github.com:}"
+    echo "Rewriting origin to HTTPS so pushes use this student's own credentials:"
+    echo "    $OLD_URL  ->  $NEW_URL"
+    git -C "$DOTFILES_DIR" remote set-url origin "$NEW_URL"
+fi
+
+# Generate a per-machine SSH key if there isn't one. No passphrase: under
+# niri there is no graphical ssh-askpass in the default session, so a
+# passphrased key would prompt into a void. Students who want one can add
+# it later with `ssh-keygen -p -f ~/.ssh/id_ed25519`.
+if [ ! -f "$HOME/.ssh/id_ed25519" ]; then
+    echo "Generating a per-machine SSH key..."
+    mkdir -p "$HOME/.ssh"
+    chmod 700 "$HOME/.ssh"
+    ssh-keygen -t ed25519 -N "" -C "$(whoami)@$(hostname)" \
+        -f "$HOME/.ssh/id_ed25519" >/dev/null
+fi
+
+GIT_IDENTITY_SET=yes
+if [ -z "$(git config --global user.email 2>/dev/null || true)" ]; then
+    GIT_IDENTITY_SET=no
+fi
 
 # -----------------------------------------------------------------
 echo ""
@@ -400,6 +456,19 @@ echo "  * Home wifi:  DMS control centre, or nm-connection-editor"
 echo "  * VPN:        create the profile in nm-connection-editor, then"
 echo "                toggle it from the DMS bar VPN widget"
 echo "  * Printers:   system-config-printer"
+echo ""
+echo "  GITHUB — set up your OWN access. Never share a private key:"
+if [ "$GIT_IDENTITY_SET" = no ]; then
+    echo "    1. Tell git who you are:"
+    echo "         git config --global user.name  'Your Name'"
+    echo "         git config --global user.email 'you@example.com'"
+fi
+echo "    2. Authenticate. Easiest, no SSH key needed:"
+echo "         gh auth login      (choose GitHub.com -> HTTPS -> browser)"
+echo "       Or add this machine's public key at github.com/settings/keys:"
+if [ -f "$HOME/.ssh/id_ed25519.pub" ]; then
+    sed 's/^/         /' "$HOME/.ssh/id_ed25519.pub"
+fi
 echo ""
 echo "  Mod+Alt+L locks the screen using dank-lock.sh (pixelated"
 echo "  screenshot background)."
