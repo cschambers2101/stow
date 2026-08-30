@@ -90,7 +90,7 @@ autoinstall:
       # its config. A failure here must NOT fail the whole install: the
       # student can still run bootstrap.sh by hand, so warn and carry on.
       if curtin in-target --target=/target -- \
-             sudo -u "$NEWUSER" -H git clone \
+             sudo -u "$NEWUSER" -H git clone --depth 1 \
              https://github.com/cschambers2101/stow.git \
              "/home/$NEWUSER/.dotfiles"; then
           curtin in-target --target=/target -- \

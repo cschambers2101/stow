@@ -49,7 +49,11 @@ elif [ -e "$DOTFILES_DIR" ]; then
     exit 1
 else
     echo "Cloning dotfiles into $DOTFILES_DIR ..."
-    git clone "$REPO_HTTPS" "$DOTFILES_DIR"
+    # --depth 1: the repo's history still contains ~380 MB of wallpapers that
+    # were removed from the working tree in Aug 2026. A full clone downloads
+    # all of it; a shallow one fetches only the current tree, which is ~13 MB.
+    # Nothing in the build reads git history, so there is nothing to lose.
+    git clone --depth 1 "$REPO_HTTPS" "$DOTFILES_DIR"
 fi
 
 INSTALLER="$DOTFILES_DIR/install_programs/ubuntu_26.04_niri_install.sh"
