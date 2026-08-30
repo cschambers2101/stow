@@ -75,6 +75,20 @@ success and the machine looked fine. Check them explicitly.
    password, `/etc/pam.d/dankshell` is missing — again `dms greeter sync`.
 5. **`systemctl --failed`** is empty.
 
+### If you see this, stop
+
+```
+ERROR: Oakford CA fingerprint did NOT match. Certificate NOT installed.
+```
+
+The install adds the Oakford **root CA** to the system trust store, so it is
+fetched over HTTPS with its fingerprint pinned, and refuses to install anything
+that does not match. **Do not install the certificate by hand to get past
+this.** Either Oakford have re-issued it, or something is interfering. Confirm
+the new fingerprint with Oakford, then update `OAKFORD_SHA256`. Internal HTTPS
+sites will not be trusted until then — that is the intended behaviour, not a
+bug.
+
 Two warnings during the run are **expected and harmless**:
 
 - `greeter auto-login sync failed: … memory.json: permission denied` — a
