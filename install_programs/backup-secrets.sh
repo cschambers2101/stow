@@ -76,7 +76,13 @@ do_backup() {
     # machine knows. Skipping them is a warning, not a failure — the rest of
     # the archive is still worth having.
     if [ -d /etc/NetworkManager/system-connections ]; then
-        if sudo -v 2>/dev/null; then
+        # `sudo true`, NOT `sudo -v`. Ubuntu 26.04's sudo-rs fails `sudo -v`
+        # whenever credentials are not already cached, even where policy
+        # would allow the command -- and with stderr suppressed that failure
+        # is silent, so the wifi PSKs would be dropped from the archive
+        # while the backup still reported success. `sudo true` uses the
+        # cached timestamp if there is one and prompts if there is not.
+        if sudo true 2>/dev/null; then
             echo "    NetworkManager profiles"
             mkdir -p "$staging/etc-NetworkManager"
             if sudo cp -a /etc/NetworkManager/system-connections/. \
@@ -89,6 +95,7 @@ do_backup() {
             fi
         else
             echo "    WARNING: no sudo — wifi/VPN profiles NOT backed up."
+            echo "    WARNING: this archive will NOT restore your wifi."
         fi
     fi
 
