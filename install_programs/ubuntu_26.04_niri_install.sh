@@ -251,8 +251,26 @@ EOF
 sudo chmod 600 /etc/netplan/01-network-manager-all.yaml
 sudo netplan apply
 
-# Download and trust the Oakford CA certificate system-wide
-sudo wget -q http://oakfordhelp.co.uk/oakford.crt \
+# `netplan apply` tears down and rebuilds the network stack, and on a fresh
+# desktop it also hard-restarts systemd-networkd (which is not running yet,
+# so its dbus reload fails and it says so loudly -- that noise is expected
+# and netplan still exits 0). The next command downloads a certificate, and
+# without this wait it races the restart and dies with wget's exit 4,
+# "network failure", taking the whole script with it under `set -e`.
+#
+# This is timing-dependent, so it does not fail every time. It killed the
+# first full VM run at this exact line.
+echo "Waiting for the network to come back after netplan apply..."
+if ! nm-online -q --timeout=60; then
+    echo "WARNING: network not online 60s after netplan apply; continuing anyway." >&2
+fi
+
+# Download and trust the Oakford CA certificate system-wide.
+# Retries as well as the wait above: this is the first network access after
+# the stack was rebuilt, so it is the most likely thing in the script to hit
+# a half-ready connection.
+sudo wget -q --tries=3 --retry-connrefused --waitretry=5 --timeout=20 \
+    http://oakfordhelp.co.uk/oakford.crt \
     -O /usr/local/share/ca-certificates/oakford.crt
 sudo update-ca-certificates
 
