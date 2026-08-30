@@ -7,6 +7,14 @@
 # install. NO GitHub key, account or login is required to get here:
 # the clone is over anonymous HTTPS.
 #
+#   bash <(wget -qO- https://raw.githubusercontent.com/cschambers2101/stow/main/install_programs/bootstrap.sh)
+#
+# wget, NOT curl. Ubuntu 26.04.1 Desktop ships wget but NOT curl, so the
+# curl form of this line fails on a stock manual install before it starts.
+# (The autoinstall route installs curl itself, and the main installer
+# apt-installs both in section 2 -- it is only this first fetch that is
+# exposed.) If a machine somehow has curl but not wget:
+#
 #   bash <(curl -fsSL https://raw.githubusercontent.com/cschambers2101/stow/main/install_programs/bootstrap.sh)
 #
 # Requires: Ubuntu 26.04 Desktop, Secure Boot DISABLED, network up.
