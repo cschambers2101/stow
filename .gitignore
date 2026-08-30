@@ -3,3 +3,12 @@
 .local/bin/qtile
 **/__pycache__/
 **/node_install/
+
+# niri / DankMaterialShell: auto-generated backups, matugen output, machine state
+.config/niri/config.kdl.backup*
+.config/niri/config.kdl.dmsbackup*
+.config/niri/dms/*.bak
+.config/niri/dms/colors.kdl
+.config/niri/dms/outputs.kdl
+.config/DankMaterialShell/.firstlaunch
+.config/DankMaterialShell/.changelog-*
