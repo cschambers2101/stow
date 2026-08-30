@@ -489,6 +489,52 @@ else
     echo "WARNING: $S6C_WALLPAPER_SRC not found after stow -- skipping wallpaper setup."
 fi
 
+# --- Default user avatar --------------------------------------------
+#
+#     Without this the greeter shows an empty circle where the user's
+#     face should be. That is an upstream DMS bug, not a missing file:
+#     GreeterContent.qml passes `fallbackIcon: "person"` to
+#     DankCircularImage, and AppIconRenderer dispatches on a PREFIX --
+#     "material:" for a Material Symbols glyph, "svg:"/"image:" for a
+#     path, and anything unprefixed goes to a freedesktop icon-theme
+#     lookup. "person" is unprefixed, and no installed theme has an icon
+#     by that name (Material Symbols does, but it would have to be
+#     "material:person"), so the fallback silently draws nothing.
+#
+#     Patching the shipped QML is not an option on a fleet -- the next
+#     package update would revert it. Instead give the greeter a real
+#     image to find. Its lookup order is:
+#
+#       <cache>/profile.{jpg,jpeg,png,webp}
+#       /var/lib/AccountsService/icons/<user>
+#       ~/.face
+#       ~/.face.icon
+#
+#     ~/.face is the friendliest of those: owned by the user, so they can
+#     replace it without root, and the greeter's own avatar picker will
+#     override it.
+#
+#     The image is ours, stowed from the repo, rather than Yaru's
+#     avatar-default.png -- Yaru's icons are CC-BY-SA and this repo is
+#     public. It is navy #022B3A on cream #FAF7F0 to match brand.md
+#     (13.93:1, AAA) instead of Yaru's bright blue, which clashes badly
+#     with a warm wallpaper. See .local/share/s6c/README.md.
+#
+#     Only seeds when absent, so re-running never overwrites a user's
+#     own picture.
+S6C_AVATAR_SRC="$HOME/.local/share/s6c/avatar-default.png"
+if [ ! -f "$HOME/.face" ] && [ ! -f "$HOME/.face.icon" ]; then
+    if [ -f "$S6C_AVATAR_SRC" ]; then
+        cp "$S6C_AVATAR_SRC" "$HOME/.face" && chmod 0644 "$HOME/.face" && \
+            echo "Seeded default user avatar at ~/.face" || \
+            echo "WARNING: could not seed the default avatar."
+    else
+        echo "WARNING: $S6C_AVATAR_SRC not found after stow -- skipping default avatar."
+    fi
+else
+    echo "User avatar already present -- left alone."
+fi
+
 # --- Push settings and theme into the greeter -----------------------
 #
 #     dankinstall (section 5) sets greetd up, but it does NOT reconcile
