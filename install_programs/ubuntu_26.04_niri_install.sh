@@ -441,7 +441,41 @@ curl -fsSL https://antigravity.google/cli/install.sh | bash || \
 #     the layout from org.freedesktop.locale1. Without this, a fresh
 #     install gives students a US keyboard.
 # -----------------------------------------------------------------
-sudo localectl set-x11-keymap gb pc105
+# NOT `localectl set-x11-keymap`. Ubuntu ships
+#     /usr/share/dbus-1/system.d/org.freedesktop.locale1.read-only.conf
+# which denies SetX11Keyboard and SetVConsoleKeyboard on the system bus to
+# *every* caller, root included:
+#     Rejected send message, 5 matched rules; ... uid=0 ...
+#     member="SetX11Keyboard" ... error-name=...DBus.Error.AccessDenied
+# Keyboard config on Ubuntu belongs to console-setup, so localed may only
+# read it, never write it. Under `set -e` that one line aborted the whole
+# script, taking sections 13-16 with it.
+#
+# localed still *reports* the layout over locale1, which is what niri
+# consumes, so writing the file gets us exactly the property we need --
+# verified: setting XKBLAYOUT=de made `localectl status` report de.
+sudo tee /etc/default/keyboard >/dev/null <<'KBD'
+# Managed by ubuntu_26.04_niri_install.sh
+XKBMODEL="pc105"
+XKBLAYOUT="gb"
+XKBVARIANT=""
+XKBOPTIONS=""
+BACKSPACE="guess"
+KBD
+
+# Seed debconf too, so a later `dpkg-reconfigure keyboard-configuration`
+# agrees with the file instead of reverting it.
+sudo debconf-set-selections <<'DEBCONF' || true
+keyboard-configuration keyboard-configuration/modelcode string pc105
+keyboard-configuration keyboard-configuration/layoutcode string gb
+DEBCONF
+
+# Applies to the virtual consoles. Exits 0 with a note when run off-console
+# (e.g. over ssh), so it is safe under set -e either way.
+sudo setupcon --save || true
+sudo systemctl try-restart systemd-localed.service || true
+
+# SetLocale is *not* in that deny list, so this one still works over D-Bus.
 sudo localectl set-locale LANG=en_GB.UTF-8
 
 # The Desktop installer asks for a timezone, but an unattended/preseeded
