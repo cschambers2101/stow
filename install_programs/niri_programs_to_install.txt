@@ -151,6 +151,19 @@ xclip
 # machine built so far. The mono font is Hack Nerd Font, shipped in the
 # repo, because it carries the icon glyphs DMS draws with.
 fonts-inter-variable
+
+# S6C document and slide fonts. These are for the college's own materials,
+# not the desktop shell.
+#   Ubuntu  -- the sole S6C brand font (brand.md 3.1). Ships with the Ubuntu
+#              desktop already; pinned here so a minimal install still gets it.
+#   Carlito -- metric-compatible substitute for Calibri, which the Accessible
+#              Slide Standard (brand.md 9A) requires for SEND and dyslexia
+#              decks. Calibri itself is not redistributable on Linux. Without
+#              Carlito, Calibri falls back to Noto Sans, whose metrics differ,
+#              so titles sized to fit a slide reflow and overflow.
+#   Arial   -- the brand fallback, provided by ttf-mscorefonts-installer below.
+fonts-ubuntu
+fonts-crosextra-carlito
 fonts-noto-core
 fonts-font-awesome
 fonts-cascadia-code
