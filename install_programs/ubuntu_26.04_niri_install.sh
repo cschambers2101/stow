@@ -21,7 +21,13 @@ fi
 
 # Cache sudo credentials up front: dankinstall's headless mode requires it,
 # and it keeps the rest of the run unattended.
-sudo -v
+#
+# `sudo true`, NOT `sudo -v`. Ubuntu 26.04 ships sudo-rs, whose -v always
+# demands interactive authentication even when policy grants NOPASSWD --
+# so `sudo -v` can never be satisfied in an unattended run. `sudo true`
+# caches the timestamp identically and works in both cases: it prompts
+# once for a human, and passes silently under NOPASSWD.
+sudo true
 # Keep the sudo timestamp alive for the whole run.
 while true; do sudo -n true; sleep 60; kill -0 "$$" 2>/dev/null || exit; done 2>/dev/null &
 SUDO_KEEPALIVE=$!
