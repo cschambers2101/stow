@@ -112,10 +112,14 @@ nvm install --lts
 nvm use --lts
 
 # -----------------------------------------------------------------
-# 10. CLAUDE & GEMINI CLI
+# 10. CLAUDE & ANTIGRAVITY CLI
 # -----------------------------------------------------------------
-npm install -g @google/gemini-cli || \
-    echo "WARNING: Gemini CLI install failed — run 'npm install -g @google/gemini-cli' after reboot."
+# Gemini CLI was deprecated on 2026-06-18 and stopped serving free-tier
+# and AI Pro/Ultra accounts. Antigravity CLI replaces it: a Go binary,
+# no npm, installed to ~/.local/bin/agy.
+#   https://antigravity.google/docs/cli/install
+curl -fsSL https://antigravity.google/cli/install.sh | bash || \
+    echo "WARNING: Antigravity CLI install failed — see https://antigravity.google/docs/cli/install"
 curl -fsSL https://claude.ai/install.sh | bash || \
     echo "WARNING: Claude Code install failed — install manually after reboot."
 

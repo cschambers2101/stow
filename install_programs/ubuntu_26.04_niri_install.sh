@@ -381,7 +381,7 @@ else
 fi
 
 # -----------------------------------------------------------------
-# 12. YT-DLP, TPM, CLAUDE CODE, GEMINI CLI
+# 12. YT-DLP, TPM, CLAUDE CODE, ANTIGRAVITY CLI
 # -----------------------------------------------------------------
 sudo wget -q https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp \
     -O /usr/local/bin/yt-dlp
@@ -394,8 +394,20 @@ fi
 curl -fsSL https://claude.ai/install.sh | bash || \
     echo "WARNING: Claude Code install failed — install manually after reboot."
 
-npm install -g @google/gemini-cli || \
-    echo "WARNING: Gemini CLI install failed — run 'npm install -g @google/gemini-cli' after reboot."
+# Antigravity CLI, NOT Gemini CLI.
+#
+# Google deprecated Gemini CLI on 2026-06-18: it stopped serving requests
+# for the free tier and for Google AI Pro/Ultra, which is what students
+# would be on. Only Gemini Code Assist Standard/Enterprise licences keep
+# working. `npm install -g @google/gemini-cli` therefore installs a tool
+# that authenticates and then fails.
+#
+# The replacement is a Go binary installed by shell script — no npm and no
+# Node dependency — landing at ~/.local/bin/agy. Students run `agy` once to
+# sign in through the browser.
+#   https://antigravity.google/docs/cli/install
+curl -fsSL https://antigravity.google/cli/install.sh | bash || \
+    echo "WARNING: Antigravity CLI install failed — see https://antigravity.google/docs/cli/install"
 
 # -----------------------------------------------------------------
 # 13. MACHINE IDENTITY: KEYBOARD, LOCALE, TIMEZONE, HOSTNAME
