@@ -96,9 +96,25 @@ network-manager-vpnc-gnome
 network-manager-pptp-gnome
 wireguard-tools
 
-# --- printing ---
-# cups/avahi/cups-browsed arrive with ubuntu-desktop; these add the
-# drivers and the GUI students need for school printers.
+# --- printing (PaperCut) ---
+# School printers are PaperCut. Mobility Print has NO Linux client, so
+# Print Deploy is the only supported route - see section 16 of the
+# install script, which fetches its .deb from the PaperCut server.
+#
+# These are its prerequisites, listed explicitly rather than relying on
+# ubuntu-desktop: the Print Deploy postinst hard-fails with "Unable to
+# find cupsd - is CUPS installed?" if cups is missing, and dpkg then
+# errors out mid-install.
+cups
+cups-ipp-utils
+# hard dependency of the Print Deploy client GUI (which is GTK/WebKitGTK,
+# so it runs natively on Wayland - no XWayland needed).
+libwebkit2gtk-4.1-0
+# mDNS, for Mobility Print queues that Print Deploy imports by discovery.
+avahi-daemon
+avahi-utils
+libnss-mdns
+# drivers and the GUI for any non-PaperCut printer (e.g. at home).
 system-config-printer
 printer-driver-all
 

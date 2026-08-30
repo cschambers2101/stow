@@ -119,8 +119,10 @@ fi
 
 # -----------------------------------------------------------------
 # 4. UBUNTU DESKTOP BASE
-#    Provides pipewire/wireplumber (audio), cups + avahi + cups-browsed
-#    (printing), bluez (bluetooth), the xdg portals, and a GNOME session
+#    Provides pipewire/wireplumber (audio), cups + avahi (printing —
+#    DNS-SD browsing moved into cupsd itself in CUPS 2.2.4, so the legacy
+#    cups-browsed is NOT needed), bluez (bluetooth), the xdg portals, and
+#    a GNOME session
 #    as a fallback if niri ever fails to start — worth having on a
 #    student machine.
 #
@@ -517,6 +519,120 @@ if [ -z "$(git config --global user.email 2>/dev/null || true)" ]; then
 fi
 
 # -----------------------------------------------------------------
+# 16. PAPERCUT PRINTING
+#
+#     School printers are PaperCut. The finding that shapes this whole
+#     section: MOBILITY PRINT HAS NO LINUX CLIENT. PaperCut support
+#     Windows, macOS, Chrome, iOS and Android only, and say so plainly:
+#     "Linux devices are not supported because there is no dedicated
+#     Mobility Print client." Print Deploy is the only supported route
+#     onto Linux — and it can itself import Mobility Print queues.
+#       https://www.papercut.com/help/manuals/mobility-print/overview/what-product-to-use-when/
+#
+#     Do NOT be tempted to hand-roll an lpadmin queue against
+#     ipps://user:pass@host:9164/printers/<queue>. That form comes from a
+#     2018 third-party blog post, PaperCut separately state they do not
+#     support IPP Everywhere, and it bakes ONE user's credentials into
+#     the queue — exactly wrong for a shared student image. Print Deploy
+#     runs a localhost IPP proxy (port 9177) that injects whoever is
+#     actually logged in.
+#
+#     Supply the server either way round:
+#       PAPERCUT_SERVER=https://print.school.example:9174 ./ubuntu_26.04_niri_install.sh
+#       ./ubuntu_26.04_niri_install.sh    (prompts; blank skips printing)
+#
+#     ⚠️ Two things to check against YOUR server before trusting this:
+#       1. The download endpoint /print-deploy/client/linux-debian is
+#          confirmed from a live PaperCut-generated client-setup page,
+#          NOT from PaperCut's manual.
+#       2. The port. 9174 is the Print Deploy server's runtime port, but
+#          the client-setup page is served by the Application Server
+#          (9191/9192, or 443 behind a proxy). If the download 404s, try
+#          the Application Server URL instead.
+#
+#     Wayland note: the Print Deploy client GUI is GTK/WebKitGTK, so it
+#     runs natively under niri — no XWayland needed. The older Java Swing
+#     pc-client (the balance/account popup) is a different matter: AWT has
+#     no GA Wayland toolkit, so it would need xwayland-satellite running
+#     and DISPLAY exported, and its XEmbed tray icon will not appear on a
+#     Wayland bar. It is deliberately NOT installed here.
+# -----------------------------------------------------------------
+if [ -z "${PAPERCUT_SERVER:-}" ] && [ -t 0 ]; then
+    echo ""
+    echo "PaperCut Print Deploy server URL, e.g. https://print.school.example:9174"
+    read -r -p "  (blank to skip printer setup): " PAPERCUT_SERVER
+fi
+
+if [ -n "${PAPERCUT_SERVER:-}" ]; then
+    # Strip any trailing slash so the URL join below cannot double up.
+    PAPERCUT_SERVER="${PAPERCUT_SERVER%/}"
+
+    # CUPS must already be installed: the .deb's postinst aborts with
+    # "Unable to find cupsd - is CUPS installed?" and dpkg then errors out.
+    # libwebkit2gtk-4.1-0 is a hard dependency of the client GUI.
+    # avahi-daemon + libnss-mdns are needed for mDNS-discovered queues.
+    echo "Installing Print Deploy prerequisites..."
+    sudo apt install -y --no-install-recommends \
+        cups \
+        cups-ipp-utils \
+        libwebkit2gtk-4.1-0 \
+        avahi-daemon \
+        avahi-utils \
+        libnss-mdns
+
+    # Pre-seed the config so the downloaded filename does not have to carry
+    # the server name. Written BEFORE the package is installed, which is
+    # what --force-confdef below protects.
+    #
+    # StrictSSLCheckingEnabled defaults to true here. Set
+    # PAPERCUT_STRICT_SSL=false only if your PaperCut server presents a
+    # self-signed certificate that is not in the system CA store — section
+    # 9 already installs the Oakford CA, so try true first.
+    sudo mkdir -p /etc/papercut-print-deploy-client
+    sudo tee /etc/papercut-print-deploy-client/client.conf.toml > /dev/null <<EOF
+ServerBaseURL = "${PAPERCUT_SERVER}"
+StrictSSLCheckingEnabled = ${PAPERCUT_STRICT_SSL:-true}
+HTTPProxy = ""
+EOF
+
+    PC_TMP="$(mktemp -d)"
+    # -OJ: the filename arrives via Content-Disposition and encodes the
+    # server address; PaperCut are explicit that it must not be renamed.
+    if ( cd "$PC_TMP" && curl -fL -OJ "${PAPERCUT_SERVER}/print-deploy/client/linux-debian" ); then
+        PC_DEB="$(find "$PC_TMP" -maxdepth 1 -name '*.deb' | head -1)"
+        if [ -n "$PC_DEB" ]; then
+            echo "Installing $(basename "$PC_DEB") ..."
+            # SKIP_DPM must be passed as an ENVIRONMENT VARIABLE — it is not
+            # read from the TOML. It skips the Direct Print Monitor, which a
+            # student laptop does not need.
+            # --force-confdef or dpkg prompts interactively and overwrites
+            # the conffile written above.
+            sudo SKIP_DPM=true dpkg -i --force-confdef "$PC_DEB" || {
+                echo "dpkg reported unmet dependencies — resolving..."
+                sudo apt-get -y -f install
+            }
+            echo "Print Deploy installed. Queues appear after first login."
+            echo "  Logs: /opt/PaperCutPrintDeployClient/data/logs/install.log"
+        else
+            echo "WARNING: download produced no .deb — skipping Print Deploy."
+        fi
+    else
+        echo "WARNING: could not download the Print Deploy client from"
+        echo "         ${PAPERCUT_SERVER}/print-deploy/client/linux-debian"
+        echo "         Check the host and port (9174 vs the App Server's"
+        echo "         9192/443), then install by hand from:"
+        echo "         ${PAPERCUT_SERVER}/print-deploy/client-setup/linux.html"
+    fi
+    rm -rf "$PC_TMP"
+
+    # Note: the Linux Print Deploy client does NOT auto-update. Reinstall
+    # over the top when the server is upgraded, re-passing SKIP_DPM=true.
+else
+    echo "No PaperCut server given — skipping printer setup."
+    echo "Students can still add printers with system-config-printer."
+fi
+
+# -----------------------------------------------------------------
 echo ""
 echo "-------------------------------------------------------"
 echo "SETUP COMPLETE."
@@ -528,7 +644,13 @@ echo "For students:"
 echo "  * Home wifi:  DMS control centre, or nm-connection-editor"
 echo "  * VPN:        create the profile in nm-connection-editor, then"
 echo "                toggle it from the DMS bar VPN widget"
-echo "  * Printers:   system-config-printer"
+if [ -n "${PAPERCUT_SERVER:-}" ]; then
+    echo "  * Printers:   school queues arrive via PaperCut Print Deploy"
+    echo "                shortly after your first login. Home printers:"
+    echo "                system-config-printer"
+else
+    echo "  * Printers:   system-config-printer"
+fi
 echo ""
 echo "  GITHUB — set up your OWN access. Never share a private key:"
 if [ "$GIT_IDENTITY_SET" = no ]; then
