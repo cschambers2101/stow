@@ -235,6 +235,36 @@ if ! grep -vE '^\s*(#|$)' "$PKG_LIST" \
         | xargs -r -n1 sudo apt install -y --no-install-recommends || true
 fi
 
+# Top up Qt's recommends, the way section 4 does for ubuntu-desktop.
+#
+#   Section 1 sets APT::Install-Recommends "false" fleet-wide. That is
+#   right for the bulk list, but it silently broke two separate things,
+#   BOTH of which are `Recommends:` of libqt6gui6:
+#
+#     qt6-svg-plugins       -- without it no Qt6 app can decode an SVG.
+#                              quickshell logged "Unsupported image
+#                              format" for its own greeter logo.
+#     qt6-gtk-platformtheme -- the session sets QT_QPA_PLATFORMTHEME=gtk3
+#                              and this supplies that plugin. Without it
+#                              Qt loads no platform theme, never learns
+#                              the icon theme name, and every
+#                              QIcon::fromTheme() drops to bare hicolor,
+#                              so app tray icons render as checkerboards
+#                              whatever their format.
+#
+#   Both are listed explicitly in the package list as well. This line
+#   exists so the NEXT one we have not thought of is caught too: it fixes
+#   the class rather than the instances. Neither failure announced
+#   itself -- a fleet would have shipped with broken icons and nobody
+#   would have known.
+#
+#   libqt6gui6 is already installed by this point (the DMS stack in
+#   section 5 pulls it in); asking again with --install-recommends only
+#   adds the recommends.
+echo "Topping up Qt6 recommends (icon theme + SVG plugins)..."
+sudo apt install -y --install-recommends libqt6gui6 || \
+    echo "WARNING: could not install libqt6gui6 recommends — expect missing tray icons."
+
 # -----------------------------------------------------------------
 # 7. GOOGLE CHROME
 # -----------------------------------------------------------------
