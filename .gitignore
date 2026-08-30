@@ -1,4 +1,5 @@
 **.swp
+*.bak
 .vim/
 .local/bin/qtile
 **/__pycache__/
@@ -11,5 +12,6 @@
 .config/niri/dms/colors.kdl
 .config/niri/dms/outputs.kdl
 .config/DankMaterialShell/firefox.css
+.config/DankMaterialShell/zen.css
 .config/DankMaterialShell/.firstlaunch
 .config/DankMaterialShell/.changelog-*
