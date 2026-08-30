@@ -179,6 +179,19 @@ fonts-cascadia-code
 fonts-dejavu-core
 ttf-mscorefonts-installer
 libqt6svg6
+# qt6-svg-plugins is NOT optional, despite the name. libqt6svg6 ships the
+#              QtSvg *library* only; the two plugins that let Qt actually
+#              decode an SVG live here -- imageformats/libqsvg.so and
+#              iconengines/libqsvgicon.so. libqt6gui6 merely RECOMMENDS
+#              this package, and section 1 of the installer sets
+#              APT::Install-Recommends "false", so on a fresh build it is
+#              silently absent and NO Qt6 app can render any SVG. Symptom
+#              is easy to misread: quickshell logs "Unsupported image
+#              format" for its own logo and every symbolic tray icon
+#              renders as a checkerboard, while all of DMS's own icons
+#              look fine (they come from a bundled Material Symbols font,
+#              not SVG). Found in the test VM 30 Aug 2026.
+qt6-svg-plugins
 qml6-module-qt5compat-graphicaleffects
 qml6-module-qtquick-layouts
 qml6-module-qtquick-controls

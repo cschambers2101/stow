@@ -152,6 +152,46 @@ if systemctl list-unit-files gdm3.service >/dev/null 2>&1; then
     sudo systemctl disable gdm3 2>/dev/null || true
 fi
 
+# ubuntu-desktop drags in update-notifier. Swap it for the harmless
+# alternative, so nothing nags the student from the tray.
+#
+#   Why not just remove it: ubuntu-desktop, ubuntu-desktop-minimal and
+#   update-manager all declare the ALTERNATIVE dependency
+#   `update-notifier | gnome-package-updater`. One of the two must be
+#   installed. `apt-get remove update-notifier` therefore does not leave
+#   a gap -- apt pulls in gnome-package-updater to satisfy the
+#   alternative, and that is exactly what we want, because:
+#
+#     * gnome-package-updater ships NO /etc/xdg/autostart entry. It is
+#       just /usr/bin/gpk-update-viewer, launched on demand. Nothing
+#       appears in the tray.
+#     * update-notifier ships TWO autostart entries that do --
+#       update-notifier.desktop and, despite the package name,
+#       ubuntu-advantage-notification.desktop (the Ubuntu Pro/livepatch
+#       nag).
+#
+#   Do NOT then remove gnome-package-updater: apt would satisfy the
+#   alternative by reinstalling update-notifier, undoing this.
+#
+#   Nothing is lost. DMS ships its own system updater and on Ubuntu
+#   reports backends "System, Flatpak" -- it covers apt directly, so a
+#   student still has an update path. Verified on dell-ubuntu
+#   30 Aug 2026. Fleet updates belong to whoever runs the fleet anyway.
+#
+#   update-notifier-common is a SEPARATE package and is deliberately
+#   left alone: it provides /usr/lib/update-notifier/apt-check, and both
+#   ubuntu-server and ttf-mscorefonts-installer depend on it.
+#   PURGE, not remove. The two autostart entries are dpkg CONFFILES, so
+#   `apt-get remove` leaves them in /etc/xdg/autostart pointing at a
+#   binary that no longer exists. Verified on dell-ubuntu 30 Aug 2026:
+#   after `remove` the package went to state `rc` and both .desktop
+#   files were still there; `purge` cleared them.
+if dpkg -l update-notifier 2>/dev/null | grep -qE "^(ii|rc)"; then
+    echo "Replacing update-notifier with gnome-package-updater (no tray nag)..."
+    sudo apt-get purge -y update-notifier || \
+        echo "WARNING: could not purge update-notifier."
+fi
+
 # -----------------------------------------------------------------
 # 5. DANK / NIRI STACK
 #    Installs from ppa:avengemedia/danklinux + ppa:avengemedia/dms and
