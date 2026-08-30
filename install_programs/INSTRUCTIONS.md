@@ -1,0 +1,99 @@
+# How to build a machine
+
+From a blank laptop to a working niri / DankMaterialShell desktop.
+
+**Prerequisites:** Ubuntu 26.04 Desktop, **Secure Boot disabled**, network up.
+Run as your normal user — *not* root, and not with `sudo`.
+
+---
+
+## Route A — manual (normal case)
+
+Install Ubuntu 26.04 Desktop as usual, log in, open a terminal and run:
+
+```bash
+bash <(wget -qO- https://raw.githubusercontent.com/cschambers2101/stow/main/install_programs/bootstrap.sh)
+```
+
+**`wget`, not `curl`.** Ubuntu 26.04.1 Desktop ships `wget` but not `curl`, so
+the curl form of this line fails before it starts.
+
+That is the whole thing. `bootstrap.sh` shallow-clones this repo to
+`~/.dotfiles` and hands off to `ubuntu_26.04_niri_install.sh`, which runs 16
+sections: drivers, desktop base, the niri/Dank stack, packages, dotfiles,
+Node, machine identity, printing.
+
+Takes roughly 30–45 minutes on school wifi. **Reboot when it finishes.**
+
+## Route B — unattended (fleet)
+
+For building several machines from a USB stick, see
+[`autoinstall/README.md`](autoinstall/README.md). Short version: write the
+Ubuntu Desktop ISO to one stick with `dd`, then
+
+```bash
+./autoinstall/make-cidata.sh /dev/sdX     # ⚠️ ERASES that device
+```
+
+onto a second small stick, and boot with both plugged in. Cloud-init finds the
+one labelled `CIDATA` and installs unattended, then clones and runs the same
+installer.
+
+---
+
+## The three questions it asks
+
+Interactively it prompts for these. Set them as environment variables first to
+run unattended — each prompt is skipped when its variable is already set or
+when there is no terminal:
+
+| Variable | What it is |
+|----------|------------|
+| `S6C_PSK` | School wifi passphrase |
+| `TARGET_HOSTNAME` | Machine name |
+| `PAPERCUT_SERVER` | Print server, e.g. `https://print.school.example:9174` |
+
+```bash
+S6C_PSK='...' TARGET_HOSTNAME='s6c-laptop-01' ./ubuntu_26.04_niri_install.sh
+```
+
+---
+
+## After the reboot — check these five things
+
+Three of the faults found in testing were **silent**: the install reported
+success and the machine looked fine. Check them explicitly.
+
+1. **The greeter draws** — cream background, ladybird wallpaper, and a
+   round person icon beside the password field. A blank or black screen means
+   graphics, not greetd.
+2. **Tray icons are real icons**, not grey checkerboards. Checkerboards mean
+   `qt6-gtk-platformtheme` is missing.
+3. **The wallpaper is the ladybird**, on both the greeter and the desktop. If
+   the greeter shows a different one, `dms greeter sync` did not run.
+4. **You can lock and unlock** with `Mod+Alt+L`. If unlocking rejects a correct
+   password, `/etc/pam.d/dankshell` is missing — again `dms greeter sync`.
+5. **`systemctl --failed`** is empty.
+
+Two warnings during the run are **expected and harmless**:
+
+- `greeter auto-login sync failed: … memory.json: permission denied` — a
+  group-membership race. It self-heals on first login.
+- `dsearch.service does not exist` — from `danksearch`. Cosmetic.
+
+---
+
+## Where things are
+
+| What | Where |
+|------|-------|
+| Live package list | `niri_programs_to_install.txt` — **edit this one** |
+| Main installer | `ubuntu_26.04_niri_install.sh` |
+| Student entry point | `bootstrap.sh` |
+| Unattended install | `autoinstall/` |
+| Craig's qtile laptop | `ubuntu_26.04_qtile_install.sh` |
+| Chromebook / Crostini | `chromebook_setup.sh` |
+| Not used by anything | `archived/` |
+
+Decisions, research and the rollout runbook live outside this repo, in the
+`linux-device-build-2026` project folder.
