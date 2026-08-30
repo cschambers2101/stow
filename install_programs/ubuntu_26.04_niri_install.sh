@@ -398,7 +398,7 @@ npm install -g @google/gemini-cli || \
     echo "WARNING: Gemini CLI install failed — run 'npm install -g @google/gemini-cli' after reboot."
 
 # -----------------------------------------------------------------
-# 13. KEYBOARD LAYOUT & LOCALE
+# 13. MACHINE IDENTITY: KEYBOARD, LOCALE, TIMEZONE, HOSTNAME
 #     config.kdl leaves niri's xkb block empty on purpose, so niri reads
 #     the layout from org.freedesktop.locale1. Without this, a fresh
 #     install gives students a US keyboard.
@@ -411,12 +411,51 @@ sudo localectl set-locale LANG=en_GB.UTF-8
 sudo timedatectl set-timezone Europe/London
 sudo timedatectl set-ntp true
 
+# Hostname. A fleet of machines all called "ubuntu" is miserable to
+# manage - you cannot tell them apart in DHCP leases, print queues or
+# ssh known_hosts. Supply it either way round:
+#
+#     TARGET_HOSTNAME=s6c-laptop-07 ./ubuntu_26.04_niri_install.sh
+#     ./ubuntu_26.04_niri_install.sh        (prompts, blank = keep current)
+CURRENT_HOSTNAME="$(hostname)"
+if [ -z "${TARGET_HOSTNAME:-}" ] && [ -t 0 ]; then
+    read -r -p "Hostname for this machine [$CURRENT_HOSTNAME]: " TARGET_HOSTNAME
+fi
+
+if [ -n "${TARGET_HOSTNAME:-}" ] && [ "$TARGET_HOSTNAME" != "$CURRENT_HOSTNAME" ]; then
+    # RFC 1123: letters, digits and hyphens only, not starting or ending
+    # with a hyphen. An invalid hostname breaks sudo's reverse lookup.
+    if printf '%s' "$TARGET_HOSTNAME" | grep -qE '^[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?$'; then
+        echo "Setting hostname to $TARGET_HOSTNAME ..."
+        sudo hostnamectl set-hostname "$TARGET_HOSTNAME"
+        # /etc/hosts still maps 127.0.1.1 to the OLD name. Leaving it stale
+        # makes every sudo call wait on a failed name lookup first.
+        sudo sed -i "s/\b${CURRENT_HOSTNAME}\b/${TARGET_HOSTNAME}/g" /etc/hosts
+    else
+        echo "WARNING: '$TARGET_HOSTNAME' is not a valid hostname — keeping $CURRENT_HOSTNAME."
+    fi
+fi
+
 # -----------------------------------------------------------------
 # 14. POST-INSTALL CONFIGURATION
 #     greetd is enabled LAST so that a failure earlier in this script
 #     leaves a working TTY rather than a broken graphical boot.
 # -----------------------------------------------------------------
 xdg-user-dirs-update
+
+# zram compressed swap. zram-tools installs /etc/default/zramswap but does
+# not necessarily enable the unit, and its default ALGO is lz4. zstd
+# compresses substantially better, which matters more than raw speed on
+# the 4-8GB laptops this targets.
+if [ -f /etc/default/zramswap ]; then
+    sudo sed -i 's/^ALGO=.*/ALGO=zstd/'   /etc/default/zramswap
+    sudo sed -i 's/^PERCENT=.*/PERCENT=50/' /etc/default/zramswap
+    sudo systemctl enable --now zramswap.service || \
+        echo "WARNING: zramswap did not start — check 'swapon --show' after reboot."
+else
+    echo "WARNING: /etc/default/zramswap missing — is zram-tools installed?"
+fi
+
 sudo systemctl enable udisks2
 sudo systemctl enable cups          || true
 sudo systemctl enable avahi-daemon  || true

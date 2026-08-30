@@ -1,0 +1,123 @@
+#cloud-config
+#
+# =================================================================
+# UBUNTU 26.04 DESKTOP — UNATTENDED INSTALL FOR STUDENT LAPTOPS
+#
+# This does the OS install only. It then STAGES the niri/Dank setup by
+# cloning the dotfiles repo into the new user's home; the student runs
+# one command on first login to finish (see late-commands below).
+#
+# Why staged rather than fully unattended:
+#   - dankinstall refuses to run as uid 0, and late-commands run as root
+#     in the INSTALLER environment (target mounted at /target), not in a
+#     logged-in user session.
+#   - ubuntu_26.04_niri_install.sh prompts for a sudo password, and
+#     optionally the hostname and school wifi PSK.
+#
+# The heavy, stable part (Ubuntu) is a stock unmodified ISO. The volatile
+# part (our script) is fetched from git at install time, so fixing a bug
+# never means rebuilding a 5GB image.
+#
+# DELIVERY: see README.md in this directory.
+#
+# ⚠️  THIS ERASES DISKS. `storage` is left interactive on purpose so a
+#     human confirms the target disk. See README.md to make it automatic.
+# =================================================================
+
+autoinstall:
+  version: 1
+
+  # Sections listed here still show their normal UI and wait for a human.
+  # Remove `storage` only when you are certain about the target disk.
+  # `identity` stays interactive so each student sets their own username
+  # and password rather than sharing a preseeded credential.
+  interactive-sections:
+    - storage
+    - identity
+
+  # `ubuntu-desktop` is the full desktop seed. `search_drivers: true` lets
+  # the installer offer third-party drivers.
+  source:
+    id: ubuntu-desktop
+    search_drivers: true
+
+  locale: en_GB.UTF-8
+  keyboard:
+    layout: gb
+    variant: ""
+  timezone: Europe/London
+
+  # NVIDIA and other third-party drivers.
+  #
+  # ⚠️  With Secure Boot ENABLED this prompts for a MOK enrollment password
+  #     and the install is no longer unattended. Our stack needs Secure Boot
+  #     off anyway (DKMS: nvidia, broadcom-sta), so disable it in BIOS first.
+  drivers:
+    install: true
+
+  # MP3/H.264 etc. Same restricted-extras the desktop installer offers.
+  codecs:
+    install: true
+
+  updates: security
+
+  # Only what the bootstrap itself needs — everything else comes from
+  # niri_programs_to_install.txt once the machine is up.
+  packages:
+    - git
+    - curl
+    - ca-certificates
+
+  late-commands:
+    # late-commands run as root in the installer, with the installed system
+    # mounted at /target. `curtin in-target --` runs a command inside it.
+    #
+    # `identity` is interactive, so the username is not known here. The
+    # desktop installer creates exactly one human account at uid 1000.
+    - |
+      set -eu
+      NEWUSER="$(awk -F: '$3 == 1000 { print $1; exit }' /target/etc/passwd)"
+      if [ -z "$NEWUSER" ]; then
+          echo "late-commands: no uid 1000 account found, skipping staging" >&2
+          exit 0
+      fi
+
+      # Clone over anonymous HTTPS. No GitHub key, account or login needed.
+      # The repo is named "stow" on GitHub but MUST land at ~/.dotfiles:
+      # the installer derives its stow target from its own location.
+      #
+      # -H so git sees the student's HOME rather than root's when it reads
+      # its config. A failure here must NOT fail the whole install: the
+      # student can still run bootstrap.sh by hand, so warn and carry on.
+      if curtin in-target --target=/target -- \
+             sudo -u "$NEWUSER" -H git clone \
+             https://github.com/cschambers2101/stow.git \
+             "/home/$NEWUSER/.dotfiles"; then
+          curtin in-target --target=/target -- \
+              chmod +x "/home/$NEWUSER/.dotfiles/install_programs/ubuntu_26.04_niri_install.sh"
+      else
+          echo "late-commands: dotfiles clone failed (no network in target?)." >&2
+          echo "late-commands: student must run bootstrap.sh manually." >&2
+      fi
+
+    # Tell the student what to do next, on every login until they do it.
+    - |
+      cat > /target/etc/profile.d/zz-finish-setup.sh <<'PROFILE'
+      # Self-suppressing: the ~/.config/niri symlink only exists once the
+      # setup script has stowed the dotfiles, so this stops printing then.
+      if [ -x "$HOME/.dotfiles/install_programs/ubuntu_26.04_niri_install.sh" ] \
+         && [ ! -L "$HOME/.config/niri" ]; then
+          echo ""
+          echo "  ---------------------------------------------------------"
+          echo "  This machine still needs its desktop set up. Run:"
+          echo ""
+          echo "      ~/.dotfiles/install_programs/ubuntu_26.04_niri_install.sh"
+          echo ""
+          echo "  It takes a while and asks for your password once."
+          echo "  ---------------------------------------------------------"
+          echo ""
+      fi
+      PROFILE
+      chmod 644 /target/etc/profile.d/zz-finish-setup.sh
+
+  shutdown: reboot
