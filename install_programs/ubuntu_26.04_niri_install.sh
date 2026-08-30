@@ -308,11 +308,27 @@ for d in niri DankMaterialShell danksearch; do
     fi
 done
 
-# Do NOT mkdir anything stow provides — see the note above.
+# A fresh Ubuntu install seeds $HOME from /etc/skel — ~/.bashrc and
+# ~/.profile among them. stow refuses to overwrite a real file and aborts
+# the WHOLE deployment, so move aside any top-level dotfile that the repo
+# also provides. Symlinks are left alone, making this safe to re-run.
 cd "$DOTFILES_DIR"
-if [ -n "$(stow -n . 2>&1)" ]; then
+while IFS= read -r f; do
+    if [ -f "$HOME/$f" ] && [ ! -L "$HOME/$f" ]; then
+        echo "Moving aside default $f (repo version wins)..."
+        mv "$HOME/$f" "$HOME/$f.pre-stow.bak"
+    fi
+done < <(find . -maxdepth 1 -type f -name '.*' -printf '%f\n')
+
+# Do NOT mkdir anything stow provides — see the note above.
+#
+# NOTE: `stow -n` always writes "WARNING: in simulation mode..." to
+# stderr, so that line must be filtered out before testing for conflicts.
+# Without the filter the check always trips and stow never runs.
+STOW_CONFLICTS="$(stow -n . 2>&1 | grep -v 'in simulation mode' || true)"
+if [ -n "$STOW_CONFLICTS" ]; then
     echo "WARNING: stow reported conflicts (dry run):"
-    stow -n . 2>&1 | sed 's/^/    /'
+    echo "$STOW_CONFLICTS" | sed 's/^/    /'
     echo "Resolve the above, then run 'stow .' from $DOTFILES_DIR manually."
 else
     stow .
