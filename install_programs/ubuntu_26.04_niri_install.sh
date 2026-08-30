@@ -385,6 +385,108 @@ fi
 
 fc-cache -f
 
+# --- Default wallpaper ---------------------------------------------
+#
+#     The image itself ships in the repo and stow puts it at
+#     ~/.local/share/backgrounds/0288.jpg. Two things still have to be
+#     pointed AT it, and stow covers neither:
+#
+#       1. The greeter runs as user `greeter`, not as the logged-in
+#          user, and greeterWallpaperPath lives in the repo's
+#          settings.json -- ONE file shared by every machine. An
+#          absolute path under /home/<someone> is therefore wrong on
+#          any machine with a different username, and would also lean
+#          on the greeter ACL over that home directory. So the image is
+#          installed to a system-wide, world-readable path instead and
+#          the setting points there.
+#
+#       2. The desktop wallpaper is `wallpaperPath` in
+#          ~/.local/state/DankMaterialShell/session.json. That is
+#          runtime STATE, deliberately not stowed, so on a new machine
+#          it starts empty and the desktop comes up on DMS's default
+#          dark gradient. Seed it here -- but only if the user has not
+#          already chosen something, so re-running never overwrites a
+#          preference.
+#
+#     Not fatal: a machine with no wallpaper still boots to a usable
+#     desktop, so every step below is guarded under `set -e`.
+S6C_WALLPAPER_SRC="$HOME/.local/share/backgrounds/0288.jpg"
+S6C_WALLPAPER="/usr/share/backgrounds/s6c/ladybird.jpg"
+
+if [ -f "$S6C_WALLPAPER_SRC" ]; then
+    if sudo install -d -m 0755 /usr/share/backgrounds/s6c &&
+       sudo install -m 0644 "$S6C_WALLPAPER_SRC" "$S6C_WALLPAPER"; then
+        echo "Default wallpaper installed to $S6C_WALLPAPER"
+    else
+        echo "WARNING: could not install the default wallpaper system-wide."
+    fi
+
+    S6C_SESSION_JSON="$HOME/.local/state/DankMaterialShell/session.json"
+    mkdir -p "$(dirname "$S6C_SESSION_JSON")"
+    python3 - "$S6C_SESSION_JSON" "$S6C_WALLPAPER" <<'PYEOF' ||         echo "WARNING: could not seed the desktop wallpaper."
+import json, os, sys
+
+path, wallpaper = sys.argv[1], sys.argv[2]
+try:
+    with open(path) as fh:
+        data = json.load(fh)
+except (FileNotFoundError, ValueError):
+    data = {}
+
+if data.get("wallpaperPath"):
+    print("Desktop wallpaper already set (%s) -- left alone." % data["wallpaperPath"])
+else:
+    data["wallpaperPath"] = wallpaper
+    # DMS itself writes this file atomically; match that so a running
+    # shell never reads a half-written file.
+    tmp = path + ".tmp"
+    with open(tmp, "w") as fh:
+        json.dump(data, fh, indent=2)
+    os.replace(tmp, path)
+    print("Desktop wallpaper seeded to %s" % wallpaper)
+PYEOF
+else
+    echo "WARNING: $S6C_WALLPAPER_SRC not found after stow -- skipping wallpaper setup."
+fi
+
+# --- Push settings and theme into the greeter -----------------------
+#
+#     dankinstall (section 5) sets greetd up, but it does NOT reconcile
+#     the greeter with THIS user's settings, and nothing else here did
+#     either -- so before this line the build shipped a greeter that was
+#     missing four separate things. `dms greeter status` on a machine
+#     built by the old script reports them:
+#
+#       * The greeter wallpaper never appears. greeterWallpaperPath is
+#         only a SOURCE path; the greeter actually loads a fixed file,
+#         <cache>/greeter_wallpaper_override.jpg, and only the sync
+#         copies it there. Setting the path alone does nothing at all,
+#         silently -- verified in the test VM 30 Aug 2026.
+#       * Greeter colours are never generated from the wallpaper, and
+#         the dms-colors.json symlink points at the wrong file.
+#       * /etc/pam.d/dankshell is not created -- that is the PAM stack
+#         the LOCK SCREEN authenticates against.
+#       * The DMS AppArmor profile is not installed. `dms greeter status`
+#         flags this itself: "Run 'dms greeter sync' to install it and
+#         prevent potential TTY fallback".
+#
+#     Must run AFTER stow (so it reads the repo's settings.json, not
+#     dankinstall's) and AFTER the wallpaper is in place above.
+#
+#     Not fatal: a failed sync leaves a plain but working greeter.
+if command -v dms >/dev/null 2>&1; then
+    echo "Syncing settings, theme and wallpaper into the greeter..."
+    if dms greeter sync; then
+        echo "Greeter synced."
+    else
+        echo "WARNING: 'dms greeter sync' failed. The greeter will still start,"
+        echo "         but it will show default colours and no wallpaper, and the"
+        echo "         lock screen PAM file may be missing. Re-run it by hand."
+    fi
+else
+    echo "WARNING: 'dms' not on PATH -- skipping greeter sync."
+fi
+
 # -----------------------------------------------------------------
 # 11. NODE.JS
 # -----------------------------------------------------------------
