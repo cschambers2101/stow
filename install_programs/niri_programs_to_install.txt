@@ -192,6 +192,24 @@ libqt6svg6
 #              look fine (they come from a bundled Material Symbols font,
 #              not SVG). Found in the test VM 30 Aug 2026.
 qt6-svg-plugins
+# qt6-gtk-platformtheme is the SECOND casualty of the same no-recommends
+#              policy, and the one that actually fixes the broken tray
+#              icons. The session sets QT_QPA_PLATFORMTHEME=gtk3, which
+#              is how a Qt app learns the GTK icon theme name. Without
+#              this plugin Qt loads no platform theme at all, so every
+#              QIcon::fromTheme() lookup falls back to bare hicolor and
+#              any app-supplied tray icon fails -- regardless of whether
+#              it is an SVG or a PNG. That last part is the giveaway:
+#              "livepatch" is a PNG and failed too, which is why
+#              qt6-svg-plugins alone did NOT fix the bar.
+#              Verified in the VM 30 Aug 2026: 3 "Could not load icon"
+#              warnings before, 0 after installing this and restarting
+#              the shell.
+#              NOT added: qt6-qpa-plugins, the third missing recommend.
+#              It only ships a TUIO touch plugin and Qt's own VNC
+#              platform plugin; xcb, wayland, offscreen and eglfs all
+#              come from libqt6gui6 itself.
+qt6-gtk-platformtheme
 qml6-module-qt5compat-graphicaleffects
 qml6-module-qtquick-layouts
 qml6-module-qtquick-controls
