@@ -145,6 +145,12 @@ caca-utils
 xclip
 
 # --- fonts & qt ---
+# DMS's UI font is set to "Inter Variable" in
+# .config/DankMaterialShell/settings.json. Without this it silently falls
+# back to Noto Sans -- fc-match confirmed that was happening on every
+# machine built so far. The mono font is Hack Nerd Font, shipped in the
+# repo, because it carries the icon glyphs DMS draws with.
+fonts-inter-variable
 fonts-noto-core
 fonts-font-awesome
 fonts-cascadia-code
