@@ -113,37 +113,106 @@ last `-drive` expects.
 
 ### Or under libvirt, if you want snapshots
 
-Worth it for repeated runs — a failed setup script becomes a revert rather than
-a reinstall:
+Worth it for repeated runs — reverting a failed setup script takes about half a
+second, against half an hour for a reinstall.
 
 ```bash
 sudo apt install -y virt-manager libvirt-daemon-system libvirt-clients
 sudo usermod -aG libvirt "$USER"        # then LOG OUT AND BACK IN
 mkdir -p "$HOME"/vms                    # virt-install creates the disk, not the dir
 
+# ONE-TIME: a qcow2 copy of the UEFI variable template. Ubuntu ships only raw,
+# and raw nvram cannot be snapshotted. See "The nvram trap" below.
+qemu-img convert -f raw -O qcow2 \
+    /usr/share/OVMF/OVMF_VARS_4M.fd "$HOME"/vms/OVMF_VARS_4M.qcow2
+
 virt-install --connect qemu:///system --name niri-test \
     --memory 4096 --vcpus 2 --cpu host-passthrough \
     --disk path="$HOME"/vms/niri-test.qcow2,size=40,format=qcow2,bus=virtio \
     --cdrom "$HOME"/Downloads/iso/ubuntu-26.04.1-desktop-amd64.iso \
     --osinfo detect=on,require=off \
-    --boot firmware=efi,firmware.feature0.name=secure-boot,firmware.feature0.enabled=no \
+    --boot loader=/usr/share/OVMF/OVMF_CODE_4M.fd,loader.readonly=yes,loader.type=pflash,nvram.template="$HOME"/vms/OVMF_VARS_4M.qcow2,nvram.templateFormat=qcow2 \
+    --xml ./os/nvram/@format=qcow2 \
     --network network=default,model=virtio \
     --graphics vnc,listen=127.0.0.1 --video virtio --sound none --noautoconsole
-
-# snapshot straight after the base install, BEFORE the setup script
-virsh --connect qemu:///system snapshot-create-as niri-test base-install
 ```
 
-Three traps in that command:
+Install Ubuntu, **log in once and clear the GNOME first-run wizard**, then shut
+the guest down and snapshot it. Whatever state you leave it in is what every
+revert lands on, so clearing the wizard now means never seeing it again:
 
-- **`--graphics vnc`, never `spice`.** Ubuntu's QEMU is built without SPICE
-  support and fails outright with `spice graphics are not supported with this
-  QEMU`. `listen=127.0.0.1` keeps the console off the network.
-- **Spell out `firmware.feature0`.** A bare `--boot uefi` may pick the
-  `.secboot` firmware, which is the opposite of what this stack needs.
-- **`require=off`.** OS detection fails on a 26.04 ISO because it is newer than
-  the installed `osinfo-db`; without this the whole command aborts. The fallback
-  costs nothing here, since virtio is set explicitly for disk, net and video.
+```bash
+virsh --connect qemu:///system snapshot-create-as niri-test base-install \
+    "clean 26.04.1, first login done, before setup script"
+
+# the loop, from here on
+virsh --connect qemu:///system snapshot-revert niri-test base-install
+virsh --connect qemu:///system start niri-test
+```
+
+**Snapshot with the guest shut off, not running.** A running snapshot writes the
+guest's whole 4 GB of RAM into the qcow2 on every cycle. Shut-off snapshots are
+disk-only and revert in well under a second.
+
+### The nvram trap
+
+`--graphics spice` fails outright — Ubuntu's QEMU is built without SPICE
+support — so use `vnc`. `listen=127.0.0.1` keeps the console off the network.
+The rest of that command is shaped by one problem, which is worth explaining
+because it fails *late*, after the install, when you first try to snapshot:
+
+```
+error: Operation not supported: internal snapshots of a VM with pflash
+based firmware require QCOW2 nvram format
+```
+
+`virt-install` builds the UEFI variable store in raw format, and libvirt will
+not snapshot a raw one. Three plausible-looking fixes do not work:
+
+- `--boot nvram.format=qcow2` — rejected, `Unknown --boot options`.
+- Setting only `format='qcow2'` on an existing guest — libvirt then refuses to
+  convert the raw *template*: `conversion of the nvram template to another
+  target format is not supported`.
+- Deleting the `template` attributes to sidestep that — libvirt puts them back.
+
+What works is giving libvirt a template that is *already* qcow2, so no
+conversion is asked for. That in turn rules out `--boot firmware=efi`:
+autoselection matches against the firmware descriptors in
+`/usr/share/qemu/firmware/`, and a custom template matches none of them —
+`Unable to find 'efi' firmware that is compatible with the current
+configuration`. Hence the explicit `loader=...` path instead. `OVMF_CODE_4M.fd`
+is the non-Secure-Boot build, which is what this stack wants anyway.
+
+**Retrofitting a guest that is already installed.** Convert the existing file
+rather than regenerating from the template — regenerating discards the UEFI
+boot entry the Ubuntu installer wrote. Shut the guest down first:
+
+```bash
+sudo cp /var/lib/libvirt/qemu/nvram/niri-test_VARS.fd{,.bak}
+sudo qemu-img convert -f raw -O qcow2 \
+    /var/lib/libvirt/qemu/nvram/niri-test_VARS.fd \
+    /var/lib/libvirt/qemu/nvram/niri-test_VARS.qcow2
+
+virsh --connect qemu:///system dumpxml niri-test > niri-test.xml
+```
+
+In that file, replace the whole `<os>` opening tag and firmware block — drop
+`firmware='efi'` and the `<firmware>` feature list, keep an explicit loader, and
+point `<nvram>` at the qcow2 template and the converted file:
+
+```xml
+  <os>
+    <type arch='x86_64' machine='pc-i440fx-resolute'>hvm</type>
+    <loader readonly='yes' type='pflash' format='raw'>/usr/share/OVMF/OVMF_CODE_4M.fd</loader>
+    <nvram template='/home/YOU/vms/OVMF_VARS_4M.qcow2' templateFormat='qcow2' format='qcow2'>/var/lib/libvirt/qemu/nvram/niri-test_VARS.qcow2</nvram>
+    <boot dev='hd'/>
+  </os>
+```
+
+Then `virsh --connect qemu:///system define niri-test.xml` and boot it once to
+confirm it still finds the bootloader before you snapshot.
+
+### Permissions
 
 Under `qemu:///system` the guest runs as `libvirt-qemu`, which cannot traverse a
 `750` home directory to reach the ISO. Grant traverse-only access rather than
