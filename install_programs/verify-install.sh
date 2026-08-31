@@ -154,6 +154,28 @@ if dpkg -s update-notifier 2>/dev/null | grep -q '^Status: install ok installed'
 else pass "update-notifier purged" ""; fi
 
 # -----------------------------------------------------------------
+echo "--- file integrity ---"
+# Catches a corrupted install. On 31 Aug 2026 Google Chrome's 141 MB binary
+# was silently corrupt on a freshly built machine: same package version, but
+# a different md5, and it segfaulted in the dynamic linker on every launch --
+# including `--version`. Reinstalling the identical package from Google
+# fixed it. apt verifies checksums on DOWNLOAD, so the damage happened
+# during or after unpacking, and nothing reported it.
+#
+# 99% of packages ship md5sums, so this is a reliable detector; it would have
+# found that in seconds instead of an afternoon.
+if have_sudo; then
+    DPKGV="$(sudo dpkg -V 2>/dev/null | wc -l)"
+    if [ "$DPKGV" = "0" ]; then
+        pass "installed files match their checksums" ""
+    else
+        fail "installed files match their checksums" "$DPKGV file(s) differ — run: sudo dpkg -V"
+    fi
+else
+    skip "installed files match their checksums" "needs sudo"
+fi
+
+# -----------------------------------------------------------------
 echo "--- node ---"
 # Silent failure, found on two machines at once: node v24 was installed and
 # completely unreachable because .bashrc pinned NVM_DIR to ~/.config/nvm
