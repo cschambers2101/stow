@@ -1,0 +1,265 @@
+#!/usr/bin/env python3
+"""
+ytmusic-tag — fill in album, year and real cover art from MusicBrainz.
+
+WHY THIS EXISTS
+
+YouTube supplies no album metadata at all. Checked directly: `album`, `track`
+and `release_year` come back NA for AC/DC's Thunderstruck on both youtube.com
+and music.youtube.com, and a search returns no "- Topic" art-track upload that
+would have carried it. So every download shows as "Unknown album" in a player,
+and the embedded art is a 16:9 video still with a vevo logo in the corner
+rather than a cover.
+
+MusicBrainz and the Cover Art Archive fix both, are free and open, and need no
+API key.
+
+THE PART THAT NEEDS CARE
+
+A naive "first result" lookup is confidently WRONG. Measured:
+
+  iTunes       Thunderstruck -> "Iron Man 2"          (a film soundtrack)
+  MusicBrainz  Thunderstruck -> "No Bull: Live"       (a live album)
+               Bohemian Rhapsody -> "Zoom 1979"       (a bootleg)
+
+The searches are dominated by bootlegs, live records and compilations, and
+tagging a library with those is worse than leaving it blank: wrong data looks
+authoritative and nobody re-checks it. Two filters fix it, and both are needed:
+
+  1. The recording's artist credit must actually match. Without this a
+     same-titled song by someone else scores 100 and wins.
+  2. The release group must be primary-type Album with NO secondary types,
+     which is what excludes Live, Compilation, Soundtrack and Remix.
+
+Then take the EARLIEST such release, which is the original album rather than a
+reissue. With both filters: The Razors Edge (1990), A Night At The Opera
+(1975), Appetite for Destruction. Verified.
+
+MusicBrainz returns 503 under load fairly often -- it did repeatedly while this
+was being written -- so every request retries with backoff, and the whole thing
+fails soft. A lookup that cannot complete must never cost you the download you
+already have.
+"""
+
+import base64
+import json
+import re
+import struct
+import sys
+import time
+import urllib.error
+import urllib.parse
+import urllib.request
+from pathlib import Path
+
+UA = "ytmusic-tag/1.0 ( https://github.com/cschambers2101/stow )"
+MB = "https://musicbrainz.org/ws/2"
+CAA = "https://coverartarchive.org"
+RATE = 1.1          # MusicBrainz asks for no more than 1 request/second
+# Backoff for a throttle, not a blip: MusicBrainz 503s can persist for minutes.
+BACKOFF = (5, 15, 30, 60)
+_last_call = [0.0]
+
+
+def http(url, timeout=25, tries=5, binary=False):
+    """GET with backoff. MusicBrainz 503s under load; that is not an error."""
+    for attempt in range(tries):
+        wait = RATE - (time.time() - _last_call[0])
+        if wait > 0:
+            time.sleep(wait)
+        _last_call[0] = time.time()
+        try:
+            req = urllib.request.Request(url, headers={"User-Agent": UA})
+            with urllib.request.urlopen(req, timeout=timeout) as r:
+                return r.read() if binary else json.load(r)
+        except urllib.error.HTTPError as e:
+            if e.code == 404:
+                return None
+            if attempt == tries - 1:
+                raise
+            # 503 here is usually a temporary THROTTLE, not an outage, and it
+            # can last minutes rather than seconds. Backing off by 2s and
+            # giving up reports a failure for something that would have worked.
+            time.sleep(BACKOFF[min(attempt, len(BACKOFF) - 1)])
+        except Exception:
+            if attempt == tries - 1:
+                raise
+            time.sleep(BACKOFF[min(attempt, len(BACKOFF) - 1)])
+    return None
+
+
+def norm(s):
+    return re.sub(r"[^a-z0-9]", "", (s or "").lower())
+
+
+def lookup(artist, title):
+    """Return (album, year, release_mbid) for the original studio release."""
+    query = f'recording:"{title}" AND artist:"{artist}"'
+    url = f"{MB}/recording?" + urllib.parse.urlencode(
+        {"query": query, "fmt": "json", "limit": 100})
+    data = http(url)
+    if not data:
+        return None
+
+    want = norm(artist)
+    want_title = norm(title)
+    found = []
+    for rec in data.get("recordings", []):
+        if rec.get("score", 0) < 90:
+            continue
+        credit = norm("".join(a.get("name", "") for a in rec.get("artist-credit", [])))
+        # Substring either way: "AC/DC" vs "AC/DC feat. someone".
+        if want not in credit and credit not in want:
+            continue
+        if norm(rec.get("title")) != want_title:
+            continue
+        for rel in rec.get("releases", []):
+            group = rel.get("release-group") or {}
+            if group.get("primary-type") != "Album":
+                continue
+            if group.get("secondary-types"):      # Live / Compilation / Soundtrack
+                continue
+            # Bootlegs are typed as plain Albums with no secondary types, so
+            # the two filters above do NOT exclude them. Without this, Bohemian
+            # Rhapsody tagged as "In the Lap of the Queen" (1991) -- and did so
+            # only intermittently, because MusicBrainz result ordering varies
+            # between identical queries. When the canonical release happens not
+            # to come back, a bootleg wins on its own merits.
+            if rel.get("status") != "Official":
+                continue
+            # Prefer the RELEASE GROUP's first-release-date over this pressing's.
+            # The pressing date is whichever reissue happened to come back, and
+            # it varies run to run: Bohemian Rhapsody alternated between 1975
+            # and a 2001 remaster. The group's date is the original either way.
+            date = group.get("first-release-date") or rel.get("date") or ""
+            found.append((date[:4] or "9999", rel.get("title"), rel.get("id")))
+
+    if not found:
+        return None
+    found.sort()                                  # earliest == the original
+    year, album, mbid = found[0]
+    return album, (None if year == "9999" else year), mbid
+
+
+def cover(mbid):
+    try:
+        return http(f"{CAA}/release/{mbid}/front-500", binary=True, tries=2)
+    except Exception:
+        return None
+
+
+def flac_picture(jpeg):
+    """Build the FLAC PICTURE block Ogg/Opus wants, as base64."""
+    mime = b"image/jpeg"
+    out = struct.pack(">I", 3)                    # type 3 = front cover
+    out += struct.pack(">I", len(mime)) + mime
+    out += struct.pack(">I", 0)                   # empty description
+    # width/height/depth/colours: 0 is legal and players read the real image
+    out += struct.pack(">IIII", 0, 0, 0, 0)
+    out += struct.pack(">I", len(jpeg)) + jpeg
+    return base64.b64encode(out).decode("ascii")
+
+
+def tag_file(path, dry=False, art=True):
+    from mutagen.oggopus import OggOpus
+    from mutagen.mp3 import MP3
+    from mutagen.mp4 import MP4, MP4Cover
+    from mutagen.id3 import APIC, TALB, TDRC
+
+    suffix = path.suffix.lower()
+    if suffix == ".opus":
+        f = OggOpus(path)
+        artist = (f.get("artist") or [None])[0]
+        title = (f.get("title") or [None])[0]
+        existing = (f.get("album") or [None])[0]
+    elif suffix == ".mp3":
+        f = MP3(path)
+        artist = str(f.get("TPE1")) if f.get("TPE1") else None
+        title = str(f.get("TIT2")) if f.get("TIT2") else None
+        existing = str(f.get("TALB")) if f.get("TALB") else None
+    elif suffix in (".m4a", ".aac", ".mp4"):
+        f = MP4(path)
+        artist = (f.get("\xa9ART") or [None])[0]
+        title = (f.get("\xa9nam") or [None])[0]
+        existing = (f.get("\xa9alb") or [None])[0]
+    else:
+        return "skip", f"unsupported format {suffix}"
+
+    if not artist or not title:
+        return "skip", "no artist/title tags to search on"
+    if existing:
+        return "skip", f"already has album {existing!r}"
+
+    hit = lookup(artist, title)
+    if not hit:
+        return "none", f"{artist} - {title}: no original studio album found"
+    album, year, mbid = hit
+
+    if dry:
+        return "dry", f"{artist} - {title} -> {album!r} ({year or '?'})"
+
+    jpeg = cover(mbid) if art else None
+
+    if suffix == ".opus":
+        f["album"] = album
+        if year:
+            f["date"] = year
+        if jpeg:
+            f["metadata_block_picture"] = [flac_picture(jpeg)]
+    elif suffix == ".mp3":
+        f.tags.add(TALB(encoding=3, text=album))
+        if year:
+            f.tags.add(TDRC(encoding=3, text=year))
+        if jpeg:
+            f.tags.delall("APIC")
+            f.tags.add(APIC(encoding=3, mime="image/jpeg", type=3, desc="", data=jpeg))
+    else:
+        f["\xa9alb"] = album
+        if year:
+            f["\xa9day"] = year
+        if jpeg:
+            f["covr"] = [MP4Cover(jpeg, imageformat=MP4Cover.FORMAT_JPEG)]
+
+    f.save()
+    art_note = "with cover art" if jpeg else "no cover art available"
+    return "ok", f"{artist} - {title} -> {album!r} ({year or '?'}), {art_note}"
+
+
+def main(argv):
+    dry = "-n" in argv or "--dry-run" in argv
+    no_art = "--no-art" in argv
+    args = [a for a in argv if not a.startswith("-")]
+    if not args:
+        print(__doc__.strip().splitlines()[0])
+        print("\nusage: ytmusic-tag [-n] [--no-art] <file|directory> ...")
+        return 2
+
+    files = []
+    for a in args:
+        p = Path(a).expanduser()
+        if p.is_dir():
+            files += sorted(x for x in p.rglob("*")
+                            if x.suffix.lower() in (".opus", ".mp3", ".m4a", ".aac"))
+        elif p.exists():
+            files.append(p)
+
+    if not files:
+        print("ytmusic-tag: nothing to do")
+        return 0
+
+    counts = {}
+    for p in files:
+        try:
+            status, msg = tag_file(p, dry=dry, art=not no_art)
+        except Exception as e:
+            status, msg = "error", f"{p.name}: {type(e).__name__}: {e}"
+        counts[status] = counts.get(status, 0) + 1
+        print(f"  [{status:5}] {msg}")
+
+    print("  " + "  ".join(f"{k}={v}" for k, v in sorted(counts.items())))
+    # Never fail the caller: a missing album is not worth a non-zero exit.
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1:]))

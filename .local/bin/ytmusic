@@ -59,6 +59,7 @@ Options:
   --dir <path>   destination (default ~/Music, or $YTMUSIC_DIR)
   --max-dur <s>  reject anything longer (default 900s) — catches compilations
   -n, --dry-run  show what each input resolves to, download nothing
+  --no-lookup    skip the MusicBrainz album/cover-art pass afterwards
   -h, --help     this
 
 A "watch?v=...&list=..." url downloads ONE song, not the whole list.
@@ -145,6 +146,7 @@ to_target() {
 TARGETS=()
 POS=()
 DRYRUN=0
+LOOKUP=1
 
 while [ "$#" -gt 0 ]; do
     case "$1" in
@@ -156,6 +158,7 @@ while [ "$#" -gt 0 ]; do
         --dir)      shift; MUSIC_DIR="${1:?--dir needs a path}" ;;
         --max-dur)  shift; MAXDUR="${1:?--max-dur needs seconds}" ;;
         -n|--dry-run) DRYRUN=1 ;;
+        --no-lookup)  LOOKUP=0 ;;
         -h|--help)  usage; exit 0 ;;
         --from-file)
             shift
@@ -325,6 +328,17 @@ for raw in "${TARGETS[@]}"; do
         echo "[$i/$total] FAILED: $raw" >&2
     fi
 done
+
+# YouTube supplies no album metadata at all, so without this every track shows
+# as "Unknown album" and carries a 16:9 video still instead of a cover.
+# ytmusic-tag fills both in from MusicBrainz and the Cover Art Archive. It
+# skips anything already tagged, so re-running costs nothing, and it never
+# fails the download that already succeeded.
+if [ "$LOOKUP" -eq 1 ] && [ "$DRYRUN" -eq 0 ] && command -v ytmusic-tag >/dev/null 2>&1; then
+    echo ""
+    echo "Looking up albums and cover art..."
+    ytmusic-tag "$MUSIC_DIR" || true
+fi
 
 if [ "${#failed[@]}" -gt 0 ]; then
     echo "" >&2
