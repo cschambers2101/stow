@@ -5,6 +5,16 @@
 **/__pycache__/
 **/node_install/
 
+# Vendor CLI tools install themselves into ~/.local/bin, which is a stow
+# symlink INTO this repo -- so their binaries land inside the working tree.
+# On a machine built by the installer, `agy` alone is a 199 MB binary sitting
+# in git status. Neither belongs in a dotfiles repo: agy is a vendored blob,
+# and claude is a symlink to a version-pinned absolute path
+# (~/.local/share/claude/versions/N.N.N) that is wrong on every other machine.
+# Both are reinstalled by the setup script, so nothing is lost by ignoring them.
+.local/bin/agy
+.local/bin/claude
+
 # niri / DankMaterialShell: auto-generated backups, matugen output, machine state
 .config/niri/config.kdl.backup*
 .config/niri/config.kdl.dmsbackup*
