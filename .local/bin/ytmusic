@@ -274,6 +274,17 @@ for raw in "${TARGETS[@]}"; do
         --restrict-filenames
         --embed-metadata
         --embed-thumbnail
+        # Square-crop the thumbnail. This is a FALLBACK: ytmusic-tag normally
+        # replaces the art with the real cover from the Cover Art Archive, which
+        # is already square. It only shows for tracks MusicBrainz cannot match,
+        # and without it those keep YouTube's 16:9 video still -- letterboxed,
+        # usually with a vevo logo in the corner -- which looks broken sitting in
+        # a grid of square covers.
+        # crop=ih:ih, NOT crop=min(iw,ih):min(iw,ih): ffmpeg reads the comma
+        # inside min() as a filtergraph separator and dies with "Filter not
+        # found". Cropping to the height is correct anyway, since YouTube
+        # thumbnails are always landscape.
+        --ppa "ThumbnailsConvertor+ffmpeg_o:-vf crop=ih:ih"
         --download-archive "$ARCHIVE"
         --paths "$MUSIC_DIR"
         --no-warnings
