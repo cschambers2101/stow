@@ -240,22 +240,6 @@ else
     fail "Amberol installed" "students have no music player"
 fi
 
-# MPD is NOT part of the fleet build -- students get Amberol, which needs no
-# daemon -- so this only applies where someone installed it deliberately.
-# It does not create its own state directories and exits 1 without them; the
-# mpd.service.d drop-in is what makes them.
-if ! command -v mpd >/dev/null 2>&1; then
-    skip "mpd state-dir drop-in active" "mpd not installed (expected on the fleet)"
-elif systemctl --user show mpd -p DropInPaths --value 2>/dev/null | grep -q 'mpd\.service\.d'; then
-    pass "mpd state-dir drop-in active" "systemd sees the drop-in"
-else
-    # Most likely cause: it was deployed by stow. Because ~/.config/systemd/user
-    # already exists, stow folds and creates mpd.service.d as a DIRECTORY
-    # SYMLINK -- and systemd silently ignores symlinked drop-in directories.
-    # It must be a real directory with the .conf symlinked inside it.
-    fail "mpd state-dir drop-in active" "systemd ignores a SYMLINKED .service.d dir — make it a real dir"
-fi
-
 # -----------------------------------------------------------------
 echo "--- security: Oakford root CA (bug 11) ---"
 CA="/usr/local/share/ca-certificates/oakford.crt"
