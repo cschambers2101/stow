@@ -34,12 +34,30 @@ SUDO_KEEPALIVE=$!
 trap 'kill "$SUDO_KEEPALIVE" 2>/dev/null || true' EXIT
 
 # -----------------------------------------------------------------
-# 1. LOCK DOWN APT (no recommended/suggested packages)
-#    NOTE: section 4 deliberately overrides this for ubuntu-desktop.
+# 1. APT SOURCES
+#
+#    The fleet-wide no-recommends lockdown was REMOVED on 31 Aug 2026
+#    (Craig's call: match a stock Ubuntu desktop). It used to write
+#    APT::Install-Recommends "false" here, and it cost more than it saved.
+#
+#    Two shipped bugs came from it, both silent, both `Recommends:` of
+#    libqt6gui6:
+#
+#      qt6-svg-plugins      -- no Qt6 app could decode an SVG; quickshell
+#                              logged "Unsupported image format" for its own
+#                              greeter logo and the avatar was an empty circle
+#      qt6-gtk-platformtheme -- every tray icon rendered as a transparency
+#                              checkerboard
+#
+#    Each was found and patched individually before the pattern was spotted,
+#    which is the real argument: the policy converts a maintainer's
+#    considered "you probably want this too" into a silent absence, and you
+#    only discover which ones mattered by shipping and looking.
+#
+#    Recommends are deliberately NOT disabled here any more. The file is
+#    actively removed so re-running on an already-built machine undoes it.
 # -----------------------------------------------------------------
-sudo mkdir -p /etc/apt/apt.conf.d
-echo 'APT::Install-Recommends "false";' | sudo tee /etc/apt/apt.conf.d/99no-recommends
-echo 'APT::Install-Suggests "false";'   | sudo tee -a /etc/apt/apt.conf.d/99no-recommends
+sudo rm -f /etc/apt/apt.conf.d/99no-recommends
 
 sudo add-apt-repository -y restricted
 sudo add-apt-repository -y multiverse
@@ -48,7 +66,7 @@ sudo apt update
 # -----------------------------------------------------------------
 # 2. KERNEL HEADERS, BUILD TOOLS & DRIVER UTILITIES
 # -----------------------------------------------------------------
-sudo apt install -y --no-install-recommends \
+sudo apt install -y \
     "linux-headers-$(uname -r)" \
     build-essential \
     dkms \
@@ -75,7 +93,7 @@ echo "Detected graphics:"
 echo "$GPU_INFO" | sed 's/^/    /'
 
 # --- Mesa + VA-API core (needed by every vendor) ---
-sudo apt install -y --no-install-recommends \
+sudo apt install -y \
     mesa-va-drivers \
     mesa-vulkan-drivers \
     libva2 \
@@ -112,15 +130,15 @@ if echo "$GPU_INFO" | grep -qi intel; then
     echo "Intel GPU detected — installing VA-API drivers..."
     # non-free variant covers H.264/HEVC decode on Gen9+; the plain
     # driver is the fallback for older parts.
-    sudo apt install -y --no-install-recommends intel-media-va-driver-non-free || \
-        sudo apt install -y --no-install-recommends intel-media-va-driver || \
+    sudo apt install -y intel-media-va-driver-non-free || \
+        sudo apt install -y intel-media-va-driver || \
         echo "WARNING: Intel VA-API driver not installed — video decode will be CPU-bound."
 fi
 
 if echo "$GPU_INFO" | grep -qiE "amd|radeon|advanced micro devices"; then
     echo "AMD GPU detected — amdgpu is in-kernel; ensuring firmware and Vulkan..."
     # linux-firmware is also installed in section 9; harmless if already present.
-    sudo apt install -y --no-install-recommends linux-firmware libdrm-amdgpu1 || true
+    sudo apt install -y linux-firmware libdrm-amdgpu1 || true
 fi
 
 # -----------------------------------------------------------------
@@ -136,9 +154,10 @@ fi
 #    present and the command is a no-op. Kept so the script also works
 #    on a Server base.
 #
-#    --install-recommends is REQUIRED here: ubuntu-desktop pulls most of
-#    the actual desktop in via Recommends, so under the global
-#    no-recommends policy from section 1 you would get a hollow install.
+#    --install-recommends is kept explicit even though it is now the
+#    default: ubuntu-desktop pulls most of the actual desktop in via
+#    Recommends, so if anyone ever reinstates a no-recommends policy this
+#    line still produces a real desktop rather than a hollow one.
 # -----------------------------------------------------------------
 sudo apt install -y --install-recommends ubuntu-desktop
 
@@ -229,41 +248,21 @@ echo "ttf-mscorefonts-installer msttcorefonts/accepted-mscorefonts-eula select t
     | sudo debconf-set-selections
 
 if ! grep -vE '^\s*(#|$)' "$PKG_LIST" \
-        | xargs -r sudo apt install -y --no-install-recommends; then
+        | xargs -r sudo apt install -y; then
     echo "Bulk install failed — retrying individually to isolate the bad package(s)..."
     grep -vE '^\s*(#|$)' "$PKG_LIST" \
-        | xargs -r -n1 sudo apt install -y --no-install-recommends || true
+        | xargs -r -n1 sudo apt install -y || true
 fi
 
-# Top up Qt's recommends, the way section 4 does for ubuntu-desktop.
+# The Qt6 recommends top-up that used to live here is GONE, because the
+# no-recommends policy it worked around is gone (section 1).
 #
-#   Section 1 sets APT::Install-Recommends "false" fleet-wide. That is
-#   right for the bulk list, but it silently broke two separate things,
-#   BOTH of which are `Recommends:` of libqt6gui6:
-#
-#     qt6-svg-plugins       -- without it no Qt6 app can decode an SVG.
-#                              quickshell logged "Unsupported image
-#                              format" for its own greeter logo.
-#     qt6-gtk-platformtheme -- the session sets QT_QPA_PLATFORMTHEME=gtk3
-#                              and this supplies that plugin. Without it
-#                              Qt loads no platform theme, never learns
-#                              the icon theme name, and every
-#                              QIcon::fromTheme() drops to bare hicolor,
-#                              so app tray icons render as checkerboards
-#                              whatever their format.
-#
-#   Both are listed explicitly in the package list as well. This line
-#   exists so the NEXT one we have not thought of is caught too: it fixes
-#   the class rather than the instances. Neither failure announced
-#   itself -- a fleet would have shipped with broken icons and nobody
-#   would have known.
-#
-#   libqt6gui6 is already installed by this point (the DMS stack in
-#   section 5 pulls it in); asking again with --install-recommends only
-#   adds the recommends.
-echo "Topping up Qt6 recommends (icon theme + SVG plugins)..."
-sudo apt install -y --install-recommends libqt6gui6 || \
-    echo "WARNING: could not install libqt6gui6 recommends — expect missing tray icons."
+# It existed to force back two Recommends of libqt6gui6 -- qt6-svg-plugins
+# and qt6-gtk-platformtheme -- after the fleet-wide policy dropped them and
+# silently broke SVG decoding and every tray icon. Both are now pulled in
+# normally, and both remain named explicitly in
+# niri_programs_to_install.txt, so they are installed twice over rather
+# than not at all.
 
 # -----------------------------------------------------------------
 # 7. GOOGLE CHROME
@@ -273,12 +272,12 @@ wget -q -O - https://dl.google.com/linux/linux_signing_key.pub \
 echo "deb [arch=amd64 signed-by=/usr/share/keyrings/google-chrome-keyring.gpg] http://dl.google.com/linux/chrome/deb/ stable main" \
     | sudo tee /etc/apt/sources.list.d/google-chrome.list
 sudo apt update
-sudo apt install -y --no-install-recommends google-chrome-stable
+sudo apt install -y google-chrome-stable
 
 # -----------------------------------------------------------------
 # 8. FLATPAK APPS
 # -----------------------------------------------------------------
-sudo apt install -y --no-install-recommends flatpak gnome-software-plugin-flatpak
+sudo apt install -y flatpak gnome-software-plugin-flatpak
 sudo flatpak remote-add --if-not-exists flathub \
     https://flathub.org/repo/flathub.flatpakrepo
 sudo flatpak install -y flathub com.bambulab.BambuStudio org.freecad.FreeCAD || \
@@ -287,7 +286,7 @@ sudo flatpak install -y flathub com.bambulab.BambuStudio org.freecad.FreeCAD || 
 # -----------------------------------------------------------------
 # 9. NETWORKING, CERTIFICATE & WIFI PROFILES
 # -----------------------------------------------------------------
-sudo apt install -y --no-install-recommends \
+sudo apt install -y \
     linux-firmware \
     wpasupplicant \
     iw \
@@ -299,7 +298,7 @@ sudo apt install -y --no-install-recommends \
 # already handles.
 if lspci -nn | grep -iE "network|wireless" | grep -qi broadcom; then
     echo "Broadcom wireless detected — installing broadcom-sta-dkms..."
-    sudo apt install -y --no-install-recommends broadcom-sta-dkms || \
+    sudo apt install -y broadcom-sta-dkms || \
         echo "WARNING: broadcom-sta-dkms failed — check wifi after reboot."
 else
     echo "No Broadcom wireless detected — skipping broadcom-sta-dkms."
@@ -929,7 +928,7 @@ if [ -n "${PAPERCUT_SERVER:-}" ]; then
     # libwebkit2gtk-4.1-0 is a hard dependency of the client GUI.
     # avahi-daemon + libnss-mdns are needed for mDNS-discovered queues.
     echo "Installing Print Deploy prerequisites..."
-    sudo apt install -y --no-install-recommends \
+    sudo apt install -y \
         cups \
         cups-ipp-utils \
         libwebkit2gtk-4.1-0 \

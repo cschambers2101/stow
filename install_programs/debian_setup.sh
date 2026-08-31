@@ -17,8 +17,9 @@ sudo sed -i 's/main$/main contrib non-free non-free-firmware/g' /etc/apt/sources
 
 # Force no-recommends for a lean Qtile build
 sudo mkdir -p /etc/apt/apt.conf.d
-echo 'APT::Install-Recommends "false";' | sudo tee /etc/apt/apt.conf.d/99no-recommends
-echo 'APT::Install-Suggests "false";'   | sudo tee -a /etc/apt/apt.conf.d/99no-recommends
+# No-recommends lockdown REMOVED 31 Aug 2026 -- see section 1 of
+# ubuntu_26.04_niri_install.sh. Actively removed so a re-run undoes it.
+sudo rm -f /etc/apt/apt.conf.d/99no-recommends
 
 sudo apt update
 

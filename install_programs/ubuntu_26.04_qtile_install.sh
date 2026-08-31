@@ -14,8 +14,10 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # 1. LOCK DOWN APT (no recommended/suggested packages)
 # -----------------------------------------------------------------
 sudo mkdir -p /etc/apt/apt.conf.d
-echo 'APT::Install-Recommends "false";' | sudo tee /etc/apt/apt.conf.d/99no-recommends
-echo 'APT::Install-Suggests "false";'   | sudo tee -a /etc/apt/apt.conf.d/99no-recommends
+# No-recommends lockdown REMOVED 31 Aug 2026 -- see section 1 of
+# ubuntu_26.04_niri_install.sh for why. Actively removed so a re-run on an
+# already-built machine undoes it.
+sudo rm -f /etc/apt/apt.conf.d/99no-recommends
 
 sudo apt update
 
@@ -23,7 +25,7 @@ sudo apt update
 # 2. KERNEL HEADERS, BUILD TOOLS & DRIVER UTILITIES
 # ubuntu-drivers-common is not pre-installed on Ubuntu Server.
 # -----------------------------------------------------------------
-sudo apt install -y --no-install-recommends \
+sudo apt install -y \
     "linux-headers-$(uname -r)" \
     build-essential \
     dkms \
@@ -50,7 +52,7 @@ fi
 # -----------------------------------------------------------------
 # 4. X11 & INPUT STACK
 # -----------------------------------------------------------------
-sudo apt install -y --no-install-recommends \
+sudo apt install -y \
     xserver-xorg-core \
     xserver-xorg-input-all \
     xserver-xorg-input-libinput \
@@ -63,7 +65,7 @@ sudo apt install -y --no-install-recommends \
 # 5. CORE DEVELOPER TOOLS
 # libnss3-tools provides certutil for Chrome certificate trust.
 # -----------------------------------------------------------------
-sudo apt install -y --no-install-recommends \
+sudo apt install -y \
     git \
     curl \
     wget \
@@ -88,7 +90,7 @@ sudo apt install -y --no-install-recommends \
 # 6. WINDOW MANAGER & DESKTOP STACK
 # udisks2 + gvfs + udiskie enable USB automounting in PCManFM.
 # -----------------------------------------------------------------
-sudo apt install -y --no-install-recommends \
+sudo apt install -y \
     sddm \
     qtile \
     python3-cairocffi \
@@ -115,7 +117,7 @@ sudo apt install -y --no-install-recommends \
 # -----------------------------------------------------------------
 # 7. POLICY KIT & DESKTOP INTEGRATION
 # -----------------------------------------------------------------
-sudo apt install -y --no-install-recommends \
+sudo apt install -y \
     policykit-1-gnome \
     libgdk-pixbuf-2.0-0 \
     librsvg2-common \
@@ -128,7 +130,7 @@ sudo apt install -y --no-install-recommends \
 # -----------------------------------------------------------------
 # 8. QT6 QML MODULES (required by SDDM — 26.04 SDDM is Qt6-only)
 # -----------------------------------------------------------------
-sudo apt install -y --no-install-recommends \
+sudo apt install -y \
     libqt6svg6 \
     qml6-module-qt5compat-graphicaleffects \
     qml6-module-qtquick-layouts \
@@ -138,7 +140,7 @@ sudo apt install -y --no-install-recommends \
 # -----------------------------------------------------------------
 # 9. FONTS
 # -----------------------------------------------------------------
-sudo apt install -y --no-install-recommends \
+sudo apt install -y \
     fonts-dejavu-core \
     fonts-cascadia-code \
     fonts-font-awesome \
@@ -147,12 +149,12 @@ sudo apt install -y --no-install-recommends \
 # Pre-accept the Microsoft fonts EULA (avoids interactive prompt)
 echo "ttf-mscorefonts-installer msttcorefonts/accepted-mscorefonts-eula select true" \
     | sudo debconf-set-selections
-sudo apt install -y --no-install-recommends ttf-mscorefonts-installer
+sudo apt install -y ttf-mscorefonts-installer
 
 # -----------------------------------------------------------------
 # 10. MEDIA & UTILITIES
 # -----------------------------------------------------------------
-sudo apt install -y --no-install-recommends \
+sudo apt install -y \
     ffmpeg \
     vlc \
     imagemagick \
@@ -169,12 +171,12 @@ wget -q -O - https://dl.google.com/linux/linux_signing_key.pub \
 echo "deb [arch=amd64 signed-by=/usr/share/keyrings/google-chrome-keyring.gpg] http://dl.google.com/linux/chrome/deb/ stable main" \
     | sudo tee /etc/apt/sources.list.d/google-chrome.list
 sudo apt update
-sudo apt install -y --no-install-recommends google-chrome-stable
+sudo apt install -y google-chrome-stable
 
 # -----------------------------------------------------------------
 # 12. HEAVY APPS
 # -----------------------------------------------------------------
-sudo apt install -y --no-install-recommends \
+sudo apt install -y \
     gimp \
     libreoffice \
     obs-studio
@@ -186,7 +188,7 @@ sudo add-apt-repository -y restricted
 sudo add-apt-repository -y multiverse
 sudo apt update
 
-sudo apt install -y --no-install-recommends \
+sudo apt install -y \
     linux-firmware \
     broadcom-sta-dkms \
     network-manager \

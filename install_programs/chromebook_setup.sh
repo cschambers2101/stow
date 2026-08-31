@@ -21,7 +21,9 @@ sudo rm -f /etc/apt/sources.list.d/microsoft-prod.list
 . /etc/os-release
 echo "deb http://deb.debian.org/debian ${VERSION_CODENAME} contrib" \
     | sudo tee /etc/apt/sources.list.d/contrib.list
-echo 'APT::Install-Recommends "false";' | sudo tee /etc/apt/apt.conf.d/99no-recommends
+# No-recommends lockdown REMOVED 31 Aug 2026 -- see section 1 of
+# ubuntu_26.04_niri_install.sh. Actively removed so a re-run undoes it.
+sudo rm -f /etc/apt/apt.conf.d/99no-recommends
 sudo apt update
 
 # -----------------------------------------------------------------
