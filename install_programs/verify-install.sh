@@ -164,12 +164,22 @@ echo "--- file integrity ---"
 #
 # 99% of packages ship md5sums, so this is a reliable detector; it would have
 # found that in seconds instead of an afternoon.
+#
+# CONFFILES ARE EXCLUDED -- dpkg flags them 'c' in column 2. They are the files
+# an admin is *expected* to edit, and our own installer edits two of them:
+# /etc/greetd/config.toml (section 10) and /etc/default/zramswap (section 14,
+# the fix for the zram bug). Counting those reported deliberate configuration
+# as corruption, so this check failed on every correctly built machine -- run
+# 12 flagged three files, none of them a fault. That is worse than not checking
+# at all: a permanently red FAIL teaches people to ignore the report. Chrome's
+# corrupted binary was package-owned, not a conffile, so nothing is lost.
 if have_sudo; then
-    DPKGV="$(sudo dpkg -V 2>/dev/null | wc -l)"
+    DPKGV="$(sudo dpkg -V 2>/dev/null | awk '$2 != "c"' | wc -l)"
     if [ "$DPKGV" = "0" ]; then
         pass "installed files match their checksums" ""
     else
-        fail "installed files match their checksums" "$DPKGV file(s) differ — run: sudo dpkg -V"
+        fail "installed files match their checksums" \
+             "$DPKGV package file(s) differ — run: sudo dpkg -V | awk '\$2 != \"c\"'"
     fi
 else
     skip "installed files match their checksums" "needs sudo"
