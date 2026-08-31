@@ -594,18 +594,6 @@ else
     echo "Dotfiles stowed."
 fi
 
-# MPD's runtime directories. Created unconditionally, and deliberately NOT
-# beside the config: ~/.config/mpd is a stow symlink into the repo, so a
-# database, a log and a state file written there land in git.
-#
-# Created even though MPD is not in the fleet package list, because the config
-# IS stowed everywhere. MPD does not create these itself -- it exits 1 with
-# "Failed to open ... No such file or directory" -- so without this, anyone who
-# later apt-installs mpd on a built machine gets a service that fails to start
-# and a config that looks correct. Two empty directories are a cheap way to
-# make that impossible. Verified: removing them makes mpd fail on restart.
-mkdir -p "$HOME/.local/state/mpd" "$HOME/.local/share/mpd/playlists"
-
 fc-cache -f
 
 # --- Default wallpaper ---------------------------------------------
