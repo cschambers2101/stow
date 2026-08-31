@@ -154,6 +154,30 @@ if dpkg -s update-notifier 2>/dev/null | grep -q '^Status: install ok installed'
 else pass "update-notifier purged" ""; fi
 
 # -----------------------------------------------------------------
+echo "--- node ---"
+# Silent failure, found on two machines at once: node v24 was installed and
+# completely unreachable because .bashrc pinned NVM_DIR to ~/.config/nvm
+# while the niri installer uses nvm's default ~/.nvm. The `[ -s ... ] &&`
+# guard failed quietly, so `node --version` said "command not found" on a
+# machine that had it. Check a LOGIN shell, which is what a user gets.
+NVM_SH=""
+for d in "$HOME/.config/nvm" "$HOME/.nvm"; do
+    [ -s "$d/nvm.sh" ] && { NVM_SH="$d/nvm.sh"; break; }
+done
+if [ -z "$NVM_SH" ]; then
+    skip "node usable in a login shell" "nvm not installed"
+else
+    # -lic, not -lc: .bashrc returns early for NON-interactive shells, so a
+    # plain `bash -lc` never loads nvm and would fail a working machine.
+    NODEV="$(bash -lic 'command -v node >/dev/null 2>&1 && node --version' 2>/dev/null | tail -1)"
+    if [ -n "$NODEV" ]; then
+        pass "node usable in a login shell" "$NODEV"
+    else
+        fail "node usable in a login shell" "nvm is at $NVM_SH but node does not resolve — check NVM_DIR in .bashrc"
+    fi
+fi
+
+# -----------------------------------------------------------------
 echo "--- security: Oakford root CA (bug 11) ---"
 CA="/usr/local/share/ca-certificates/oakford.crt"
 # Single source of truth: read the pin out of the installer rather than

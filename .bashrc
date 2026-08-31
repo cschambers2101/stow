@@ -127,6 +127,13 @@ fi
 eval "$(starship init bash)"
 
 
+# nvm lands in different places depending on which build ran:
+# chromebook_setup.sh pre-sets NVM_DIR to ~/.config/nvm, while the niri
+# installer takes nvm's own default of ~/.nvm. Pinning only the first meant
+# node was SILENTLY unavailable on every niri machine -- installed, present,
+# and unreachable, because the `[ -s ... ] &&` guard just quietly did
+# nothing. Found on two machines at once, both with node v24 sitting there.
 export NVM_DIR="$HOME/.config/nvm"
+[ -s "$NVM_DIR/nvm.sh" ] || export NVM_DIR="$HOME/.nvm"
 [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
 [ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"
