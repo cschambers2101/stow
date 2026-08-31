@@ -424,7 +424,13 @@ def tag_file(path, dry=False, art=True, artists_only=False):
         return "none", f"{artist} - {search_title}: no original studio album found"
 
     # A variant won, so the tags themselves were wrong, not just the query.
+    # BOTH halves must be written back. Writing only the title left reversed
+    # uploads as artist "In The End" / title "In The End" -- the album was
+    # right, the record still nonsense. The swap is precisely the case where
+    # the canonical-name check below CANNOT catch it: after a swap our artist
+    # already equals MusicBrainz's, so it sees nothing to correct.
     fixed_title = use_title if use_title != title else None
+    swapped_artist = use_artist if use_artist != artist else None
     artist = use_artist
     album, year, mbid, credit = hit
 
@@ -438,7 +444,7 @@ def tag_file(path, dry=False, art=True, artists_only=False):
     # to "Guns N' Roses feat. someone" -- turning a cosmetic fix into a wrong
     # tag. Title-casing by rule is the other trap: it wrecks AC/DC, k.d. lang
     # and will.i.am. An authority or nothing.
-    fixed_artist = None
+    fixed_artist = swapped_artist
     if credit and credit != artist and norm(credit) == norm(artist):
         fixed_artist = credit
 
