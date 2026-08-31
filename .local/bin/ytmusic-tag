@@ -109,7 +109,8 @@ def norm(s):
 # ordinary testable code rather than a regex buried in a yt-dlp flag.
 _NOISE_WORDS = (r"official|lyrics?|audio|video|hd|hq|4k|remaster(?:ed)?|"
                 r"single|album|full|extended|version|edit|clip|promo|"
-                r"visuali[sz]er|mv")
+                r"visuali[sz]er|mv|live|tour|concert|session|toppop|"
+                r"top\s*of\s*the\s*pops|bbc|from")
 # A bracket CONTAINING a noise word, not merely starting with one.
 _NOISE_BRACKET = re.compile(r"(?i)\s*[\(\[][^\)\]]*\b(?:" + _NOISE_WORDS + r")\b[^\)\]]*[\)\]]")
 # A trailing " - something promo clip 1973" tail.
@@ -118,15 +119,38 @@ _NOISE_TAIL = re.compile(r"(?i)\s+[-–—]\s+[^-–—]*\b(?:" + _NOISE_WORDS +
 _NOISE_BARE = re.compile(r"(?i)\s+\b(?:hd|hq|4k)\b\s*$")
 
 
+# A bracket holding nothing but a year: "(1977)", "[1978]".
+# A bracket holding a year ANYWHERE in it: "(1977)", but also
+# "(Shepperton Studios / 1978)" -- a venue and a date is never part of a title.
+_NOISE_YEAR = re.compile(r"\s*[\(\[][^\)\]]*\b(?:19|20)\d{2}\b[^\)\]]*[\)\]]")
+# Everything from a bullet onwards: "One Way Or Another (1978) • TopPop".
+_NOISE_BULLET = re.compile(r"\s*[•|·]\s*.*$")
+# Surrounding quotes: BLACK SABBATH - "Paranoid".
+_QUOTED = re.compile(r'^\s*["\u201c\u2018\'](.+?)["\u201d\u2019\']\s*$')
+
+
+def strip_artist_prefix(title, artist):
+    """Drop a leading "Metallica: " from "Metallica: Enter Sandman"."""
+    m = re.match(r"^(.+?)\s*[:\-–—]\s+(.+)$", title or "")
+    if m and norm(m.group(1)) == norm(artist) and m.group(2).strip():
+        return m.group(2).strip()
+    return title
+
+
 def clean_title(t):
     """Strip upload noise. Only removes bracketed or trailing junk, so a real
     title is untouched: "Video Killed the Radio Star" and "(I Can't Get No)
     Satisfaction" both survive intact."""
     if not t:
         return t
-    for rx in (_NOISE_BRACKET, _NOISE_TAIL, _NOISE_BARE):
+    t = _NOISE_BULLET.sub("", t)
+    for rx in (_NOISE_BRACKET, _NOISE_TAIL, _NOISE_BARE, _NOISE_YEAR):
         t = rx.sub("", t)
-    return re.sub(r"\s{2,}", " ", t).strip()
+    t = re.sub(r"\s{2,}", " ", t).strip()
+    m = _QUOTED.match(t)          # after stripping, so ("Barracuda" (1977)) works
+    if m:
+        t = m.group(1).strip()
+    return t
 
 
 def lookup(artist, title):
@@ -234,7 +258,7 @@ def tag_file(path, dry=False, art=True, artists_only=False):
         return "skip", f"already has album {existing!r}"
 
     # Search on the cleaned title; keep the original to compare against.
-    search_title = clean_title(title)
+    search_title = clean_title(strip_artist_prefix(title, artist))
     fixed_title = search_title if search_title != title else None
 
     hit = lookup(artist, search_title)
