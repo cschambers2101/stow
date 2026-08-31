@@ -224,6 +224,137 @@ def flac_picture(jpeg):
     return base64.b64encode(out).decode("ascii")
 
 
+# yt-dlp writes YouTube's UPLOAD CATEGORY into the genre field, which is not a
+# genre at all. Measured across 423 tracks: 402 "Music", 13 "People & Blogs",
+# 7 "Entertainment", 1 "Film & Animation" -- so 21 songs were filed under
+# categories that are not even music. Worse than empty, because players offer
+# genre as a browsing axis and this fills it with noise.
+YT_CATEGORIES = {norm(x) for x in (
+    "Music", "People & Blogs", "Entertainment", "Film & Animation", "Gaming",
+    "Sports", "News & Politics", "Howto & Style", "Education", "Comedy",
+    "Science & Technology", "Autos & Vehicles", "Pets & Animals",
+    "Travel & Events", "Nonprofits & Activism", "Short Movies", "Shows",
+    "Trailers",
+)}
+
+_genre_cache = {}          # (artist, album) -> genre or None
+_artist_cache = {}         # artist -> genre or None
+
+
+def _top_genre(entity):
+    """Highest-voted genre from a MusicBrainz entity, title-cased."""
+    gs = sorted(entity.get("genres") or [], key=lambda g: -(g.get("count") or 0))
+    return gs[0]["name"].title() if gs else None
+
+
+def genre_for(artist, album):
+    """Album genre, falling back to the artist's. Both cached: many tracks
+    share an album, and far more share an artist, so the cache does real work
+    on a big library rather than being decoration."""
+    key = (norm(artist), norm(album))
+    if key in _genre_cache:
+        return _genre_cache[key]
+
+    genre = None
+    if album:
+        q = f'releasegroup:"{album}" AND artist:"{artist}"'
+        url = f"{MB}/release-group?" + urllib.parse.urlencode(
+            {"query": q, "fmt": "json", "limit": 1})
+        try:
+            data = http(url) or {}
+            rgs = data.get("release-groups") or []
+            if rgs:
+                # The search response carries no genres; ask the entity itself.
+                full = http(f"{MB}/release-group/{rgs[0]['id']}?inc=genres&fmt=json")
+                genre = _top_genre(full or {})
+        except Exception:
+            genre = None
+
+    if not genre:
+        ak = norm(artist)
+        if ak in _artist_cache:
+            genre = _artist_cache[ak]
+        else:
+            try:
+                url = f"{MB}/artist?" + urllib.parse.urlencode(
+                    {"query": f'artist:"{artist}"', "fmt": "json", "limit": 1})
+                data = http(url) or {}
+                arts = data.get("artists") or []
+                if arts:
+                    full = http(f"{MB}/artist/{arts[0]['id']}?inc=genres&fmt=json")
+                    genre = _top_genre(full or {})
+            except Exception:
+                genre = None
+            _artist_cache[ak] = genre
+
+    _genre_cache[key] = genre
+    return genre
+
+
+_NUMWORDS = {"one": "1", "two": "2", "three": "3", "four": "4", "five": "5",
+             "six": "6", "seven": "7", "eight": "8", "nine": "9", "ten": "10"}
+
+
+def _digits(t):
+    """"Another Brick In The Wall, Part Two" -> "... Part 2"."""
+    return re.sub(r"\b(" + "|".join(_NUMWORDS) + r")\b",
+                  lambda m: _NUMWORDS[m.group(1).lower()], t, flags=re.I)
+
+
+def search_variants(artist, title):
+    """Fallbacks to try when the exact pair finds nothing. Each costs a
+    request, so they run ONLY after a real failure -- roughly one file in five.
+
+    Every one comes from an observed failure in the first 400 tracks:
+      Sweet - The Ballroom Blitz     MusicBrainz files it as "Ballroom Blitz"
+      ... Part Two                   MusicBrainz writes "Part 2"
+      In The End - Linkin Park       uploader put the title first, so our
+                                     artist/title split is exactly backwards
+
+    False positives are not a risk: the caller still demands an exact title
+    match AND an artist-credit match, so a wrong guess simply finds nothing.
+    """
+    seen = {(norm(artist), norm(title))}
+    for a, t in ((artist, re.sub(r"^(?:the|a)\s+", "", title, flags=re.I)),
+                 (artist, _digits(title)),
+                 (title, artist)):
+        key = (norm(a), norm(t))
+        if a and t and key not in seen:
+            seen.add(key)
+            yield a, t
+
+
+def tag_genre(path, dry=False):
+    """Replace a YouTube upload category with a real genre."""
+    from mutagen import File as MFile
+    f = MFile(path, easy=True)
+    if f is None:
+        return "skip", f"unreadable {path.name}"
+    artist = (f.get("artist") or [""])[0]
+    album = (f.get("album") or [""])[0]
+    current = (f.get("genre") or [""])[0]
+
+    # A genre a human or an earlier run put there is left alone.
+    if current and norm(current) not in YT_CATEGORIES:
+        return "skip", f"already has genre {current!r}"
+    if not artist:
+        return "skip", f"no artist tag on {path.name}"
+
+    genre = genre_for(artist, album)
+    if not genre:
+        # Junk out is still better than junk in.
+        if current and not dry:
+            del f["genre"]
+            f.save()
+        return ("dry" if dry else "blank"), f"{artist}: no genre found, cleared {current!r}"
+
+    if dry:
+        return "dry", f"{artist} - {album or '?'} -> {genre!r}"
+    f["genre"] = genre
+    f.save()
+    return "ok", f"{artist} - {album or '?'} -> {genre!r}"
+
+
 def tag_file(path, dry=False, art=True, artists_only=False):
     from mutagen.oggopus import OggOpus
     from mutagen.mp3 import MP3
@@ -261,9 +392,20 @@ def tag_file(path, dry=False, art=True, artists_only=False):
     search_title = clean_title(strip_artist_prefix(title, artist))
     fixed_title = search_title if search_title != title else None
 
+    use_artist, use_title = artist, search_title
     hit = lookup(artist, search_title)
     if not hit:
+        for cand_a, cand_t in search_variants(artist, search_title):
+            hit = lookup(cand_a, cand_t)
+            if hit:
+                use_artist, use_title = cand_a, cand_t
+                break
+    if not hit:
         return "none", f"{artist} - {search_title}: no original studio album found"
+
+    # A variant won, so the tags themselves were wrong, not just the query.
+    fixed_title = use_title if use_title != title else None
+    artist = use_artist
     album, year, mbid, credit = hit
 
     # YouTube uploaders shout: BLACK SABBATH, DEF LEPPARD, YES. Players group
@@ -342,11 +484,12 @@ def main(argv):
     dry = "-n" in argv or "--dry-run" in argv
     no_art = "--no-art" in argv
     artists_only = "--artists-only" in argv
+    genres_mode = "--genres" in argv
     args = [a for a in argv if not a.startswith("-")]
     if not args:
         print(__doc__.strip().splitlines()[0])
         print("\nusage: ytmusic-tag [-n] [--no-art] [--artists-only] "
-              "<file|directory> ...")
+              "[--genres] <file|directory> ...")
         return 2
 
     files = []
@@ -373,8 +516,11 @@ def main(argv):
     stopped = False
     for p in files:
         try:
-            status, msg = tag_file(p, dry=dry, art=not no_art,
-                                   artists_only=artists_only)
+            if genres_mode:
+                status, msg = tag_genre(p, dry=dry)
+            else:
+                status, msg = tag_file(p, dry=dry, art=not no_art,
+                                       artists_only=artists_only)
         except Exception as e:
             status, msg = "error", f"{p.name}: {type(e).__name__}: {e}"
         counts[status] = counts.get(status, 0) + 1
