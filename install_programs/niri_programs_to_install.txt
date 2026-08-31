@@ -10,7 +10,15 @@
 # =================================================================
 
 # --- core / dev ---
-apt-show-versions
+# apt-show-versions REMOVED 31 Aug 2026. It installs
+# /etc/apt/apt.conf.d/20apt-show-versions, an APT::Update::Post-Invoke-Success
+# hook that runs `apt-show-versions -i` after every index update -- and on
+# Ubuntu 26.04 that segfaults, so `apt update` itself returns an error:
+#   Segmentation fault (core dumped)
+#   Error: Sub-process returned an error code
+# The tool only reports which versions are available, which `apt policy`
+# already does. Breaking apt's exit status for that is a bad trade.
+# apt-show-versions
 btop
 build-essential
 curl

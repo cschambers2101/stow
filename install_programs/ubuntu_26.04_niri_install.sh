@@ -61,7 +61,12 @@ sudo rm -f /etc/apt/apt.conf.d/99no-recommends
 
 sudo add-apt-repository -y restricted
 sudo add-apt-repository -y multiverse
-sudo apt update
+# `|| echo` deliberately, not a bare call: apt runs Post-Invoke hooks after
+# an index update, and a hook that fails takes apt's exit status with it.
+# apt-show-versions segfaults this way on Ubuntu 26.04, and under `set -e`
+# that aborted the whole install -- at section 7, since section 6 is what
+# installs the hook in the first place.
+sudo apt update || echo "WARNING: apt update reported an error (usually a post-invoke hook, not the index itself) - continuing."
 
 # -----------------------------------------------------------------
 # 2. KERNEL HEADERS, BUILD TOOLS & DRIVER UTILITIES
@@ -139,6 +144,46 @@ if echo "$GPU_INFO" | grep -qiE "amd|radeon|advanced micro devices"; then
     echo "AMD GPU detected — amdgpu is in-kernel; ensuring firmware and Vulkan..."
     # linux-firmware is also installed in section 9; harmless if already present.
     sudo apt install -y linux-firmware libdrm-amdgpu1 || true
+fi
+
+# -----------------------------------------------------------------
+# 3b. REALTEK rtw89 WIFI QUIRK
+#
+#     The RTL8852BE and its rtw89 siblings hang under PCIe ASPM power
+#     management. Observed on real hardware 31 Aug 2026, kernel 7.0.0-30:
+#     the adapter stopped answering on the bus and the driver's own error
+#     recovery could not bring it back --
+#
+#       rtw89_8852be 0000:03:00.0: timed out to flush pci txch: 0..9
+#       rtw89_8852be 0000:03:00.0: Err: ser L2 re-config timeout
+#       rtw89_8852be 0000:03:00.0: mac preinit fail, ret: -110
+#
+#     followed by a cascade of mac80211 WARNINGs from the failed teardown.
+#     Wifi stayed dead until a COLD boot; a warm reboot was not enough,
+#     which points at the device needing a real power cycle rather than a
+#     soft driver bug.
+#
+#     Disabling ASPM L1/L1SS and the driver power-save mode is the
+#     documented mitigation for this family. It costs a little idle power;
+#     a laptop that keeps its network is worth more than that.
+#
+#     Written only when the hardware is present, so other machines carry no
+#     stray modprobe config.
+# -----------------------------------------------------------------
+if lspci -nn 2>/dev/null | grep -qiE "RTL885[0-9]|Realtek.*802\\.11|802\\.11.*Realtek"; then
+    echo "Realtek rtw89 wifi detected - applying the ASPM/power-save quirk..."
+    sudo tee /etc/modprobe.d/rtw89-quirks.conf >/dev/null <<MODEOF
+# Realtek rtw89: ASPM L1/L1SS causes "timed out to flush pci txch" and an
+# unrecoverable "ser L2 re-config timeout". See section 3b of
+# ubuntu_26.04_niri_install.sh.
+options rtw89_pci disable_aspm_l1=y disable_aspm_l1ss=y disable_clkreq=y
+options rtw89_core disable_ps_mode=y
+MODEOF
+    # Rebuild the initramfs so the options apply from the first probe, not
+    # only after a manual module reload.
+    sudo update-initramfs -u >/dev/null 2>&1 || \
+        echo "WARNING: initramfs rebuild failed - the quirk still applies after the next reboot."
+    echo "Wifi quirk written to /etc/modprobe.d/rtw89-quirks.conf (effective on reboot)."
 fi
 
 # -----------------------------------------------------------------
@@ -271,7 +316,12 @@ wget -q -O - https://dl.google.com/linux/linux_signing_key.pub \
     | sudo gpg --dearmor -o /usr/share/keyrings/google-chrome-keyring.gpg
 echo "deb [arch=amd64 signed-by=/usr/share/keyrings/google-chrome-keyring.gpg] http://dl.google.com/linux/chrome/deb/ stable main" \
     | sudo tee /etc/apt/sources.list.d/google-chrome.list
-sudo apt update
+# `|| echo` deliberately, not a bare call: apt runs Post-Invoke hooks after
+# an index update, and a hook that fails takes apt's exit status with it.
+# apt-show-versions segfaults this way on Ubuntu 26.04, and under `set -e`
+# that aborted the whole install -- at section 7, since section 6 is what
+# installs the hook in the first place.
+sudo apt update || echo "WARNING: apt update reported an error (usually a post-invoke hook, not the index itself) - continuing."
 sudo apt install -y google-chrome-stable
 
 # -----------------------------------------------------------------
