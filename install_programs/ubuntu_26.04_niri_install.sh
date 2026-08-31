@@ -646,9 +646,22 @@ fi
 #     dankinstall's) and AFTER the wallpaper is in place above.
 #
 #     Not fatal: a failed sync leaves a plain but working greeter.
+#     DMS_PRIVESC pins the privilege-escalation tool. Without it, `dms
+#     greeter sync` detects both sudo and run0 and STOPS to ask:
+#
+#         Multiple privilege escalation tools detected:
+#           [1] sudo  [2] run0
+#         Choose one [1-2] (default 1, ...):
+#
+#     It only asks when stdin is a terminal -- which is exactly the
+#     documented student route, `bash <(wget ...)` typed at a prompt. Every
+#     VM run before this one drove the install over ssh with no pty, so the
+#     prompt never appeared and three "clean" runs missed it. A student
+#     would have been left staring at an unexplained question two thirds of
+#     the way through, and an automated run with a pty hangs on it outright.
 if command -v dms >/dev/null 2>&1; then
     echo "Syncing settings, theme and wallpaper into the greeter..."
-    if dms greeter sync; then
+    if DMS_PRIVESC=sudo dms greeter sync; then
         echo "Greeter synced."
     else
         echo "WARNING: 'dms greeter sync' failed. The greeter will still start,"
