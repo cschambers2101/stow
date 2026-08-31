@@ -175,24 +175,59 @@ else
     else fail "CA trusted by the system" "not in /etc/ssl/certs — did update-ca-certificates run?"; fi
 fi
 
-# The S6C profile is now written on every build (the PSK is defaulted in
-# the installer), so its ABSENCE is a failure rather than a skip -- a
-# student laptop that cannot reach the school network is the single most
-# useful thing to catch here. Only an explicit S6C_PSK='' opts out.
-NMPROFILE=/etc/NetworkManager/system-connections/S6C.nmconnection
-if [ ! -f "$NMPROFILE" ]; then
-    fail "wifi profile present" "no S6C profile — the laptop cannot reach school wifi"
-elif have_sudo; then
-    pass "wifi profile present" ""
-    eq "wifi profile is 0600" "600" "$(sudo stat -c '%a' "$NMPROFILE" 2>/dev/null)"
+# ASK NETWORKMANAGER, NOT THE FILESYSTEM.
+#
+# The first version of this checked for
+# /etc/NetworkManager/system-connections/S6C.nmconnection. That passes
+# straight after an install and then silently becomes false: on real
+# hardware (18WessexUbuntu, 31 Aug 2026) the connection was migrated into
+# /etc/netplan/90-NM-<uuid>.yaml and regenerated under /run, leaving that
+# directory empty while the connection itself worked perfectly. The check
+# would have reported FAIL on a healthy machine. nmcli reports the
+# connection wherever it is stored.
+if nmcli -t -f NAME connection show 2>/dev/null | grep -qx 'S6C'; then
+    pass "wifi profile present" "known to NetworkManager"
+
+    # Effective priority, not the value we wrote. The installer sets -10 so
+    # a student's OWN network always wins when both are in range; on the
+    # machine above it had become 100, equal to the home network, which
+    # leaves NetworkManager to choose arbitrarily between them. Checking
+    # the file would never have caught that.
+    PRIO="$(nmcli -g connection.autoconnect-priority connection show S6C 2>/dev/null | xargs)"
+    if [ -z "$PRIO" ]; then
+        skip "wifi priority is negative" "could not read autoconnect-priority"
+    elif [ "$PRIO" -lt 0 ] 2>/dev/null; then
+        pass "wifi priority is negative" "$PRIO"
+    else
+        fail "wifi priority is negative" "$PRIO — S6C may outrank the user's own network"
+    fi
+
+    NMFILE="$(nmcli -g NAME,FILENAME connection show 2>/dev/null | awk -F: '$1=="S6C"{print $2}')"
+    case "$NMFILE" in
+        /etc/NetworkManager/*)
+            if have_sudo; then
+                eq "wifi profile is 0600" "600" "$(sudo stat -c '%a' "$NMFILE" 2>/dev/null)"
+            else skip "wifi profile is 0600" "needs sudo"; fi ;;
+        *)  # netplan-owned: /run copies are root-only and regenerated, so
+            # file mode there is not ours to assert.
+            skip "wifi profile is 0600" "netplan-owned (${NMFILE:-unknown})" ;;
+    esac
+
     # The key contains '!' twice; prove it was not mangled by shell quoting.
-    if sudo grep -q '^psk=.\+' "$NMPROFILE" 2>/dev/null; then
-        pass "wifi PSK non-empty" ""
-    else fail "wifi PSK non-empty" "psk= is blank — profile will not authenticate"; fi
+    # `nmcli -s` only reveals a secret to root -- as a normal user it
+    # returns empty, which an earlier version of this check read as a blank
+    # PSK and failed a perfectly good machine.
+    if have_sudo; then
+        if sudo nmcli -s -g 802-11-wireless-security.psk connection show S6C 2>/dev/null | grep -q '.'; then
+            pass "wifi PSK non-empty" ""
+        else
+            fail "wifi PSK non-empty" "psk is blank — profile will not authenticate"
+        fi
+    else
+        skip "wifi PSK non-empty" "needs sudo to read the secret"
+    fi
 else
-    pass "wifi profile present" ""
-    skip "wifi profile is 0600" "needs sudo"
-    skip "wifi PSK non-empty" "needs sudo"
+    fail "wifi profile present" "NetworkManager has no S6C connection"
 fi
 
 # -----------------------------------------------------------------
