@@ -210,6 +210,18 @@ else
 fi
 
 # -----------------------------------------------------------------
+echo "--- apt hygiene ---"
+# A background unattended-upgrades run held the dpkg lock during run 14 and
+# killed a post-install hook. Harmless that time; the next race can hit an
+# `apt install` instead, and `set -e` then ends the build -- intermittently,
+# on some machines only, which is the worst kind to diagnose.
+if apt-config dump 2>/dev/null | grep -q 'DPkg::Lock::Timeout'; then
+    pass "apt waits for the dpkg lock" "$(apt-config dump 2>/dev/null | awk -F'"' '/DPkg::Lock::Timeout/{print $2 "s"}')"
+else
+    fail "apt waits for the dpkg lock" "a background apt run can abort an install"
+fi
+
+# -----------------------------------------------------------------
 echo "--- music ---"
 # yt-dlp's failure mode is external: when YouTube changes, every existing copy
 # stops working. The build fetches the latest release, but that only pins the

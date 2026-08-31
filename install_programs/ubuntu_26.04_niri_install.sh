@@ -59,6 +59,32 @@ trap 'kill "$SUDO_KEEPALIVE" 2>/dev/null || true' EXIT
 # -----------------------------------------------------------------
 sudo rm -f /etc/apt/apt.conf.d/99no-recommends
 
+# --- Wait for the dpkg lock instead of dying on it -------------------------
+#
+# Found on run 14, 31 Aug 2026. A background unattended-upgrades run held the
+# dpkg frontend lock while the install was working:
+#
+#   dpkg: error: dpkg frontend lock was locked by /usr/bin/python3.14 pid 18704
+#   E: /etc/ca-certificates/update.d/jks-keystore exited with code 2.
+#
+# That instance was harmless -- it only failed to update Java's keystore, not
+# the system trust store, and the Oakford CA verified fine afterwards. The
+# hazard is not that instance. Ubuntu enables unattended-upgrades and the
+# apt-daily timers on every fresh image, so a student running this installer
+# shortly after first boot is racing them. Hit an `apt install` rather than a
+# post-install hook and `set -e` ends the build.
+#
+# Being a race, it fails on some laptops and not others, with an error that
+# points at whatever package happened to be unlucky -- the worst kind to
+# diagnose in a room of students.
+#
+# Written as apt.conf rather than passed per-command on purpose: it then
+# applies to EVERY apt invocation, including the ones inside dankinstall and
+# any other sub-installer, which command-line flags cannot reach. Left in place
+# afterwards deliberately -- waiting for a lock beats erroring, on a student
+# laptop as much as during a build.
+echo 'DPkg::Lock::Timeout "600";' | sudo tee /etc/apt/apt.conf.d/99lock-timeout >/dev/null
+
 sudo add-apt-repository -y restricted
 sudo add-apt-repository -y multiverse
 # `|| echo` deliberately, not a bare call: apt runs Post-Invoke hooks after
