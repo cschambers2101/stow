@@ -59,10 +59,22 @@ S6C_PSK='...' TARGET_HOSTNAME='s6c-laptop-01' ./ubuntu_26.04_niri_install.sh
 
 ---
 
-## After the reboot — check these five things
+## After the reboot — verify
 
-Three of the faults found in testing were **silent**: the install reported
-success and the machine looked fine. Check them explicitly.
+Run this first. It checks 25 things in a couple of seconds and exits non-zero
+if anything is wrong:
+
+```bash
+bash ~/.dotfiles/install_programs/verify-install.sh
+```
+
+Run it with sudo available (or just after an install, while the credential is
+still cached) to get the full set — the few checks needing root are skipped
+rather than failed otherwise.
+
+Then check these five by eye, because they are the ones a script cannot
+confirm. Three of the faults found in testing were **silent**: the install
+reported success and the machine looked fine.
 
 1. **The greeter draws** — cream background, ladybird wallpaper, and a
    round person icon beside the password field. A blank or black screen means
