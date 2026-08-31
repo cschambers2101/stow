@@ -249,7 +249,7 @@ fi
 if flatpak info io.bassi.Amberol >/dev/null 2>&1; then
     pass "Amberol installed" "$(flatpak info io.bassi.Amberol 2>/dev/null | awk -F': *' '/^ *Version:/{print $2; exit}')"
 else
-    fail "Amberol installed" "students have no music player"
+    fail "Amberol installed" "no simple player; Rhythmbox still covers the library"
 fi
 
 # -----------------------------------------------------------------

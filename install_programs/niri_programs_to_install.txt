@@ -148,6 +148,14 @@ ffmpeg
 # and aac containers go through AtomicParsley instead. Without it, art
 # embedding half-works depending on the format asked for.
 atomicparsley
+# Rhythmbox is the library player: Amberol deliberately has no database, so a
+# downloaded collection shows as a flat list of files with no artist or album
+# browsing. Ubuntu Desktop already ships Rhythmbox, so on today's image this
+# line installs nothing -- it is here so the fleet does not depend on a default
+# we do not control. Defaults need no configuration: it watches ~/Music with
+# monitor-library on, so ytmusic downloads appear live without a rescan, and
+# its mpris plugin is active by default, which is what feeds the DMS bar.
+rhythmbox
 vlc
 gimp
 libreoffice
