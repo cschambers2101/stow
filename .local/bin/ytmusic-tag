@@ -92,8 +92,45 @@ def norm(s):
     return re.sub(r"[^a-z0-9]", "", (s or "").lower())
 
 
+# YouTube titles carry junk that MusicBrainz has never heard of, and the search
+# is exact enough that the junk simply loses. Measured on the first 100-track
+# run: 24 of 100 found no album, and the failures read
+#
+#   Steppenwolf - Born To Be Wild (Single Version)
+#   The Doors - Light My Fire (2017 Remaster)
+#   The Cult - She Sells Sanctuary HD
+#   Sweet - The Ballroom Blitz - Disco/Promo Clip 27.10.1973
+#   Rainbow - Since You Been Gone  [Original 1979 version]
+#
+# Every one is a real recording MusicBrainz holds under a clean title. The
+# download-time strip in ytmusic only removes a bracket that STARTS with a
+# keyword, so "(2017 Remaster)" and bare "HD" both survive it. Cleaning here
+# instead fixes files already on disk as well as future ones, and it is
+# ordinary testable code rather than a regex buried in a yt-dlp flag.
+_NOISE_WORDS = (r"official|lyrics?|audio|video|hd|hq|4k|remaster(?:ed)?|"
+                r"single|album|full|extended|version|edit|clip|promo|"
+                r"visuali[sz]er|mv")
+# A bracket CONTAINING a noise word, not merely starting with one.
+_NOISE_BRACKET = re.compile(r"(?i)\s*[\(\[][^\)\]]*\b(?:" + _NOISE_WORDS + r")\b[^\)\]]*[\)\]]")
+# A trailing " - something promo clip 1973" tail.
+_NOISE_TAIL = re.compile(r"(?i)\s+[-–—]\s+[^-–—]*\b(?:" + _NOISE_WORDS + r")\b.*$")
+# Bare "HD" / "4K" stuck on the end with no punctuation at all.
+_NOISE_BARE = re.compile(r"(?i)\s+\b(?:hd|hq|4k)\b\s*$")
+
+
+def clean_title(t):
+    """Strip upload noise. Only removes bracketed or trailing junk, so a real
+    title is untouched: "Video Killed the Radio Star" and "(I Can't Get No)
+    Satisfaction" both survive intact."""
+    if not t:
+        return t
+    for rx in (_NOISE_BRACKET, _NOISE_TAIL, _NOISE_BARE):
+        t = rx.sub("", t)
+    return re.sub(r"\s{2,}", " ", t).strip()
+
+
 def lookup(artist, title):
-    """Return (album, year, release_mbid) for the original studio release."""
+    """Return (album, year, release_mbid, canonical_artist) for the original."""
     query = f'recording:"{title}" AND artist:"{artist}"'
     url = f"{MB}/recording?" + urllib.parse.urlencode(
         {"query": query, "fmt": "json", "limit": 100})
@@ -107,7 +144,9 @@ def lookup(artist, title):
     for rec in data.get("recordings", []):
         if rec.get("score", 0) < 90:
             continue
-        credit = norm("".join(a.get("name", "") for a in rec.get("artist-credit", [])))
+        raw_credit = "".join((a.get("name") or "") + (a.get("joinphrase") or "")
+                             for a in rec.get("artist-credit", []))
+        credit = norm(raw_credit)
         # Substring either way: "AC/DC" vs "AC/DC feat. someone".
         if want not in credit and credit not in want:
             continue
@@ -132,13 +171,14 @@ def lookup(artist, title):
             # it varies run to run: Bohemian Rhapsody alternated between 1975
             # and a 2001 remaster. The group's date is the original either way.
             date = group.get("first-release-date") or rel.get("date") or ""
-            found.append((date[:4] or "9999", rel.get("title"), rel.get("id")))
+            found.append((date[:4] or "9999", rel.get("title"), rel.get("id"),
+                          raw_credit))
 
     if not found:
         return None
     found.sort()                                  # earliest == the original
-    year, album, mbid = found[0]
-    return album, (None if year == "9999" else year), mbid
+    year, album, mbid, credit = found[0]
+    return album, (None if year == "9999" else year), mbid, credit
 
 
 def cover(mbid):
@@ -160,11 +200,11 @@ def flac_picture(jpeg):
     return base64.b64encode(out).decode("ascii")
 
 
-def tag_file(path, dry=False, art=True):
+def tag_file(path, dry=False, art=True, artists_only=False):
     from mutagen.oggopus import OggOpus
     from mutagen.mp3 import MP3
     from mutagen.mp4 import MP4, MP4Cover
-    from mutagen.id3 import APIC, TALB, TDRC
+    from mutagen.id3 import APIC, TALB, TDRC, TPE1, TIT2
 
     suffix = path.suffix.lower()
     if suffix == ".opus":
@@ -187,27 +227,67 @@ def tag_file(path, dry=False, art=True):
 
     if not artist or not title:
         return "skip", "no artist/title tags to search on"
-    if existing:
+    # --artists-only exists for files that are ALREADY tagged: the normal path
+    # short-circuits on a present album, so it can never reach the artist fix.
+    # Retro-correcting a shouted name is the whole point of the mode.
+    if existing and not artists_only:
         return "skip", f"already has album {existing!r}"
 
-    hit = lookup(artist, title)
+    # Search on the cleaned title; keep the original to compare against.
+    search_title = clean_title(title)
+    fixed_title = search_title if search_title != title else None
+
+    hit = lookup(artist, search_title)
     if not hit:
-        return "none", f"{artist} - {title}: no original studio album found"
-    album, year, mbid = hit
+        return "none", f"{artist} - {search_title}: no original studio album found"
+    album, year, mbid, credit = hit
+
+    # YouTube uploaders shout: BLACK SABBATH, DEF LEPPARD, YES. Players group
+    # by tag, so the next list that asks for "Yes" files it separately and one
+    # band shows up twice. MusicBrainz has the canonical spelling and we have
+    # already fetched it to validate the match, so use it rather than guessing.
+    #
+    # ONLY when the normalised forms are EQUAL. The match filter accepts a
+    # substring either way, so a looser test here would rewrite "Guns N' Roses"
+    # to "Guns N' Roses feat. someone" -- turning a cosmetic fix into a wrong
+    # tag. Title-casing by rule is the other trap: it wrecks AC/DC, k.d. lang
+    # and will.i.am. An authority or nothing.
+    fixed_artist = None
+    if credit and credit != artist and norm(credit) == norm(artist):
+        fixed_artist = credit
+
+    if artists_only:
+        fixed_title = None
+        if not fixed_artist:
+            return "skip", f"{artist}: name already canonical"
+        if dry:
+            return "dry", f"{artist!r} -> {fixed_artist!r}  ({path.name})"
 
     if dry:
-        return "dry", f"{artist} - {title} -> {album!r} ({year or '?'})"
+        note = f", artist -> {fixed_artist!r}" if fixed_artist else ""
+        return "dry", f"{artist} - {title} -> {album!r} ({year or '?'}){note}"
 
-    jpeg = cover(mbid) if art else None
+    # In artists-only mode nothing but the name changes, so skip the art fetch.
+    jpeg = cover(mbid) if (art and not artists_only) else None
+    if artists_only:
+        album = existing or album
 
     if suffix == ".opus":
         f["album"] = album
+        if fixed_artist:
+            f["artist"] = fixed_artist
+        if fixed_title:
+            f["title"] = fixed_title
         if year:
             f["date"] = year
         if jpeg:
             f["metadata_block_picture"] = [flac_picture(jpeg)]
     elif suffix == ".mp3":
         f.tags.add(TALB(encoding=3, text=album))
+        if fixed_artist:
+            f.tags.add(TPE1(encoding=3, text=fixed_artist))
+        if fixed_title:
+            f.tags.add(TIT2(encoding=3, text=fixed_title))
         if year:
             f.tags.add(TDRC(encoding=3, text=year))
         if jpeg:
@@ -215,23 +295,34 @@ def tag_file(path, dry=False, art=True):
             f.tags.add(APIC(encoding=3, mime="image/jpeg", type=3, desc="", data=jpeg))
     else:
         f["\xa9alb"] = album
+        if fixed_artist:
+            f["\xa9ART"] = fixed_artist
+        if fixed_title:
+            f["\xa9nam"] = fixed_title
         if year:
             f["\xa9day"] = year
         if jpeg:
             f["covr"] = [MP4Cover(jpeg, imageformat=MP4Cover.FORMAT_JPEG)]
 
     f.save()
+    if artists_only:
+        return "ok", f"{artist!r} -> {fixed_artist!r}  ({path.name})"
     art_note = "with cover art" if jpeg else "no cover art available"
-    return "ok", f"{artist} - {title} -> {album!r} ({year or '?'}), {art_note}"
+    name_note = f", artist -> {fixed_artist!r}" if fixed_artist else ""
+    title_note = f", title -> {fixed_title!r}" if fixed_title else ""
+    return "ok", (f"{artist} - {search_title} -> {album!r} ({year or '?'}), "
+                  f"{art_note}{name_note}{title_note}")
 
 
 def main(argv):
     dry = "-n" in argv or "--dry-run" in argv
     no_art = "--no-art" in argv
+    artists_only = "--artists-only" in argv
     args = [a for a in argv if not a.startswith("-")]
     if not args:
         print(__doc__.strip().splitlines()[0])
-        print("\nusage: ytmusic-tag [-n] [--no-art] <file|directory> ...")
+        print("\nusage: ytmusic-tag [-n] [--no-art] [--artists-only] "
+              "<file|directory> ...")
         return 2
 
     files = []
@@ -250,7 +341,8 @@ def main(argv):
     counts = {}
     for p in files:
         try:
-            status, msg = tag_file(p, dry=dry, art=not no_art)
+            status, msg = tag_file(p, dry=dry, art=not no_art,
+                                   artists_only=artists_only)
         except Exception as e:
             status, msg = "error", f"{p.name}: {type(e).__name__}: {e}"
         counts[status] = counts.get(status, 0) + 1
