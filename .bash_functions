@@ -53,9 +53,11 @@ function myhelp() {
     echo 'mkdir -> mkdir -pv'
     echo 'wget -> wget -c'
     echo 'myip -> curl http://ipecho.net/plain; echo'
-    echo 'music <url|"song name"> -> download audio to ~/Music (detects song vs playlist)'
-    echo 'music --from-file list.txt -> download a whole list, one per line'
-    echo 'mp3 / aac -> as music, but forced to that format'
+    echo 'music <artist> <song> -> search youtube and download to ~/Music'
+    echo 'music <url> -> download it (detects single song vs playlist)'
+    echo 'music <list.txt> -> read a file, one song or url per line'
+    echo 'musiclist <list.txt> -> as above, never guesses it is a file'
+    echo 'mp3 / aac / mp3list / aaclist -> as music, forced to that format'
     echo 'tnew -> tmux new -s '
     echo 'attach -> tmux attach-session -t '
     echo 'upgrade -> runs update_os function'
@@ -254,9 +256,41 @@ function toggle_monitors() {
 # --no-playlist, --restrict-filenames and --paths that mp3 had, so it would
 # happily pull a 200-track playlist into an unrestricted path. One
 # implementation, three names, no drift.
+#   music Queen Bohemian Rhapsody   -> one search, no quotes needed
+#   music anthems.txt               -> detected as a list and read
+#   music <url> [url ...]           -> one job each, playlists detected
 music() { ytmusic "$@"; }        # default: no re-encode, best quality
 mp3()   { ytmusic --mp3 "$@"; }  # forced mp3, for car stereos and the like
 aac()   { ytmusic --aac "$@"; }
+
+# The *list variants force file-reading. `music anthems.txt` already detects a
+# readable file, but detection has one ambiguity worth an escape hatch: if a
+# file happens to share a name with a song you wanted, the file wins silently.
+# These never guess.
+_ytlist() {
+    local fmt="$1"; shift
+    local args=() files=0
+    [ -n "$fmt" ] && args+=("$fmt")
+    # Only non-flag arguments become files. Without this, `musiclist -n x.txt`
+    # turned the -n into "--from-file -n" and failed with "cannot read '-n'".
+    # --dir and --max-dur take a value, so consume both.
+    while [ "$#" -gt 0 ]; do
+        case "$1" in
+            --dir|--max-dur) args+=("$1" "$2"); shift 2; continue ;;
+            -*)              args+=("$1") ;;
+            *)               args+=(--from-file "$1"); files=$((files + 1)) ;;
+        esac
+        shift
+    done
+    if [ "$files" -eq 0 ]; then
+        echo "usage: ${FUNCNAME[1]} <list.txt> [more.txt ...]" >&2
+        return 2
+    fi
+    ytmusic "${args[@]}"
+}
+musiclist() { _ytlist ""      "$@"; }
+mp3list()   { _ytlist --mp3   "$@"; }
+aaclist()   { _ytlist --aac   "$@"; }
 apt() {
     case "$1" in
         install|remove|purge|update|upgrade|autoremove|list)

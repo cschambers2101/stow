@@ -143,6 +143,7 @@ to_target() {
 }
 
 TARGETS=()
+POS=()
 DRYRUN=0
 
 while [ "$#" -gt 0 ]; do
@@ -173,10 +174,52 @@ while [ "$#" -gt 0 ]; do
             done < "$LIST"
             ;;
         -*)         echo "ytmusic: unknown option '$1'" >&2; usage >&2; exit 2 ;;
-        *)          TARGETS+=("$1") ;;
+        *)          POS+=("$1") ;;
     esac
     shift
 done
+
+# --- work out what the bare arguments meant -------------------------------
+#
+# Three shapes, so none of them needs remembering:
+#
+#   ytmusic Queen Bohemian Rhapsody     bare words -> ONE search, unquoted
+#   ytmusic anthems.txt                 a readable file -> read it as a list
+#   ytmusic <url> [url ...]             urls -> one job each
+#
+# The rule for words: if NO argument contains a space, the shell has simply
+# split one phrase for us, so join it back up. If any argument does contain a
+# space, the user quoted deliberately and means several separate searches.
+WORDS=()
+for p in ${POS+"${POS[@]}"}; do
+    if [ -f "$p" ] && [ -r "$p" ]; then
+        while IFS= read -r line || [ -n "$line" ]; do
+            line="${line%$'\r'}"
+            line="${line#"${line%%[![:space:]]*}"}"
+            line="${line%"${line##*[![:space:]]}"}"
+            case "$line" in ''|'#'*) continue ;; esac
+            TARGETS+=("$line")
+        done < "$p"
+        echo "ytmusic: reading list from $p" >&2
+    else
+        case "$p" in
+            http://*|https://*|ytsearch*:*) TARGETS+=("$p") ;;
+            *)                              WORDS+=("$p") ;;
+        esac
+    fi
+done
+
+if [ "${#WORDS[@]}" -gt 0 ]; then
+    joined=1
+    for w in "${WORDS[@]}"; do
+        case "$w" in *[[:space:]]*) joined=0; break ;; esac
+    done
+    if [ "$joined" -eq 1 ]; then
+        TARGETS+=("${WORDS[*]}")
+    else
+        TARGETS+=("${WORDS[@]}")
+    fi
+fi
 
 [ "${#TARGETS[@]}" -eq 0 ] && { usage >&2; exit 2; }
 ARCHIVE="$MUSIC_DIR/.ytmusic-archive"
