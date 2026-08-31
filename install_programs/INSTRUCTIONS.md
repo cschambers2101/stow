@@ -41,7 +41,7 @@ installer.
 
 ---
 
-## The three questions it asks
+## The two questions it asks
 
 Interactively it prompts for these. Set them as environment variables first to
 run unattended — each prompt is skipped when its variable is already set or
@@ -49,13 +49,24 @@ when there is no terminal:
 
 | Variable | What it is |
 |----------|------------|
-| `S6C_PSK` | School wifi passphrase |
 | `TARGET_HOSTNAME` | Machine name |
 | `PAPERCUT_SERVER` | Print server, e.g. `https://print.school.example:9174` |
 
 ```bash
-S6C_PSK='...' TARGET_HOSTNAME='s6c-laptop-01' ./ubuntu_26.04_niri_install.sh
+TARGET_HOSTNAME='s6c-laptop-01' ./ubuntu_26.04_niri_install.sh
 ```
+
+**School wifi is no longer one of them.** The S6C profile is written on every
+build using the BYOD key, so a laptop reaches the school network without anyone
+being asked. Override only for a different network or after a key change:
+
+```bash
+S6C_PSK='...' ./ubuntu_26.04_niri_install.sh     # single quotes
+```
+
+Use **single** quotes. The key contains `!`, which an interactive bash expands
+as history inside double quotes (`bash: event not found`). Passing
+`S6C_PSK=''` explicitly skips the profile.
 
 ---
 

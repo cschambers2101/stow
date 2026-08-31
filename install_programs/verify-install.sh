@@ -175,15 +175,24 @@ else
     else fail "CA trusted by the system" "not in /etc/ssl/certs — did update-ca-certificates run?"; fi
 fi
 
-# The repo is public, so the wifi PSK must never be committed. Guard
-# against a future edit reintroducing it.
-if [ -f /etc/NetworkManager/system-connections/S6C.nmconnection ]; then
-    if have_sudo; then
-        PERM="$(sudo stat -c '%a' /etc/NetworkManager/system-connections/S6C.nmconnection 2>/dev/null)"
-        eq "wifi profile is 0600" "600" "$PERM"
-    else skip "wifi profile is 0600" "needs sudo"; fi
+# The S6C profile is now written on every build (the PSK is defaulted in
+# the installer), so its ABSENCE is a failure rather than a skip -- a
+# student laptop that cannot reach the school network is the single most
+# useful thing to catch here. Only an explicit S6C_PSK='' opts out.
+NMPROFILE=/etc/NetworkManager/system-connections/S6C.nmconnection
+if [ ! -f "$NMPROFILE" ]; then
+    fail "wifi profile present" "no S6C profile — the laptop cannot reach school wifi"
+elif have_sudo; then
+    pass "wifi profile present" ""
+    eq "wifi profile is 0600" "600" "$(sudo stat -c '%a' "$NMPROFILE" 2>/dev/null)"
+    # The key contains '!' twice; prove it was not mangled by shell quoting.
+    if sudo grep -q '^psk=.\+' "$NMPROFILE" 2>/dev/null; then
+        pass "wifi PSK non-empty" ""
+    else fail "wifi PSK non-empty" "psk= is blank — profile will not authenticate"; fi
 else
-    skip "wifi profile is 0600" "no S6C profile (S6C_PSK not supplied)"
+    pass "wifi profile present" ""
+    skip "wifi profile is 0600" "needs sudo"
+    skip "wifi PSK non-empty" "needs sudo"
 fi
 
 # -----------------------------------------------------------------

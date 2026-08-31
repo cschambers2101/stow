@@ -247,7 +247,22 @@ fi
 rm -f "$OAKFORD_TMP"
 trap - EXIT
 
-# Drop S6C connection profile — NetworkManager picks it up on first start
+# Drop S6C connection profile — NetworkManager picks it up on first start.
+#
+# Defaulted rather than required. This previously used ${S6C_PSK:?...},
+# which under `set -e` aborted the WHOLE install at this line whenever the
+# variable was unset -- so running this script without it killed the build
+# here. Override with S6C_PSK='...' (single quotes: the key contains '!').
+# NOTE ${VAR-default}, with NO colon: that substitutes only when the
+# variable is UNSET. The colon form also substitutes when it is set but
+# EMPTY, which would have made the documented S6C_PSK='' opt-out
+# silently install the profile anyway.
+S6C_PSK="${S6C_PSK-!BY0D!S6C}"
+
+# Guarded, like the niri installer. Unguarded, an explicit S6C_PSK=''
+# wrote a profile with a blank `psk=`, which is worse than no profile:
+# NetworkManager keeps it and silently fails to authenticate.
+if [ -n "${S6C_PSK:-}" ]; then
 sudo mkdir -p /etc/NetworkManager/system-connections
 sudo tee /etc/NetworkManager/system-connections/S6C.nmconnection > /dev/null <<EOF
 [connection]
@@ -262,7 +277,7 @@ ssid=S6C
 [wifi-security]
 auth-alg=open
 key-mgmt=wpa-psk
-psk=${S6C_PSK:?set S6C_PSK before running - the PSK is not stored in this public repo}
+psk=${S6C_PSK}
 
 [ipv4]
 method=auto
@@ -272,6 +287,10 @@ method=auto
 addr-gen-mode=stable-privacy
 EOF
 sudo chmod 600 /etc/NetworkManager/system-connections/S6C.nmconnection
+    echo "School wifi profile installed."
+else
+    echo "S6C_PSK empty — skipping the school wifi profile."
+fi
 
 # -----------------------------------------------------------------
 # 15. NODE.JS

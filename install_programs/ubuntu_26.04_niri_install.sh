@@ -400,23 +400,30 @@ rm -f "$OAKFORD_TMP"
 
 # School wifi profile.
 #
-# The PSK is NOT stored in this repo: the repo is public, so anything
-# committed here is world-readable and cannot be un-published.
-# Supply it at install time instead, either way round:
+# The PSK is committed here deliberately. It is the BYOD network key,
+# already known to every current and former student, so treating it as a
+# secret bought nothing and cost a great deal: without it the profile was
+# skipped, and an unattended build produced a student laptop that could
+# not reach the school network -- the one thing it most needs to do.
+# Craig's call, 31 Aug 2026.
 #
-#     S6C_PSK='...' ./ubuntu_26.04_niri_install.sh      (unattended)
-#     ./ubuntu_26.04_niri_install.sh                    (prompts once)
+# Override for a different network or after a key change:
 #
-# If it is not supplied the profile is skipped entirely and students just
-# add the school network from the DMS control centre like any other.
+#     S6C_PSK='...' ./ubuntu_26.04_niri_install.sh
+#
+# NOTE the SINGLE quotes. This key contains two '!' characters, which an
+# interactive bash will treat as history expansion inside double quotes
+# ("bash: !BY0D: event not found"). Inside this script it is safe: the
+# heredoc below is expanded by the script, not by an interactive shell.
 #
 # autoconnect-priority is negative so a student's own home network wins
 # whenever both are in range; NetworkManager would otherwise pick
 # arbitrarily between two autoconnect profiles.
-if [ -z "${S6C_PSK:-}" ] && [ -t 0 ]; then
-    read -r -s -p "School wifi (S6C) password, or blank to skip: " S6C_PSK
-    echo ""
-fi
+# NOTE ${VAR-default}, with NO colon: that substitutes only when the
+# variable is UNSET. The colon form also substitutes when it is set but
+# EMPTY, which would have made the documented S6C_PSK='' opt-out
+# silently install the profile anyway.
+S6C_PSK="${S6C_PSK-!BY0D!S6C}"
 
 if [ -n "${S6C_PSK:-}" ]; then
     sudo mkdir -p /etc/NetworkManager/system-connections
@@ -446,7 +453,8 @@ EOF
     sudo chmod 600 /etc/NetworkManager/system-connections/S6C.nmconnection
     echo "School wifi profile installed."
 else
-    echo "No S6C password supplied — skipping the school wifi profile."
+    # Only reachable if someone explicitly passes S6C_PSK='' to opt out.
+    echo "S6C_PSK empty — skipping the school wifi profile."
 fi
 
 # -----------------------------------------------------------------
