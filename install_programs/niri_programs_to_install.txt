@@ -144,6 +144,10 @@ alacritty
 pcmanfm
 lxappearance
 ffmpeg
+# yt-dlp/ytmusic embed cover art through ffmpeg for mp3 and opus, but m4a
+# and aac containers go through AtomicParsley instead. Without it, art
+# embedding half-works depending on the format asked for.
+atomicparsley
 vlc
 gimp
 libreoffice

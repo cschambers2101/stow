@@ -210,6 +210,45 @@ else
 fi
 
 # -----------------------------------------------------------------
+echo "--- music ---"
+# yt-dlp's failure mode is external: when YouTube changes, every existing copy
+# stops working. The build fetches the latest release, but that only pins the
+# problem to the build date -- hence the timer. A machine whose timer is not
+# running WILL break, silently, some weeks after it was imaged.
+if systemctl is-enabled yt-dlp-update.timer >/dev/null 2>&1; then
+    pass "yt-dlp auto-update timer enabled" "$(systemctl show -p NextElapseUSecRealtime --value yt-dlp-update.timer 2>/dev/null | cut -c1-24)"
+else
+    fail "yt-dlp auto-update timer enabled" "yt-dlp will silently stop working when YouTube changes"
+fi
+
+if command -v yt-dlp >/dev/null 2>&1; then
+    pass "yt-dlp present" "$(yt-dlp --version 2>/dev/null)"
+else
+    fail "yt-dlp present" "not installed"
+fi
+
+# Cover art embedding: ffmpeg covers mp3 and opus, AtomicParsley covers m4a/aac.
+if command -v AtomicParsley >/dev/null 2>&1; then
+    pass "AtomicParsley present" "cover art for m4a/aac"
+else
+    fail "AtomicParsley present" "cover art will not embed into m4a/aac"
+fi
+
+if flatpak info io.bassi.Amberol >/dev/null 2>&1; then
+    pass "Amberol installed" "$(flatpak info io.bassi.Amberol 2>/dev/null | awk -F': *' '/^ *Version:/{print $2; exit}')"
+else
+    fail "Amberol installed" "students have no music player"
+fi
+
+# MPD does not create these and exits 1 without them, so a stowed mpd.conf plus
+# a later `apt install mpd` would give a service that never starts.
+if [ -d "$HOME/.local/state/mpd" ] && [ -d "$HOME/.local/share/mpd/playlists" ]; then
+    pass "mpd runtime dirs exist" "outside the repo"
+else
+    fail "mpd runtime dirs exist" "mpd would fail to start if installed"
+fi
+
+# -----------------------------------------------------------------
 echo "--- security: Oakford root CA (bug 11) ---"
 CA="/usr/local/share/ca-certificates/oakford.crt"
 # Single source of truth: read the pin out of the installer rather than

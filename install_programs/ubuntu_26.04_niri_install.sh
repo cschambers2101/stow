@@ -330,7 +330,31 @@ sudo apt install -y google-chrome-stable
 sudo apt install -y flatpak gnome-software-plugin-flatpak
 sudo flatpak remote-add --if-not-exists flathub \
     https://flathub.org/repo/flathub.flatpakrepo
-sudo flatpak install -y flathub com.bambulab.BambuStudio org.freecad.FreeCAD || \
+# Amberol is the music player for students, and deliberately the ONLY one: it
+# plays local files, shows embedded cover art, needs no daemon and no config,
+# and exports MPRIS so the bar and the media keys work. The MPD/rmpc stack is
+# power-user tooling with a daemon, a config file and a database to maintain --
+# nothing a student needs in order to play a song.
+#
+# Flatpak rather than apt: apt ships 2025.1, Flathub is a year newer, and it is
+# a Libadwaita app so the newer build is the one that looks right.
+FLATPAKS="io.bassi.Amberol"
+
+# BambuStudio and FreeCAD are Craig's, not the fleet's (his call, 31 Aug 2026).
+# A 3D-printer slicer and a CAD suite are a large download and a confusing menu
+# entry on a laptop issued for study. Kept behind an opt-in rather than deleted,
+# so building his own machine does not mean installing them by hand every time:
+#
+#     S6C_PERSONAL=1 ./ubuntu_26.04_niri_install.sh
+#
+# Same env-var pattern as S6C_PSK, TARGET_HOSTNAME and PAPERCUT_SERVER.
+if [ -n "${S6C_PERSONAL:-}" ]; then
+    echo "S6C_PERSONAL set — including Craig's personal flatpaks."
+    FLATPAKS="$FLATPAKS com.bambulab.BambuStudio org.freecad.FreeCAD"
+fi
+
+# shellcheck disable=SC2086 # deliberate word splitting: a list of app ids
+sudo flatpak install -y flathub $FLATPAKS || \
     echo "WARNING: flatpak install failed — retry after reboot."
 
 # -----------------------------------------------------------------
@@ -570,6 +594,18 @@ else
     echo "Dotfiles stowed."
 fi
 
+# MPD's runtime directories. Created unconditionally, and deliberately NOT
+# beside the config: ~/.config/mpd is a stow symlink into the repo, so a
+# database, a log and a state file written there land in git.
+#
+# Created even though MPD is not in the fleet package list, because the config
+# IS stowed everywhere. MPD does not create these itself -- it exits 1 with
+# "Failed to open ... No such file or directory" -- so without this, anyone who
+# later apt-installs mpd on a built machine gets a service that fails to start
+# and a config that looks correct. Two empty directories are a cheap way to
+# make that impossible. Verified: removing them makes mpd fail on restart.
+mkdir -p "$HOME/.local/state/mpd" "$HOME/.local/share/mpd/playlists"
+
 fc-cache -f
 
 # --- Default wallpaper ---------------------------------------------
@@ -760,6 +796,61 @@ fi
 sudo wget -q https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp \
     -O /usr/local/bin/yt-dlp
 sudo chmod a+rx /usr/local/bin/yt-dlp
+
+# --- Keep yt-dlp current, automatically -----------------------------------
+#
+# yt-dlp is the one tool in this build whose failure mode is EXTERNAL: when
+# YouTube changes something, every existing copy stops working until it is
+# updated. Nothing on the machine caused it and nothing on the machine fixes it.
+#
+# That is why it is fetched from GitHub rather than apt -- apt's build was five
+# months behind at the time of writing. But a build-time fetch only pins the
+# problem to the build date: a laptop imaged in September breaks in October and
+# the student has no idea why.
+#
+# `yt-dlp -U` replaces the binary in place, so a root-owned single file plus a
+# systemd timer is the entire mechanism. No pip, no pipx, no second package
+# manager to keep working.
+sudo tee /etc/systemd/system/yt-dlp-update.service >/dev/null <<'EOF'
+[Unit]
+Description=Update yt-dlp to the latest release
+Documentation=https://github.com/yt-dlp/yt-dlp
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/yt-dlp -U
+# A failed update must never look like a broken machine. The binary already on
+# disk keeps working and the next run tries again, so a non-zero exit here is
+# not a fault worth reporting.
+SuccessExitStatus=0 1
+EOF
+
+sudo tee /etc/systemd/system/yt-dlp-update.timer >/dev/null <<'EOF'
+[Unit]
+Description=Daily yt-dlp update
+
+[Timer]
+OnCalendar=daily
+# Spread a fleet's requests rather than having every laptop in the college hit
+# GitHub at the same second.
+RandomizedDelaySec=2h
+# This matters more than the schedule. These are laptops: they are asleep or
+# shut at 03:00, and without Persistent a missed timer is simply skipped, so a
+# machine that is never awake at the right moment never updates at all.
+Persistent=true
+
+[Install]
+WantedBy=timers.target
+EOF
+
+sudo systemctl daemon-reload
+sudo systemctl enable yt-dlp-update.timer
+# `enable --now` is a no-op on an already-running unit -- the same trap that let
+# the zram algorithm silently stay lz4 (failure log bug 6). Restart explicitly
+# so a changed timer actually takes effect on a re-run.
+sudo systemctl restart yt-dlp-update.timer
 
 if [ ! -d "$HOME/.tmux/plugins/tpm" ]; then
     git clone https://github.com/tmux-plugins/tpm "$HOME/.tmux/plugins/tpm"
