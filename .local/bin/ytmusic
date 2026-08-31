@@ -340,6 +340,16 @@ for raw in "${TARGETS[@]}"; do
     fi
 done
 
+# Say so when the run ends. Without this the last thing printed is the last
+# item, so a completed run and a run that died partway look identical -- on a
+# 100-song list you cannot tell "finished" from "stopped at 100 of 400".
+echo ""
+if [ "$DRYRUN" -eq 1 ]; then
+    echo "ytmusic: dry run finished — $total checked, nothing downloaded."
+else
+    echo "ytmusic: finished — $((total - ${#failed[@]})) of $total ok."
+fi
+
 # YouTube supplies no album metadata at all, so without this every track shows
 # as "Unknown album" and carries a 16:9 video still instead of a cover.
 # ytmusic-tag fills both in from MusicBrainz and the Cover Art Archive. It
