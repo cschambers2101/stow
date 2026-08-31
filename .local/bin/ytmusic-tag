@@ -363,6 +363,14 @@ def main(argv):
         return 0
 
     counts = {}
+    # Circuit breaker. Every request retries through a 5/15/30/60s backoff, so a
+    # throttled MusicBrainz costs ~110s PER FILE while still failing. Measured:
+    # a 99-file pass that should take two minutes took twenty-three. Across the
+    # seven queued lists that is hours of grinding, and from outside it looks
+    # identical to ordinary slowness. Stop asking once it is clearly refusing;
+    # the downloads are already safe on disk and a later re-run costs nothing.
+    consecutive = 0
+    stopped = False
     for p in files:
         try:
             status, msg = tag_file(p, dry=dry, art=not no_art,
@@ -372,7 +380,17 @@ def main(argv):
         counts[status] = counts.get(status, 0) + 1
         print(f"  [{status:5}] {msg}")
 
-    print("  " + "  ".join(f"{k}={v}" for k, v in sorted(counts.items())))
+        consecutive = consecutive + 1 if status == "error" else 0
+        if consecutive >= 5:
+            stopped = True
+            print("  [halt ] five failures in a row — MusicBrainz is refusing "
+                  "requests. Stopping so the rest of the run is not held up.")
+            print("  [halt ] re-run 'ytmusic-tag ~/Music' later to fill in the "
+                  "gap; anything already tagged is skipped.")
+            break
+
+    print("  " + "  ".join(f"{k}={v}" for k, v in sorted(counts.items()))
+          + ("  (HALTED EARLY)" if stopped else ""))
     # Never fail the caller: a missing album is not worth a non-zero exit.
     return 0
 
