@@ -500,6 +500,18 @@ method=auto
 addr-gen-mode=stable-privacy
 EOF
     sudo chmod 600 /etc/NetworkManager/system-connections/S6C.nmconnection
+    # Tell NetworkManager the keyfile exists. Dropping a file into
+    # system-connections/ does NOT make NM read it -- without this reload the
+    # profile stays invisible to `nmcli connection show` until the next reboot
+    # or NM restart, so the machine has no school wifi for the rest of the
+    # session while the installer reports success.
+    #
+    # Found on run 12, 31 Aug 2026, by the NetworkManager-based check added in
+    # 2e19b02. The previous filesystem-based check could never have seen it:
+    # the file was always written correctly, and being on disk was all it
+    # tested for.
+    sudo nmcli connection reload 2>/dev/null || \
+        echo "WARNING: 'nmcli connection reload' failed — the S6C profile will load on the next reboot."
     echo "School wifi profile installed."
 else
     # Only reachable if someone explicitly passes S6C_PSK='' to opt out.

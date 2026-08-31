@@ -288,7 +288,13 @@ method=auto
 method=auto
 addr-gen-mode=stable-privacy
 EOF
-sudo chmod 600 /etc/NetworkManager/system-connections/S6C.nmconnection
+    sudo chmod 600 /etc/NetworkManager/system-connections/S6C.nmconnection
+    # Same reload as the niri build. A keyfile dropped into
+    # system-connections/ is not read by NetworkManager until it is told, so
+    # without this the profile is invisible to `nmcli connection show` until
+    # the next reboot and the machine has no school wifi meanwhile.
+    sudo nmcli connection reload 2>/dev/null || \
+        echo "WARNING: 'nmcli connection reload' failed — the S6C profile will load on the next reboot."
     echo "School wifi profile installed."
 else
     echo "S6C_PSK empty — skipping the school wifi profile."
