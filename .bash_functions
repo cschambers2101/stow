@@ -53,7 +53,9 @@ function myhelp() {
     echo 'mkdir -> mkdir -pv'
     echo 'wget -> wget -c'
     echo 'myip -> curl http://ipecho.net/plain; echo'
-    echo 'mp3 -> downloads mp3 file from youtube'
+    echo 'music <url|"song name"> -> download audio to ~/Music (detects song vs playlist)'
+    echo 'music --from-file list.txt -> download a whole list, one per line'
+    echo 'mp3 / aac -> as music, but forced to that format'
     echo 'tnew -> tmux new -s '
     echo 'attach -> tmux attach-session -t '
     echo 'upgrade -> runs update_os function'
@@ -243,18 +245,18 @@ function toggle_monitors() {
     fi
 }
 
-mp3() {
-    # Run the download
-    yt-dlp -x --audio-format mp3 --audio-quality 0 --no-playlist\
-        --restrict-filenames \
-        --paths "$HOME/Music" \
-        -o "%(uploader)s/%(title)s.%(ext)s" \
-            "$1"
-}
-
-aac() {
-    yt-dlp -x --audio-format aac --audio-quality 0 -o "$HOME/Music/%(uploader)s/%(title)s.%(ext)s" "$1"
-}
+# YouTube audio -> ~/Music. The work is in ~/.local/bin/ytmusic: it detects
+# song vs playlist, accepts plain song names as well as urls, reads a list from
+# a file, and embeds the tags MPD needs to build a library at all.
+#
+# These stay as functions purely for muscle memory. They used to be two
+# hand-written yt-dlp calls that had drifted apart -- aac had lost the
+# --no-playlist, --restrict-filenames and --paths that mp3 had, so it would
+# happily pull a 200-track playlist into an unrestricted path. One
+# implementation, three names, no drift.
+music() { ytmusic "$@"; }        # default: no re-encode, best quality
+mp3()   { ytmusic --mp3 "$@"; }  # forced mp3, for car stereos and the like
+aac()   { ytmusic --aac "$@"; }
 apt() {
     case "$1" in
         install|remove|purge|update|upgrade|autoremove|list)

@@ -1,0 +1,293 @@
+#!/usr/bin/env bash
+#
+# ytmusic — build a music library from YouTube. Takes urls OR plain song names,
+# one per line in a text file, and works out on its own whether each thing is a
+# single track or a whole playlist.
+#
+#   ytmusic "https://youtu.be/xyz"           one song
+#   ytmusic "https://youtube.com/playlist?list=..."   whole playlist
+#   ytmusic "Thunderstruck AC/DC"            searched, first hit
+#   ytmusic --from-file rock-anthems.txt     a whole list of the above
+#
+# WHY THE DETECTION EXISTS
+#
+# yt-dlp's default for a "watch?v=XXX&list=YYY" url is to download the ENTIRE
+# playlist. That is almost never what you meant: a url like that is what you get
+# from copying the address bar while listening to one track that happens to sit
+# in a playlist. Ask for one song, get two hundred.
+#
+# The rule is deterministic and needs no network call:
+#
+#   has v= (or youtu.be/ID, or /shorts/ID) -> ONE SONG, even if list= is also
+#                                             present. You pointed at a video.
+#   list= only, starting RD                -> a Mix/radio. Generated on the fly
+#                                             and endless — never bulk-download.
+#   list= only, anything else              -> a real playlist or album.
+#   neither                                -> unknown. Ask yt-dlp (one request).
+#   not a url at all                       -> a YouTube search, first result.
+#
+# TAGS MATTER MORE THAN THEY LOOK. MPD builds its whole library from embedded
+# tags, so rmpc and the media widget show bare filenames without them. Hence
+# --embed-metadata, --embed-thumbnail, and the --parse-metadata lines that pull
+# an artist out of "Artist - Title" video names and fall back to the uploader.
+#
+# Craig Chambers / dotfiles. Portable: no absolute paths, and no GNU-grep
+# dependency (grep is ugrep on some of these machines).
+
+set -uo pipefail
+
+FORMAT="best"        # best = keep the original stream, no lossy re-encode
+KIND="auto"
+MUSIC_DIR="${YTMUSIC_DIR:-$HOME/Music}"
+ARCHIVE=""
+MAXDUR="${YTMUSIC_MAXDUR:-900}"   # seconds; guards against hour-long compilations
+
+usage() {
+    cat <<'USAGE'
+ytmusic — build a music library from YouTube. Detects song vs playlist.
+
+  ytmusic <url|"song name"> [more ...]
+  ytmusic --from-file <list.txt>
+
+Options:
+  --from-file F  read one url or song name per line ( # comments, blanks ok )
+  --best         keep the original audio, no re-encode  (default)
+  --mp3          force mp3   (re-encodes; for car stereos and the like)
+  --aac          force aac   (re-encodes)
+  --song         treat every input as a single track
+  --playlist     treat every input as a playlist
+  --dir <path>   destination (default ~/Music, or $YTMUSIC_DIR)
+  --max-dur <s>  reject anything longer (default 900s) — catches compilations
+  -n, --dry-run  show what each input resolves to, download nothing
+  -h, --help     this
+
+A "watch?v=...&list=..." url downloads ONE song, not the whole list.
+
+Layout:
+  song      ~/Music/<artist>/<title>.<ext>
+  playlist  ~/Music/<artist>/<album>/<NN>-<title>.<ext>
+
+Re-running is cheap: finished tracks are recorded in ~/Music/.ytmusic-archive
+and skipped, so a growing playlist or an edited list fetches only what is new.
+
+SEARCHES ARE A GUESS. "first YouTube result" is usually right and sometimes a
+cover, a live take or a lyric video. Use --dry-run on a long list first, and
+prefer "Artist - Title" over a bare title.
+USAGE
+}
+
+# --- classify a target. no network. echoes: song|playlist|radio|search|unknown
+yt_kind() {
+    local url="${1%%#*}" query="" vid="" list="" kv oldifs
+
+    case "$url" in
+        ytsearch*:*)      echo search; return ;;
+        http://*|https://*) ;;
+        *)                echo search; return ;;
+    esac
+
+    case "$url" in
+        *\?*) query="${url#*\?}" ;;
+    esac
+
+    oldifs="$IFS"
+    IFS='&'
+    for kv in $query; do
+        case "$kv" in
+            v=*)    vid="${kv#v=}" ;;
+            list=*) list="${kv#list=}" ;;
+        esac
+    done
+    IFS="$oldifs"
+
+    # Short forms carry the video id in the path, not the query string.
+    if [ -z "$vid" ]; then
+        case "$url" in
+            *youtu.be/*) vid="${url##*youtu.be/}"; vid="${vid%%\?*}" ;;
+            */shorts/*)  vid="${url##*/shorts/}";  vid="${vid%%\?*}" ;;
+        esac
+    fi
+
+    # A specific video wins over any list it happens to sit in.
+    [ -n "$vid" ] && { echo song; return; }
+
+    if [ -n "$list" ]; then
+        case "$list" in
+            RD*) echo radio ;;      # RD/RDMM/RDCLAK... = auto-generated mix
+            *)   echo playlist ;;
+        esac
+        return
+    fi
+
+    echo unknown
+}
+
+# Only for the unknown case — a channel page, or a site that is not YouTube.
+# Costs one metadata request, which is why it is not the primary mechanism.
+probe_kind() {
+    local t
+    t="$(yt-dlp --flat-playlist --no-warnings --playlist-items 1 \
+         --print "%(_type)s" "$1" 2>/dev/null | head -1)"
+    case "$t" in
+        playlist|multi_video) echo playlist ;;
+        *)                    echo song ;;
+    esac
+}
+
+# A plain song name becomes a YouTube search for the single best match.
+to_target() {
+    case "$1" in
+        http://*|https://*|ytsearch*:*) printf '%s' "$1" ;;
+        *)                              printf 'ytsearch1:%s' "$1" ;;
+    esac
+}
+
+TARGETS=()
+DRYRUN=0
+
+while [ "$#" -gt 0 ]; do
+    case "$1" in
+        --best)     FORMAT="best" ;;
+        --mp3)      FORMAT="mp3" ;;
+        --aac)      FORMAT="aac" ;;
+        --song|--single|--no-playlist) KIND="song" ;;
+        --playlist|--yes-playlist)     KIND="playlist" ;;
+        --dir)      shift; MUSIC_DIR="${1:?--dir needs a path}" ;;
+        --max-dur)  shift; MAXDUR="${1:?--max-dur needs seconds}" ;;
+        -n|--dry-run) DRYRUN=1 ;;
+        -h|--help)  usage; exit 0 ;;
+        --from-file)
+            shift
+            LIST="${1:?--from-file needs a path}"
+            [ -r "$LIST" ] || { echo "ytmusic: cannot read '$LIST'" >&2; exit 1; }
+            # Comments and blank lines are skipped so a scraped list can be
+            # annotated in place. Trailing \r survives Windows-made files.
+            while IFS= read -r line || [ -n "$line" ]; do
+                line="${line%$'\r'}"
+                line="${line#"${line%%[![:space:]]*}"}"
+                line="${line%"${line##*[![:space:]]}"}"
+                case "$line" in
+                    ''|'#'*) continue ;;
+                esac
+                TARGETS+=("$line")
+            done < "$LIST"
+            ;;
+        -*)         echo "ytmusic: unknown option '$1'" >&2; usage >&2; exit 2 ;;
+        *)          TARGETS+=("$1") ;;
+    esac
+    shift
+done
+
+[ "${#TARGETS[@]}" -eq 0 ] && { usage >&2; exit 2; }
+ARCHIVE="$MUSIC_DIR/.ytmusic-archive"
+
+command -v yt-dlp >/dev/null || { echo "ytmusic: yt-dlp is not installed." >&2; exit 1; }
+command -v ffmpeg >/dev/null || { echo "ytmusic: ffmpeg is not installed — extraction and tagging need it." >&2; exit 1; }
+
+# Thumbnail embedding into m4a/aac goes through AtomicParsley; mp3 goes through
+# ffmpeg. Warn once rather than letting it half-work depending on format.
+if ! command -v AtomicParsley >/dev/null 2>&1; then
+    case "$FORMAT" in
+        aac|best) echo "ytmusic: note — AtomicParsley is missing, so cover art may not embed into m4a/aac. Install: sudo apt install atomicparsley" >&2 ;;
+    esac
+fi
+
+mkdir -p "$MUSIC_DIR" || exit 1
+
+total="${#TARGETS[@]}"
+i=0
+rc=0
+failed=()
+
+for raw in "${TARGETS[@]}"; do
+    i=$((i + 1))
+    target="$(to_target "$raw")"
+
+    kind="$KIND"
+    if [ "$kind" = "auto" ]; then
+        kind="$(yt_kind "$target")"
+        [ "$kind" = "unknown" ] && kind="$(probe_kind "$target")"
+    fi
+
+    if [ "$kind" = "radio" ]; then
+        echo "[$i/$total] SKIP  mix/radio, never ends: $raw" >&2
+        echo "              use the track's own url, or force with --playlist" >&2
+        failed+=("$raw")
+        rc=1
+        continue
+    fi
+
+    if [ "$DRYRUN" -eq 1 ]; then
+        printf '[%d/%d] %-8s %s\n' "$i" "$total" "$kind" "$raw"
+        [ "$kind" = "search" ] && printf '           -> %s\n' "$target"
+        continue
+    fi
+
+    opts=(
+        -x --audio-format "$FORMAT"
+        --restrict-filenames
+        --embed-metadata
+        --embed-thumbnail
+        --download-archive "$ARCHIVE"
+        --paths "$MUSIC_DIR"
+        --no-warnings
+        # Be polite across a long list rather than hammering and being throttled.
+        --sleep-interval 1 --max-sleep-interval 3
+        # Most music videos are named "Artist - Title (Official Video)". Pull a
+        # real artist/title out of that, then strip the marketing suffix, then
+        # fall back to the uploader if there was no dash at all. Without this a
+        # searched track lands untagged and MPD files it under nothing.
+        # Separator is [-] OR an en/em dash: YouTube music channels use "–" at
+        # least as often as "-", and matching only the hyphen silently filed
+        # "Queen – Bohemian Rhapsody" under artist "Queen Official" with the
+        # artist still stuck in the title. Whitespace is REQUIRED either side,
+        # so hyphenated names like "Jay-Z" are not split in half.
+        --parse-metadata "title:(?P<artist>.+?)\s+[-–—]\s+(?P<title>.+)"
+        --replace-in-metadata "title,artist" "(?i)\s*[\(\[](?:official|lyric|lyrics|audio|video|hd|hq|4k|remaster(?:ed)?|music video)[^\)\]]*[\)\]]" ""
+        --parse-metadata "%(artist,uploader)s:%(meta_artist)s"
+        # The YouTube description is ~4KB of lyrics, promo links and hashtags,
+        # and --embed-metadata writes it into BOTH description and synopsis on
+        # every single file. Players surface those fields, and a hundred tracks
+        # of it is pure noise. Blank them; the real tags are unaffected.
+        --parse-metadata ":(?P<meta_description>)"
+        --parse-metadata ":(?P<meta_synopsis>)"
+        --parse-metadata ":(?P<meta_comment>)"
+    )
+
+    # --audio-quality only means anything when we are actually re-encoding.
+    [ "$FORMAT" != "best" ] && opts+=(--audio-quality 0)
+
+    if [ "$kind" = "playlist" ]; then
+        opts+=(
+            --yes-playlist
+            --ignore-errors                 # one dead video must not kill the run
+            --parse-metadata "%(playlist_title,playlist)s:%(meta_album)s"
+            -o "%(playlist_uploader,artist,uploader)s/%(playlist_title,playlist)s/%(playlist_index)02d-%(title)s.%(ext)s"
+        )
+        echo "[$i/$total] playlist: $raw"
+    else
+        opts+=(
+            --no-playlist
+            -o "%(artist,uploader)s/%(title)s.%(ext)s"
+        )
+        # A search can land on an hour-long "greatest hits" upload. A duration
+        # ceiling is the cheapest guard against filing that as a single track.
+        [ "$kind" = "search" ] && opts+=(--match-filter "duration < $MAXDUR")
+        echo "[$i/$total] $kind: $raw"
+    fi
+
+    if ! yt-dlp "${opts[@]}" "$target"; then
+        rc=$?
+        failed+=("$raw")
+        echo "[$i/$total] FAILED: $raw" >&2
+    fi
+done
+
+if [ "${#failed[@]}" -gt 0 ]; then
+    echo "" >&2
+    echo "ytmusic: ${#failed[@]} of $total did not download:" >&2
+    printf '  %s\n' "${failed[@]}" >&2
+    echo "Re-run the same command to retry only these — the rest are in the archive." >&2
+fi
+
+exit "$rc"
