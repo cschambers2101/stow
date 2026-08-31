@@ -707,20 +707,25 @@ fi
 curl -fsSL https://claude.ai/install.sh | bash || \
     echo "WARNING: Claude Code install failed — install manually after reboot."
 
-# Antigravity CLI, NOT Gemini CLI.
+# Antigravity CLI: REMOVED 31 Aug 2026 (Craig's call).
 #
-# Google deprecated Gemini CLI on 2026-06-18: it stopped serving requests
-# for the free tier and for Google AI Pro/Ultra, which is what students
-# would be on. Only Gemini Code Assist Standard/Enterprise licences keep
-# working. `npm install -g @google/gemini-cli` therefore installs a tool
-# that authenticates and then fails.
+# It was the replacement for Gemini CLI, which Google deprecated on
+# 2026-06-18 for exactly the tiers students would be on. Dropped for three
+# reasons found on the first real hardware build:
 #
-# The replacement is a Go binary installed by shell script — no npm and no
-# Node dependency — landing at ~/.local/bin/agy. Students run `agy` once to
-# sign in through the browser.
-#   https://antigravity.google/docs/cli/install
-curl -fsSL https://antigravity.google/cli/install.sh | bash || \
-    echo "WARNING: Antigravity CLI install failed — see https://antigravity.google/docs/cli/install"
+#   1. It installs a 199 MB Go binary at ~/.local/bin/agy -- and
+#      ~/.local/bin is a stow symlink INTO the dotfiles repo, so the blob
+#      lands in the working tree and shows up in `git status`.
+#   2. Its installer appends `export PATH="/home/<user>/.local/bin:$PATH"`
+#      to BOTH .bashrc and .bash_profile, unconditionally. That is
+#      redundant -- .bash_profile already adds ~/.local/bin -- and it
+#      hardcodes an absolute home path, so it dirties two TRACKED files on
+#      every single build.
+#   3. Nobody had asked for it.
+#
+# If it is ever wanted back, add `.local/bin/agy` handling first: the
+# .gitignore entry for it stays in place deliberately, so a hand install
+# does not pollute the repo.
 
 # -----------------------------------------------------------------
 # 13. MACHINE IDENTITY: KEYBOARD, LOCALE, TIMEZONE, HOSTNAME

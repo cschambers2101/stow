@@ -138,10 +138,9 @@ nvm use --lts
 # -----------------------------------------------------------------
 # Gemini CLI was deprecated on 2026-06-18 and stopped serving free-tier
 # and AI Pro/Ultra accounts. Antigravity CLI replaces it: a Go binary,
-# no npm, installed to ~/.local/bin/agy.
-#   https://antigravity.google/docs/cli/install
-curl -fsSL https://antigravity.google/cli/install.sh | bash || \
-    echo "WARNING: Antigravity CLI install failed — see https://antigravity.google/docs/cli/install"
+# Antigravity CLI removed 31 Aug 2026 — see ubuntu_26.04_niri_install.sh
+# section 12 for why (199 MB binary into the stow tree, plus a redundant
+# hardcoded PATH export appended to two tracked files).
 curl -fsSL https://claude.ai/install.sh | bash || \
     echo "WARNING: Claude Code install failed — install manually after reboot."
 
