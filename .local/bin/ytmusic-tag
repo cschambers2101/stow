@@ -137,12 +137,32 @@ def strip_artist_prefix(title, artist):
     return title
 
 
+# Emoji and decorative symbols: "NEW 📀 Will You Still Love Me Tomorrow".
+_JUNK_SYM = re.compile(
+    "[\U0001F000-\U0001FAFF\u2190-\u21FF\u2300-\u27BF\u2B00-\u2BFF\uFE0F]")
+_LEAD_SHOUT = re.compile(r"(?i)^\s*(?:new|hq|hd|full)\b[\s:\u2013\u2014-]*")
+_BRACE = re.compile(r"\s*\{[^}]*\}")
+
+
+def clean_name(t):
+    """Cleanup that applies to an ARTIST field as well as a title. Uploaders
+    put junk in whichever half of "X - Y" they choose, and when the halves are
+    reversed our artist tag is holding their title."""
+    if not t:
+        return t
+    t = _JUNK_SYM.sub(" ", t)
+    t = _BRACE.sub("", t)
+    t = _LEAD_SHOUT.sub("", t)
+    return re.sub(r"\s{2,}", " ", t).strip()
+
+
 def clean_title(t):
     """Strip upload noise. Only removes bracketed or trailing junk, so a real
     title is untouched: "Video Killed the Radio Star" and "(I Can't Get No)
     Satisfaction" both survive intact."""
     if not t:
         return t
+    t = clean_name(t)
     t = _NOISE_BULLET.sub("", t)
     for rx in (_NOISE_BRACKET, _NOISE_TAIL, _NOISE_BARE, _NOISE_YEAR):
         t = rx.sub("", t)
@@ -317,7 +337,7 @@ def search_variants(artist, title):
     seen = {(norm(artist), norm(title))}
     for a, t in ((artist, re.sub(r"^(?:the|a)\s+", "", title, flags=re.I)),
                  (artist, _digits(title)),
-                 (title, artist)):
+                 (clean_title(title), clean_title(artist))):
         key = (norm(a), norm(t))
         if a and t and key not in seen:
             seen.add(key)
