@@ -72,19 +72,39 @@ dms ipc call lock lock >/dev/null
     # The isLocked re-check after the loop keeps the old behaviour if the
     # signal is missed or D-Bus is unavailable: fall back to a SLOW poll
     # (30s, not 2s) rather than trusting the signal blindly.
-    SESSION_PATH=$(gdbus call --system \
-        --dest org.freedesktop.login1 \
-        --object-path /org/freedesktop/login1 \
-        --method org.freedesktop.login1.Manager.GetSession "${XDG_SESSION_ID:-}" \
-        2>/dev/null | grep -o "/org/freedesktop/login1/session/[^']*")
-
-    if [[ -n $SESSION_PATH ]] && command -v dbus-monitor >/dev/null; then
+    # Deliberately NOT filtered to one session path.
+    #
+    # The obvious version resolves this session via XDG_SESSION_ID and
+    # filters the match to its object path. That breaks the moment the
+    # script runs from anywhere but the graphical session: over ssh,
+    # XDG_SESSION_ID is the SSH session, so it watches a session that never
+    # locks and the cleanup never runs. Caught in testing exactly that way.
+    #
+    # Watching every login1 PropertiesChanged is cheap -- they are rare --
+    # and every wake is confirmed against `dms ipc call lock isLocked`
+    # before acting, so a signal from another session costs one IPC call and
+    # nothing else.
+    if command -v dbus-monitor >/dev/null; then
+        # A FIFO rather than `< <(...)` so the monitor's PID is known and it
+        # can be killed explicitly. With process substitution, breaking out
+        # of the read loop leaves dbus-monitor running: it only dies when it
+        # next tries to write and gets SIGPIPE, and if no further signals
+        # arrive it never writes. That leaked one idle process per lock --
+        # caught in testing, 104 seconds after the loop had exited.
+        fifo=$(mktemp -u)
+        mkfifo -m 600 "$fifo"
+        stdbuf -oL dbus-monitor --system \
+            "type='signal',interface='org.freedesktop.DBus.Properties',path_namespace='/org/freedesktop/login1/session'" \
+            > "$fifo" 2>/dev/null &
+        mon=$!
+        trap 'kill "$mon" 2>/dev/null; rm -f "$fifo"' EXIT
         while IFS= read -r line; do
             [[ $line == *false* ]] || continue
             [[ $(dms ipc call lock isLocked) == true ]] || break
-        done < <(stdbuf -oL dbus-monitor --system \
-                    "type='signal',path='$SESSION_PATH',interface='org.freedesktop.DBus.Properties'" \
-                    2>/dev/null)
+        done < "$fifo"
+        kill "$mon" 2>/dev/null
+        rm -f "$fifo"
+        trap - EXIT
     else
         while [[ $(dms ipc call lock isLocked) == true ]]; do sleep 30; done
     fi
