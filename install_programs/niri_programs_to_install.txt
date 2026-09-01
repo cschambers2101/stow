@@ -103,6 +103,14 @@ network-manager-l2tp-gnome
 network-manager-vpnc-gnome
 network-manager-pptp-gnome
 wireguard-tools
+# dbus-bin: provides dbus-monitor, which dank-lock.sh uses to BLOCK on the
+# logind LockedHint signal instead of polling `dms ipc call lock isLocked`
+# every 2 seconds. It arrives as a dependency of the desktop anyway, but the
+# lock screen is a poor thing to leave depending on someone else's
+# dependency graph -- without it the script silently falls back to a 30s
+# poll. See section 3b of the failure log: the old 2s poll crashed
+# quickshell overnight.
+dbus-bin
 
 # --- printing (PaperCut) ---
 # School printers are PaperCut. Mobility Print has NO Linux client, so

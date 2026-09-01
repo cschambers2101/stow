@@ -154,6 +154,35 @@ if dpkg -s update-notifier 2>/dev/null | grep -q '^Status: install ok installed'
 else pass "update-notifier purged" ""; fi
 
 # -----------------------------------------------------------------
+echo "--- shell stability ---"
+# quickshell crashed on 1 Sep 2026 after dank-lock.sh opened 13,281 IPC
+# connections overnight (a 2s poll while locked). It auto-restarted WITHOUT
+# reattaching its surfaces, leaving a flat wallpaper-coloured screen with a
+# working mouse -- indistinguishable from dead hardware. It ran that way for
+# twelve hours because nothing reported it.
+if [ -d "$HOME/.cache/quickshell/crashes" ] && \
+   [ -n "$(ls -A "$HOME/.cache/quickshell/crashes" 2>/dev/null)" ]; then
+    NCRASH="$(find "$HOME/.cache/quickshell/crashes" -mindepth 1 -maxdepth 1 -type d 2>/dev/null | wc -l)"
+    fail "quickshell has not crashed" "$NCRASH crash dump(s) in ~/.cache/quickshell/crashes"
+else
+    pass "quickshell has not crashed" ""
+fi
+
+# The lock screen must not be polling. Anything above a few hundred
+# connections in a session means something is hammering the IPC socket.
+QSLOG="$(ls -t "/run/user/$(id -u)"/quickshell/by-id/*/log.qslog 2>/dev/null | head -1)"
+if [ -z "$QSLOG" ]; then
+    skip "shell IPC connections sane" "no running quickshell log"
+else
+    NIPC="$(strings "$QSLOG" 2>/dev/null | grep -c 'New IPC connection')"
+    if [ "${NIPC:-0}" -lt 2000 ]; then
+        pass "shell IPC connections sane" "$NIPC this session"
+    else
+        fail "shell IPC connections sane" "$NIPC — something is polling the IPC socket"
+    fi
+fi
+
+# -----------------------------------------------------------------
 echo "--- file integrity ---"
 # Catches a corrupted install. On 31 Aug 2026 Google Chrome's 141 MB binary
 # was silently corrupt on a freshly built machine: same package version, but
