@@ -1068,6 +1068,66 @@ sudo localectl set-locale LANG=en_GB.UTF-8
 sudo timedatectl set-timezone Europe/London
 sudo timedatectl set-ntp true
 
+# ...and `set-ntp true` is NOT sufficient on Ubuntu 26.04. It reports success,
+# `timedatectl` then says "NTP service: active", and the clock still never
+# syncs. Found on ubuntu-craig-office 2 Sep 2026, when it had drifted
+# 2m12s fast (132.5s) and Craig noticed it against his phone.
+#
+# WHY. 26.04 ships chrony instead of systemd-timesyncd, and its default
+# sources use NTS (Network Time Security). NTS needs a key-establishment
+# handshake on TCP 4460 before any time can be exchanged, and the S6C firewall
+# filters 4460:
+#
+#     TCP 4460 to ntp-nts-{1,2,3}.ps{5,6}.canonical.com  TIMEOUT (filtered)
+#     TCP 4460 to time.cloudflare.com                    TIMEOUT (filtered)
+#     TCP  443 to the SAME canonical host                OPEN   <- not a host block
+#
+# So chrony runs, never establishes keys, and reports every source as `^?`
+# with Stratum 0 and a 1970 reference time. `timedatectl` was showing
+# "System clock synchronized: no" while claiming the NTP service was active.
+#
+# Plain NTP over UDP 123 is NOT blocked - verified reachable to the public
+# pools, to the site gateway and to the internal DC, all agreeing on the same
+# 132.5s offset. So the fix is simply to give chrony non-NTS sources.
+#
+# Public pools, deliberately, for two reasons: no site address goes into this
+# PUBLIC repo, and a student laptop taken home still syncs. If outbound 123 is
+# ever blocked too, the site-internal fallback is recorded in the private
+# workspace notes (projects/linux-device-build-2026/notes/), not here.
+#
+# Added as a NEW file in sources.d rather than editing
+# ubuntu-ntp-pools.sources, which is package-shipped but NOT a dpkg conffile -
+# an upgrade would silently overwrite an edit. The NTS pools stay present and
+# unreachable, which is harmless: chrony ignores sources it cannot reach.
+echo "Adding plain-NTP sources (NTS needs TCP 4460, which is filtered here)..."
+sudo tee /etc/chrony/sources.d/50-s6c-plain-ntp.sources >/dev/null <<'NTPEOF'
+# Plain (non-NTS) NTP pools. See ubuntu_26.04_niri_install.sh section 13 for
+# why: NTS key establishment on TCP 4460 is filtered, so the NTS pools that
+# Ubuntu ships in ubuntu-ntp-pools.sources can never sync. UDP 123 is open.
+pool 0.pool.ntp.org iburst maxsources 2
+pool 1.pool.ntp.org iburst maxsources 2
+pool ntp.ubuntu.com iburst maxsources 2
+NTPEOF
+
+# chrony re-reads sources.d on reload, but a restart also lets `makestep 1 3`
+# (already in chrony.conf) STEP a large offset instead of slewing it away over
+# hours. A 132s error would take most of a day to slew out.
+sudo systemctl restart chrony 2>/dev/null || sudo systemctl restart chronyd 2>/dev/null || \
+    echo "WARNING: could not restart chrony."
+
+# Give it a moment to actually select a source, so the verification at the end
+# of this script sees the true state rather than a race.
+for _i in $(seq 1 20); do
+    if timedatectl show --property=NTPSynchronized --value 2>/dev/null | grep -q '^yes$'; then
+        echo "   clock synchronised, now $(date '+%H:%M:%S %Z')"
+        break
+    fi
+    sleep 1
+done
+unset _i
+timedatectl show --property=NTPSynchronized --value 2>/dev/null | grep -q '^yes$' || \
+    echo "WARNING: clock still not synchronised - check 'chronyc sources -v'."
+
 # Hostname. A fleet of machines all called "ubuntu" is miserable to
 # manage - you cannot tell them apart in DHCP leases, print queues or
 # ssh known_hosts. Supply it either way round:

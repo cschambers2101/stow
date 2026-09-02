@@ -375,6 +375,36 @@ else
 fi
 
 # -----------------------------------------------------------------
+# The clock. `timedatectl set-ntp true` succeeds and reports "NTP service:
+# active" even when chrony can never reach a source, so nothing in the install
+# output reveals a free-running clock. ubuntu-craig-office had drifted 2m12s
+# fast before anyone noticed, and only because Craig compared it to his phone.
+#
+# 26.04's chrony defaults to NTS sources, which need a key exchange on TCP
+# 4460; that port is filtered here, so every source sat at `^?` / Stratum 0.
+# See section 13 of the installer.
+echo "--- clock ---"
+NTP_SYNC="$(timedatectl show --property=NTPSynchronized --value 2>/dev/null)"
+case "$NTP_SYNC" in
+    yes) pass "clock synchronised" "" ;;
+    no)  fail "clock synchronised" "NTP service may claim active while never reaching a source" ;;
+    *)   skip "clock synchronised" "timedatectl gave no answer" ;;
+esac
+
+# A selected source is the stronger claim: '*' marks the one in use, '+' a
+# combined one. `NTPSynchronized` can lag, and this says WHY when it is no.
+if command -v chronyc >/dev/null 2>&1; then
+    SEL="$(chronyc -n sources 2>/dev/null | grep -cE '^\^[*+]')"
+    if [ "${SEL:-0}" -gt 0 ]; then
+        pass "chrony has a selected source" "$SEL"
+    else
+        fail "chrony has a selected source" "no source reachable — TCP 4460 filtered? try plain-NTP sources"
+    fi
+else
+    skip "chrony has a selected source" "chronyc not installed"
+fi
+
+# -----------------------------------------------------------------
 # The project's longest-standing red risk was that no real GPU driver had
 # ever been exercised -- every run before 2 Sep 2026 was a VM on virgl +
 # llvmpipe, which proves the software stack and nothing else. These checks
