@@ -33,3 +33,12 @@
 .config/DankMaterialShell/zen.css
 .config/DankMaterialShell/.firstlaunch
 .config/DankMaterialShell/.changelog-*
+
+# dank-theme.toml is a matugen template output -- DMS lists it under
+# tags ["matugen","alacritty","terminal","template"] and rewrites it whenever a
+# theme is applied. It arrived tracked in e6a9664, and once ~/.config/alacritty
+# became a directory symlink (2 Sep 2026, this machine) every theme change would
+# have shown up as a spurious diff -- the same trap cursor.kdl hit above.
+# alacritty.toml stays tracked; it imports this file by path, so the import
+# keeps working with the file untracked.
+.config/alacritty/dank-theme.toml
