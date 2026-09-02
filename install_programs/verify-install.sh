@@ -56,6 +56,22 @@ echo
 # -----------------------------------------------------------------
 echo "--- system ---"
 eq "no failed units" "0" "$(systemctl list-units --state=failed --no-legend --plain 2>/dev/null | grep -c .)"
+# The check above only sees SYSTEM units. The xdg-autostart generator puts
+# its units in the USER manager, so a failing autostart entry is invisible
+# to it -- exactly how nvidia-settings-autostart went unnoticed on
+# ubuntu-craig-office until systemctl --user was checked by hand
+# (2 Sep 2026). Guarded because there is no user manager to talk to when
+# this script is run from a bare SSH session with no login session.
+if systemctl --user is-system-running >/dev/null 2>&1 || [ -n "${XDG_RUNTIME_DIR:-}" ]; then
+    USER_FAILED="$(systemctl --user list-units --state=failed --no-legend --plain 2>/dev/null | grep -c .)"
+    if [ "${USER_FAILED:-0}" = "0" ]; then
+        pass "no failed user units" ""
+    else
+        fail "no failed user units" "$(systemctl --user list-units --state=failed --no-legend --plain 2>/dev/null | awk '{print $1}' | tr '\n' ' ')"
+    fi
+else
+    skip "no failed user units" "no user session to query"
+fi
 eq "greetd active" "active" "$(systemctl is-active greetd 2>/dev/null)"
 eq "display-manager is greetd" "greetd.service" \
    "$(basename "$(readlink -f /etc/systemd/system/display-manager.service 2>/dev/null)" 2>/dev/null)"
@@ -356,6 +372,70 @@ if nmcli -t -f NAME connection show 2>/dev/null | grep -qx 'S6C'; then
     fi
 else
     fail "wifi profile present" "NetworkManager has no S6C connection"
+fi
+
+# -----------------------------------------------------------------
+# The project's longest-standing red risk was that no real GPU driver had
+# ever been exercised -- every run before 2 Sep 2026 was a VM on virgl +
+# llvmpipe, which proves the software stack and nothing else. These checks
+# assert real hardware acceleration, so the risk cannot silently reopen.
+echo "--- graphics (real GPU, not llvmpipe) ---"
+
+GPU_LINE="$(lspci -nnk 2>/dev/null | grep -iE 'vga compatible|3d controller' | head -1)"
+if [ -z "$GPU_LINE" ]; then
+    skip "gpu detected" "lspci reported no VGA/3D controller"
+else
+    pass "gpu detected" "$(printf '%s' "$GPU_LINE" | sed 's/.*: //' | cut -c1-46)"
+
+    if compgen -G "/dev/dri/renderD*" >/dev/null; then
+        pass "drm render node present" "$(ls -d /dev/dri/renderD* | tr '\n' ' ')"
+    else
+        fail "drm render node present" "no /dev/dri/renderD* — no hardware allocator"
+    fi
+
+    case "$GPU_LINE" in
+    *NVIDIA*|*nVidia*)
+        has "nvidia driver bound" "nvidia" \
+            "$(lspci -nnk 2>/dev/null | grep -A3 -iE 'vga compatible|3d controller' | grep -i 'driver in use' | head -1 | sed 's/.*: //')"
+        ok  "nvidia_drm loaded" sh -c 'lsmod | grep -q "^nvidia_drm"'
+        ok  "nvidia-smi responds" sh -c 'nvidia-smi -L >/dev/null 2>&1'
+        # nouveau and the proprietary driver cannot both drive the card.
+        if lsmod | grep -q '^nouveau'; then
+            fail "nouveau not loaded" "nouveau is loaded alongside nvidia"
+        else
+            pass "nouveau not loaded" ""
+        fi
+        # The NVIDIA modules are DKMS-built and unsigned, so a machine that
+        # boots with Secure Boot on will not load them at all.
+        SB="$(mokutil --sb-state 2>/dev/null | head -1)"
+        case "$SB" in
+            *disabled*)  pass "secure boot disabled" "$SB" ;;
+            "")          skip "secure boot disabled" "mokutil unavailable" ;;
+            *)           fail "secure boot disabled" "$SB — DKMS modules will not load" ;;
+        esac
+        ;;
+    *AMD*|*ATI*|*Radeon*)
+        ok "amdgpu loaded" sh -c 'lsmod | grep -qE "^amdgpu"'
+        ;;
+    *Intel*)
+        ok "intel kms loaded" sh -c 'lsmod | grep -qE "^i915|^xe"'
+        ;;
+    *)
+        skip "vendor driver check" "unrecognised vendor"
+        ;;
+    esac
+
+    # The decisive one. niri logs the renderer it settled on; if it could
+    # not get a GBM allocator it falls back to software and llvmpipe
+    # appears here. That is precisely what happened in every VM run.
+    NIRI_LOG="$(journalctl --user -b --no-pager 2>/dev/null | grep -c -i 'llvmpipe\|software rasteriz')"
+    if [ -z "$(journalctl --user -b --no-pager 2>/dev/null | head -1)" ]; then
+        skip "niri not on llvmpipe" "no user journal available"
+    elif [ "${NIRI_LOG:-0}" = "0" ]; then
+        pass "niri not on llvmpipe" "hardware renderer"
+    else
+        fail "niri not on llvmpipe" "software rendering — GBM allocator missing"
+    fi
 fi
 
 # -----------------------------------------------------------------
