@@ -337,7 +337,7 @@
   "notificationSummaryFontSize": 0,
   "notificationBodyFontSize": 0,
   "notepadShowLineNumbers": false,
-  "notepadAutoSave": false,
+  "notepadAutoSave": true,
   "notepadSlideoutSide": "right",
   "notepadDefaultMode": "slideout",
   "notepadTransparencyOverride": -1,
