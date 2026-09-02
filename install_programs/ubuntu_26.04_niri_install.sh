@@ -112,6 +112,106 @@ sudo apt install -y \
     stow
 
 # -----------------------------------------------------------------
+# 2A. NETWORK TRUST: THE OAKFORD ROOT CA
+#
+#    Lettered rather than renumbered on purpose. The numbers of the later
+#    sections are cited from the project notes and from commit messages,
+#    and shifting fourteen of them to insert one here would invalidate
+#    every one of those references.
+#
+#    THE POSITION IS THE POINT. The site firewall intercepts TLS, so any
+#    fetch from outside the Ubuntu archives fails certificate validation
+#    until this CA is trusted. This block used to live in section 9,
+#    two-thirds of the way through the run, which meant the first
+#    third-party download -- dankinstall, section 5 -- died on a TLS error
+#    and took the whole install down with it under `set -e`. Hit installing
+#    at work, 2 Sep 2026.
+#
+#    Exactly two things are meant to run before it, and both are safe:
+#
+#      * Sections 1 and 2, which fetch only from the Ubuntu archives.
+#        Ubuntu install and upgrade traffic bypasses the firewall, so it
+#        needs no CA -- as does oakfordhelp.co.uk itself, which is what
+#        makes the download below possible before its own cert is trusted.
+#      * `libnss3-tools` in section 2 specifically, because the
+#        Chrome/NSS half of this block needs `certutil`. That dependency
+#        is the reason this sits after section 2 rather than at line 1.
+#
+#    Everything that reaches outside the Ubuntu archives comes after:
+#    section 5 (dankinstall), 7 (Chrome), 8 (Flathub), 11 (Node), 12
+#    (yt-dlp, tpm, Claude Code). Keep it that way. A new third-party
+#    download added ABOVE this line works on every network except the one
+#    the fleet actually lives on, which is the worst way to find out.
+# -----------------------------------------------------------------
+
+# Download and trust the Oakford CA certificate system-wide.
+#
+# This installs a ROOT CA (CN=Oakford Internet Services CA, CA:TRUE, valid
+# 16 Aug 2024 - 14 Aug 2034). Anything able to substitute this file can
+# transparently intercept every TLS connection the machine makes, with no
+# browser warning, so it gets two independent protections:
+#
+#   1. https://, not http://. The plain http:// URL 301-redirects here and
+#      wget follows redirects, so the right file did arrive -- but the
+#      request STARTED in cleartext, which means an active attacker on the
+#      path (school wifi included) could answer with their own CA instead
+#      of the redirect and have it trusted fleet-wide. Demanding TLS closes
+#      that: the stock Ubuntu trust store validates oakfordhelp.co.uk
+#      before a single byte of the certificate is read.
+#
+#   2. A SHA-256 pin. Fails CLOSED -- on any mismatch the certificate is
+#      not installed at all. This also catches a legitimate re-issue, which
+#      is deliberate: a new CA should be a conscious decision, not a silent
+#      one. When Oakford re-issue, verify the new fingerprint out of band
+#      and update the line below. Do not delete the check.
+#
+# Verified 30 Aug 2026 against both the live host and the copy already
+# trusted on dell-ubuntu; the two matched.
+OAKFORD_SHA256="70:0D:4D:BA:40:46:29:25:31:7F:9E:C3:33:D5:D7:52:D4:C6:B5:C9:A1:BD:7B:27:BA:B7:12:5C:9C:13:C5:A3"
+
+# Retried: this is the installer's first fetch from outside the Ubuntu
+# archives, and it runs early, so it is the most likely thing in the script
+# to meet a link that is up but not yet usable on a freshly booted machine.
+#
+# Downloaded as the normal user, not root: only the install needs privilege.
+# No EXIT trap here: this script already owns EXIT for the sudo keepalive
+# set up at the top, and re-arming it would silently discard that, leaving a
+# stray keepalive loop running after the install finished.
+OAKFORD_TMP="$(mktemp)"
+
+if wget -q --tries=3 --retry-connrefused --waitretry=5 --timeout=20 \
+        https://oakfordhelp.co.uk/oakford.crt -O "$OAKFORD_TMP"; then
+    OAKFORD_GOT="$(openssl x509 -in "$OAKFORD_TMP" -noout -fingerprint -sha256 2>/dev/null | cut -d= -f2)"
+    if [ "$OAKFORD_GOT" = "$OAKFORD_SHA256" ]; then
+        sudo install -m 0644 -o root -g root "$OAKFORD_TMP" \
+            /usr/local/share/ca-certificates/oakford.crt
+        sudo update-ca-certificates
+
+        # Add to Chrome/Chromium NSS store so Chrome trusts internal
+        # services. Only reached when the fingerprint matched.
+        mkdir -p "$HOME/.pki/nssdb"
+        certutil -d sql:"$HOME/.pki/nssdb" -N -f /dev/null 2>/dev/null || true
+        certutil -d sql:"$HOME/.pki/nssdb" -A -t "CT,," -n "Oakford CA" \
+            -f /dev/null -i /usr/local/share/ca-certificates/oakford.crt || true
+    else
+        echo "ERROR: Oakford CA fingerprint did NOT match. Certificate NOT installed." >&2
+        echo "  expected: $OAKFORD_SHA256" >&2
+        echo "  received: ${OAKFORD_GOT:-<not a certificate>}" >&2
+        echo "  Internal HTTPS services will not be trusted. Do not work around" >&2
+        echo "  this by installing it manually until the new fingerprint is" >&2
+        echo "  confirmed with Oakford." >&2
+    fi
+else
+    echo "WARNING: could not download the Oakford CA certificate." >&2
+    echo "  On the school network every later third-party download will now" >&2
+    echo "  fail TLS validation: dankinstall (5), Chrome (7), Flathub (8)," >&2
+    echo "  Node (11), yt-dlp and Claude Code (12). Off site this is harmless" >&2
+    echo "  -- the CA is only needed behind the site firewall." >&2
+fi
+
+rm -f "$OAKFORD_TMP"
+
+# -----------------------------------------------------------------
 # 3. GRAPHICS DRIVERS & HARDWARE VIDEO ACCELERATION
 #    Detects the GPU vendor rather than assuming NVIDIA. Students'
 #    laptops will mostly be Intel or AMD integrated graphics.
@@ -462,7 +562,7 @@ sudo flatpak install -y flathub $FLATPAKS || \
     echo "WARNING: flatpak install failed — retry after reboot."
 
 # -----------------------------------------------------------------
-# 9. NETWORKING, CERTIFICATE & WIFI PROFILES
+# 9. NETWORKING & WIFI PROFILES
 # -----------------------------------------------------------------
 sudo apt install -y \
     linux-firmware \
@@ -501,79 +601,20 @@ sudo netplan apply
 # `netplan apply` tears down and rebuilds the network stack, and on a fresh
 # desktop it also hard-restarts systemd-networkd (which is not running yet,
 # so its dbus reload fails and it says so loudly -- that noise is expected
-# and netplan still exits 0). The next command downloads a certificate, and
-# without this wait it races the restart and dies with wget's exit 4,
-# "network failure", taking the whole script with it under `set -e`.
+# and netplan still exits 0). Wait for it to come back before touching
+# NetworkManager below.
 #
-# This is timing-dependent, so it does not fail every time. It killed the
-# first full VM run at this exact line.
+# This wait was originally added for the Oakford CA download, which used to
+# run here and died with wget's exit 4, "network failure", when it raced the
+# restart -- timing-dependent, so it did not fail every time, but it killed
+# the first full VM run at this exact line. The CA moved to section 2A on
+# 2 Sep 2026. The wait stays: `nmcli connection reload` further down wants a
+# settled NetworkManager just as much.
 echo "Waiting for the network to come back after netplan apply..."
 if ! nm-online -q --timeout=60; then
     echo "WARNING: network not online 60s after netplan apply; continuing anyway." >&2
 fi
 
-# Download and trust the Oakford CA certificate system-wide.
-#
-# This installs a ROOT CA (CN=Oakford Internet Services CA, CA:TRUE, valid
-# 16 Aug 2024 - 14 Aug 2034). Anything able to substitute this file can
-# transparently intercept every TLS connection the machine makes, with no
-# browser warning, so it gets two independent protections:
-#
-#   1. https://, not http://. The plain http:// URL 301-redirects here and
-#      wget follows redirects, so the right file did arrive -- but the
-#      request STARTED in cleartext, which means an active attacker on the
-#      path (school wifi included) could answer with their own CA instead
-#      of the redirect and have it trusted fleet-wide. Demanding TLS closes
-#      that: the stock Ubuntu trust store validates oakfordhelp.co.uk
-#      before a single byte of the certificate is read.
-#
-#   2. A SHA-256 pin. Fails CLOSED -- on any mismatch the certificate is
-#      not installed at all. This also catches a legitimate re-issue, which
-#      is deliberate: a new CA should be a conscious decision, not a silent
-#      one. When Oakford re-issue, verify the new fingerprint out of band
-#      and update the line below. Do not delete the check.
-#
-# Verified 30 Aug 2026 against both the live host and the copy already
-# trusted on dell-ubuntu; the two matched.
-OAKFORD_SHA256="70:0D:4D:BA:40:46:29:25:31:7F:9E:C3:33:D5:D7:52:D4:C6:B5:C9:A1:BD:7B:27:BA:B7:12:5C:9C:13:C5:A3"
-
-# Retries as well as the wait above: this is the first network access after
-# the stack was rebuilt, so it is the most likely thing in the script to hit
-# a half-ready connection.
-#
-# Downloaded as the normal user, not root: only the install needs privilege.
-# No EXIT trap here: this script already owns EXIT for the sudo keepalive
-# set up at the top, and re-arming it would silently discard that, leaving a
-# stray keepalive loop running after the install finished.
-OAKFORD_TMP="$(mktemp)"
-
-if wget -q --tries=3 --retry-connrefused --waitretry=5 --timeout=20 \
-        https://oakfordhelp.co.uk/oakford.crt -O "$OAKFORD_TMP"; then
-    OAKFORD_GOT="$(openssl x509 -in "$OAKFORD_TMP" -noout -fingerprint -sha256 2>/dev/null | cut -d= -f2)"
-    if [ "$OAKFORD_GOT" = "$OAKFORD_SHA256" ]; then
-        sudo install -m 0644 -o root -g root "$OAKFORD_TMP" \
-            /usr/local/share/ca-certificates/oakford.crt
-        sudo update-ca-certificates
-
-        # Add to Chrome/Chromium NSS store so Chrome trusts internal
-        # services. Only reached when the fingerprint matched.
-        mkdir -p "$HOME/.pki/nssdb"
-        certutil -d sql:"$HOME/.pki/nssdb" -N -f /dev/null 2>/dev/null || true
-        certutil -d sql:"$HOME/.pki/nssdb" -A -t "CT,," -n "Oakford CA" \
-            -f /dev/null -i /usr/local/share/ca-certificates/oakford.crt || true
-    else
-        echo "ERROR: Oakford CA fingerprint did NOT match. Certificate NOT installed." >&2
-        echo "  expected: $OAKFORD_SHA256" >&2
-        echo "  received: ${OAKFORD_GOT:-<not a certificate>}" >&2
-        echo "  Internal HTTPS services will not be trusted. Do not work around" >&2
-        echo "  this by installing it manually until the new fingerprint is" >&2
-        echo "  confirmed with Oakford." >&2
-    fi
-else
-    echo "WARNING: could not download the Oakford CA certificate." >&2
-fi
-
-rm -f "$OAKFORD_TMP"
 
 # School wifi profile.
 #

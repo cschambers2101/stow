@@ -41,6 +41,54 @@ sudo apt install -y \
     pandoc
 
 # -----------------------------------------------------------------
+# 2A. NETWORK TRUST: THE OAKFORD ROOT CA
+#
+#    Lettered, not renumbered, so the later section numbers keep matching
+#    the ones quoted elsewhere. Section 7 is now empty and gone.
+#
+#    THE POSITION IS THE POINT. The site firewall intercepts TLS, so
+#    anything fetched from outside the Debian archives fails certificate
+#    validation until this CA is trusted. This used to be section 7,
+#    AFTER section 6 pulls the .NET installer from dot.net -- so on the
+#    school network the build died there. Same defect as the niri and
+#    qtile installers, fixed the same way, 2 Sep 2026.
+#
+#    It sits after section 2 because that is what installs `wget`, which
+#    Crostini's Debian base does not ship. Sections 1-2 reach only the
+#    Debian archives, whose traffic bypasses the firewall, as does
+#    oakfordhelp.co.uk itself -- which is what lets the download below
+#    succeed before its own certificate is trusted.
+#
+#    Keep every third-party download BELOW this line: 6 (.NET), 8 (gh),
+#    9 (nvm), 10 (Claude, Antigravity), 11 (yt-dlp), 12 (tpm).
+# -----------------------------------------------------------------
+# Download and trust the Oakford CA certificate system-wide.
+#
+# This installs a ROOT CA, so anything able to substitute the file can
+# intercept every TLS connection this machine makes. https:// (not the
+# http:// URL, which only 301-redirects and so starts in cleartext) plus a
+# SHA-256 pin that fails CLOSED. See the long note in
+# ubuntu_26.04_niri_install.sh. Verified 30 Aug 2026.
+OAKFORD_SHA256="70:0D:4D:BA:40:46:29:25:31:7F:9E:C3:33:D5:D7:52:D4:C6:B5:C9:A1:BD:7B:27:BA:B7:12:5C:9C:13:C5:A3"
+OAKFORD_TMP="$(mktemp)"
+trap 'rm -f "$OAKFORD_TMP"' EXIT
+
+if wget -q --tries=3 --retry-connrefused --waitretry=5 --timeout=20 \
+        https://oakfordhelp.co.uk/oakford.crt -O "$OAKFORD_TMP" &&
+   [ "$(openssl x509 -in "$OAKFORD_TMP" -noout -fingerprint -sha256 2>/dev/null | cut -d= -f2)" = "$OAKFORD_SHA256" ]; then
+    sudo install -m 0644 -o root -g root "$OAKFORD_TMP" \
+        /usr/local/share/ca-certificates/oakford.crt
+    sudo update-ca-certificates
+else
+    echo "ERROR: Oakford CA not installed - download failed or fingerprint mismatch." >&2
+    echo "  Internal HTTPS services will not be trusted. Confirm the new" >&2
+    echo "  fingerprint with Oakford before changing OAKFORD_SHA256." >&2
+fi
+
+rm -f "$OAKFORD_TMP"
+trap - EXIT
+
+# -----------------------------------------------------------------
 # 3. UI INTEGRATION (For GTK/Qt Apps to look good in ChromeOS)
 # -----------------------------------------------------------------
 sudo apt install -y \
@@ -78,35 +126,6 @@ chmod +x /tmp/dotnet-install.sh
 rm /tmp/dotnet-install.sh
 export DOTNET_ROOT="$HOME/.dotnet"
 export PATH="$PATH:$DOTNET_ROOT"
-
-# -----------------------------------------------------------------
-# 7. CA CERTIFICATES (Oakford)
-# -----------------------------------------------------------------
-# Download and trust the Oakford CA certificate system-wide.
-#
-# This installs a ROOT CA, so anything able to substitute the file can
-# intercept every TLS connection this machine makes. https:// (not the
-# http:// URL, which only 301-redirects and so starts in cleartext) plus a
-# SHA-256 pin that fails CLOSED. See the long note in
-# ubuntu_26.04_niri_install.sh. Verified 30 Aug 2026.
-OAKFORD_SHA256="70:0D:4D:BA:40:46:29:25:31:7F:9E:C3:33:D5:D7:52:D4:C6:B5:C9:A1:BD:7B:27:BA:B7:12:5C:9C:13:C5:A3"
-OAKFORD_TMP="$(mktemp)"
-trap 'rm -f "$OAKFORD_TMP"' EXIT
-
-if wget -q --tries=3 --retry-connrefused --waitretry=5 --timeout=20 \
-        https://oakfordhelp.co.uk/oakford.crt -O "$OAKFORD_TMP" &&
-   [ "$(openssl x509 -in "$OAKFORD_TMP" -noout -fingerprint -sha256 2>/dev/null | cut -d= -f2)" = "$OAKFORD_SHA256" ]; then
-    sudo install -m 0644 -o root -g root "$OAKFORD_TMP" \
-        /usr/local/share/ca-certificates/oakford.crt
-    sudo update-ca-certificates
-else
-    echo "ERROR: Oakford CA not installed - download failed or fingerprint mismatch." >&2
-    echo "  Internal HTTPS services will not be trusted. Confirm the new" >&2
-    echo "  fingerprint with Oakford before changing OAKFORD_SHA256." >&2
-fi
-
-rm -f "$OAKFORD_TMP"
-trap - EXIT
 
 # -----------------------------------------------------------------
 # 8. GITHUB CLI (gh)

@@ -23,6 +23,14 @@ That is the whole thing. `bootstrap.sh` shallow-clones this repo to
 sections: drivers, desktop base, the niri/Dank stack, packages, dotfiles,
 Node, machine identity, printing.
 
+**Section order matters on the school network.** Section 2A installs the
+Oakford root CA, and the site firewall intercepts TLS on everything except
+Ubuntu archive traffic and `oakfordhelp.co.uk`. Every download from anywhere
+else — dankinstall (5), Chrome (7), Flathub (8), Node (11), yt-dlp and Claude
+Code (12) — fails certificate validation until that CA is trusted, and under
+`set -e` the first failure ends the install. **Do not add a third-party
+download above section 2A.** It will work everywhere except on site.
+
 Takes roughly 30–45 minutes on school wifi. **Reboot when it finishes.**
 
 ## Route B — unattended (fleet)
