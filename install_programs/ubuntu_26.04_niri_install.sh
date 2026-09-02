@@ -282,6 +282,84 @@ if dpkg -l update-notifier 2>/dev/null | grep -qE "^(ii|rc)"; then
         echo "WARNING: could not purge update-notifier."
 fi
 
+# ubuntu-desktop also leaves /etc/xdg/autostart entries that are X11-only
+# or assume a system tray. systemd-xdg-autostart-generator turns each one
+# into a user unit, so anything that exits non-zero shows up as a FAILED
+# UNIT and turns verify-install.sh red -- on a machine that is otherwise
+# perfectly healthy.
+#
+#   Found on ubuntu-craig-office, 2 Sep 2026, the first real NVIDIA box:
+#
+#     * nvidia-settings-autostart.desktop runs
+#       `nvidia-settings --load-config-only`, which needs an X server and
+#       exits 1 under a pure Wayland session. This fires on EVERY NVIDIA
+#       machine in the fleet, so it is not specific to this desktop.
+#     * blueman.desktop starts blueman-applet, which raced obexd during
+#       first login and died in TransferService with
+#       `g-io-error-quark: Timeout was reached (24)` from a synchronous
+#       Gio.DBusObjectManagerClient.new_for_bus_sync call. The crash then
+#       cascaded: apport picked the .crash file up and apport-autoreport
+#       failed too (see below).
+#
+#   blueman is deliberately kept INSTALLED -- the package list wants it as
+#   the fallback for stubborn pairings -- but blueman-manager is launched
+#   on demand, so nothing is lost by not autostarting the applet. DMS has
+#   its own bluetooth widget.
+#
+#   Masked with a user-level Hidden=true entry of the same basename rather
+#   than by editing /etc/xdg/autostart: those files are dpkg CONFFILES and
+#   an edit conflicts on upgrade. ~/.config takes precedence over /etc/xdg,
+#   and Hidden=true stops the generator emitting a unit at all.
+#   ~/.config/autostart is NOT stowed (stow symlinks individual .config
+#   subdirectories, not .config itself), so a real directory here is safe.
+#
+#   Everything else the generator emits is left alone on purpose. In
+#   particular polkit-gnome-authentication-agent-1 is REQUIRED under niri
+#   for authentication prompts, and print-applet is left for the PaperCut
+#   work. Only entries that actually fail are masked.
+echo "Masking X11-only autostart entries that fail under niri..."
+mkdir -p "$HOME/.config/autostart"
+for _entry in nvidia-settings-autostart blueman; do
+    _src="/etc/xdg/autostart/$_entry.desktop"
+    [ -f "$_src" ] || continue
+    _name="$(grep -m1 '^Name=' "$_src" | cut -d= -f2-)"
+    cat > "$HOME/.config/autostart/$_entry.desktop" <<EOF
+[Desktop Entry]
+Type=Application
+Name=${_name:-$_entry}
+Exec=/bin/true
+Hidden=true
+# Masks /etc/xdg/autostart/$_entry.desktop under niri.
+# Written by ubuntu_26.04_niri_install.sh -- see the reasoning there.
+EOF
+    echo "  masked $_entry"
+done
+unset _entry _src _name
+
+# Stop apport trying to UPLOAD crash reports, while leaving it collecting
+# them locally.
+#
+#   The failure mode, seen on ubuntu-craig-office 2 Sep 2026: a crash file
+#   exists in /var/crash, apport-autoreport.path fires, whoopsie-upload-all
+#   marks the report and then waits 20 s for whoopsie to confirm an upload.
+#   whoopsie.service is `static` and never runs, so the .uploaded marker
+#   never appears, the wait times out and the service exits 2. Any machine
+#   with a crash file and no running whoopsie fails this way -- it is
+#   structural, not a one-off.
+#
+#   Deliberately NOT setting enabled=0 in /etc/default/apport. Local crash
+#   collection is how the blueman-applet bug above was diagnosed, and this
+#   build is still being debugged; keeping /var/crash populated is worth
+#   more than the disk. What we remove is the upload path, which also means
+#   no student machine ships crash dumps to Canonical -- the right default
+#   for college-owned hardware regardless of the unit failure.
+echo "Disabling apport crash-report upload (keeping local collection)..."
+for _u in apport-autoreport.path apport-autoreport.timer whoopsie.path; do
+    sudo systemctl disable --now "$_u" 2>/dev/null || true
+done
+unset _u
+sudo systemctl reset-failed apport-autoreport.service 2>/dev/null || true
+
 # -----------------------------------------------------------------
 # 5. DANK / NIRI STACK
 #    Installs from ppa:avengemedia/danklinux + ppa:avengemedia/dms and
@@ -586,7 +664,20 @@ fi
 #     Never use `stow --adopt` here — it would pull dankinstall's
 #     freshly-deployed defaults INTO the repo, overwriting yours.
 # -----------------------------------------------------------------
-for d in niri DankMaterialShell danksearch; do
+#     alacritty is in this list for the same reason as of 2 Sep 2026. The repo
+#     now owns ~/.config/alacritty, because Claude Code's `/terminal-setup`
+#     APPENDS an `[[keyboard.bindings]]` array-of-tables to whatever
+#     dankinstall generated -- and dankinstall writes `bindings` as an INLINE
+#     ARRAY. TOML forbids redefining a key already set as an inline array, so
+#     the file stops parsing entirely:
+#
+#         TOML parse error at line 39 ... duplicate key
+#
+#     Alacritty then refuses to start with the user's config. Owning the file
+#     here means the Shift+Enter binding ships correct and version-controlled,
+#     rather than being bolted on afterwards by a tool that cannot see what is
+#     already in the file.
+for d in niri DankMaterialShell danksearch alacritty; do
     if [ -e "$HOME/.config/$d" ] && [ ! -L "$HOME/.config/$d" ]; then
         echo "Removing dankinstall's default $d config (repo version wins)..."
         rm -rf "$HOME/.config/$d"
@@ -872,6 +963,42 @@ fi
 
 curl -fsSL https://claude.ai/install.sh | bash || \
     echo "WARNING: Claude Code install failed — install manually after reboot."
+
+# Tell Claude Code its Shift+Enter binding is already installed, because it is:
+# the repo's ~/.config/alacritty/alacritty.toml ships
+# `{ key = "Enter", mods = "Shift", chars = "\u001B\r" }` inside the existing
+# inline `bindings` array (see section 10).
+#
+# Without this, running `/terminal-setup` APPENDS an `[[keyboard.bindings]]`
+# array-of-tables block, which is a TOML duplicate-key error against that
+# inline array and stops alacritty parsing its config at all. Craig hit exactly
+# that on ubuntu-craig-office, 2 Sep 2026.
+#
+# Belt and braces with section 10: section 10 makes the binding correct, this
+# stops anything appending a second definition of it later.
+CLAUDE_JSON="$HOME/.claude.json"
+if command -v python3 >/dev/null 2>&1; then
+    python3 - "$CLAUDE_JSON" <<'PYEOF' || echo "WARNING: could not seed shiftEnterKeyBindingInstalled."
+import json, os, sys
+p = sys.argv[1]
+try:
+    d = json.load(open(p)) if os.path.exists(p) and os.path.getsize(p) else {}
+except (ValueError, OSError):
+    print("   .claude.json unreadable or not JSON; leaving it alone")
+    sys.exit(0)
+if not isinstance(d, dict):
+    sys.exit(0)
+if d.get("shiftEnterKeyBindingInstalled") is True:
+    print("   shiftEnterKeyBindingInstalled already set")
+    sys.exit(0)
+d["shiftEnterKeyBindingInstalled"] = True
+tmp = p + ".tmp"
+with open(tmp, "w") as f:
+    json.dump(d, f, indent=2)
+os.replace(tmp, p)
+print("   seeded shiftEnterKeyBindingInstalled=true (stops /terminal-setup breaking the alacritty config)")
+PYEOF
+fi
 
 # Antigravity CLI: REMOVED 31 Aug 2026 (Craig's call).
 #
