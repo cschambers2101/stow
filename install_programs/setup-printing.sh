@@ -239,19 +239,25 @@ do_queues() {
     echo "   PAPERCUT_IP unset - skipping tracked queues"
   fi
 
-  # The default queue must be one that actually prints.
+  # Default queue: Booklet-A5. Craig's call, 2 Sep 2026, and it matches the
+  # runbook's original intent ("default; change to taste").
   #
-  #   * NOT a FollowMe queue: every job on those is held pending a credential
-  #     (see the runbook's PaperCut section), so a default of FollowMe-Colour
-  #     means every `lp` with no -d silently goes nowhere.
-  #   * NOT a Booklet queue: those fold and staple but do not impose, so a raw
-  #     job sent to one comes out physically bound in the wrong page order.
-  #     Booklets must go through s6c-booklet.
+  # It must NOT be a FollowMe queue: every job on those is held pending a
+  # credential (see the runbook's PaperCut section), so a default of
+  # FollowMe-Colour means every `lp` with no -d silently goes nowhere. That was
+  # the previous default and it was wrong.
   #
-  # That leaves the plain 2-sided direct queue, which is also the sane
-  # everyday default.
-  lp_admin "lpadmin -d ${PREFIX}-Direct-2Sided"
-  echo "== default queue: ${PREFIX}-Direct-2Sided =="
+  # KNOWN TRAP, accepted deliberately - do not "fix" this back:
+  # a booklet queue folds and staples but does NOT impose, so a RAW job sent
+  # straight to it (`lp file.pdf` with no -d) comes out physically folded and
+  # stapled with the pages in the wrong half-slots. Booklets must go through
+  # s6c-booklet, which passes `lp -d ${PREFIX}-Booklet-A5` explicitly and is
+  # therefore unaffected by whatever the default is. The exposure is only a
+  # bare `lp` on a file the user has not imposed.
+  lp_admin "lpadmin -d ${PREFIX}-Booklet-A5"
+  echo "== default queue: ${PREFIX}-Booklet-A5 =="
+  echo "   reminder: booklets go through s6c-booklet - a raw lp to this queue"
+  echo "   folds and staples in the wrong page order."
 }
 
 do_verify() {
