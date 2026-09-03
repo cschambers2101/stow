@@ -151,6 +151,66 @@ pool 1.pool.ntp.org iburst maxsources 2 prefer
 pool ntp.ubuntu.com iburst maxsources 2 prefer
 NTPEOF
 
+# A domain controller, if this machine is on a domain, as a FALLBACK BELOW the
+# public pools. Craig's call, 3 Sep 2026, and it is the right way round:
+# student laptops and home machines spend most of their life off the school
+# network, so the source that works everywhere should be the primary one.
+#
+# The tiering is `prefer`, which is exactly chrony's semantics - "prefer this
+# source over other selectable sources without the prefer option":
+#
+#   public pools   prefer      -> chosen whenever they are reachable
+#   domain contr.  no prefer   -> used only when nothing preferred is
+#
+# It earns its place in one specific scenario: a network that permits neither
+# NTS (TCP 4460) nor plain outbound NTP (UDP 123). This site currently allows
+# UDP 123, so the DC will sit unselected here - but if that is ever closed, the
+# clock keeps working instead of silently free-running again.
+#
+# NO SITE VALUES. The DC is discovered from DNS: the DHCP-supplied search
+# domain, then the standard AD locator record `_ldap._tcp.<domain>`. Any
+# machine on any domain finds its own; a machine on no domain adds nothing.
+# Verified on ubuntu-craig-office 3 Sep 2026 - found the site's DC, and the
+# parsing was checked against no-domain and routing-only (`~domain`) output.
+# (The DC's name is deliberately not written here: this repo is public, and
+# internal server names belong in the private workspace notes, same rule as
+# the printer and PaperCut addresses.)
+#
+# resolvectl, NOT dig: dig comes from bind9-dnsutils, which is not in
+# niri_programs_to_install.txt and so is absent on a fresh build. resolvectl is
+# part of systemd.
+#
+# Hostnames rather than addresses, so the entry survives the DC being
+# renumbered. Off-site the name simply does not resolve and chrony ignores it.
+echo "Looking for a domain controller to use as a time fallback..."
+_dc_domains=$(resolvectl domain 2>/dev/null \
+    | sed -n 's/^Link [0-9]* ([^)]*): //p' \
+    | tr ' ' '\n' | sed '/^$/d;/^~/d' | sort -u)
+_dc_hosts=""
+for _d in $_dc_domains; do
+    _dc_hosts="$_dc_hosts$(resolvectl --type=SRV query "_ldap._tcp.$_d" 2>/dev/null \
+        | sed -n 's/.* IN SRV [0-9]* [0-9]* [0-9]* \([^ ]*\).*/\1/p' \
+        | sed 's/\.$//' | sed '/^$/d')
+"
+done
+_dc_hosts=$(printf '%s' "$_dc_hosts" | sed '/^$/d' | sort -u)
+
+if [ -n "$_dc_hosts" ]; then
+    {
+        echo "# Domain controller(s) as an NTP FALLBACK, discovered from"
+        echo "# _ldap._tcp.<search-domain> at install time. Deliberately WITHOUT"
+        echo "# \`prefer\`, so the public pools in 50-s6c-plain-ntp.sources win"
+        echo "# whenever they are reachable - most of these machines are off the"
+        echo "# school network most of the time. This tier matters only where"
+        echo "# outbound UDP 123 is blocked as well as TCP 4460."
+        printf '%s\n' "$_dc_hosts" | sed 's/^/server /; s/$/ iburst/'
+    } | sudo tee /etc/chrony/sources.d/60-s6c-dc-fallback.sources >/dev/null
+    echo "   fallback: $(printf '%s' "$_dc_hosts" | tr '\n' ' ')"
+else
+    echo "   no domain controller found (not on a domain) - public pools only"
+fi
+unset _dc_domains _dc_hosts _d
+
 # chrony re-reads sources.d on reload, but a restart also lets `makestep 1 3`
 # (already in chrony.conf) STEP a large offset instead of slewing it away over
 # hours. A 132s error would take most of a day to slew out.
