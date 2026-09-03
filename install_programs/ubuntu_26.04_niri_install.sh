@@ -842,6 +842,45 @@ fi
 S6C_PSK="${S6C_PSK-!BY0D!S6C}"
 
 if [ -n "${S6C_PSK:-}" ]; then
+    # DE-DUPLICATE BEFORE WRITING ANYTHING.
+    #
+    # On a laptop, joining S6C by hand BEFORE running this script is not
+    # operator error -- it is the only way to start. The XPS has no ethernet
+    # port, and everything below this line needs the network: apt, the
+    # Oakford CA, the Chrome repo, node, yt-dlp. So every laptop reaches
+    # this point with an S6C connection already in place.
+    #
+    # NetworkManager persists that hand-made connection through netplan, as
+    # /etc/netplan/90-NM-<uuid>.yaml regenerated under /run, and it carries
+    # the DEFAULT autoconnect-priority of 0. Dropping our keyfile alongside
+    # it leaves TWO autoconnect profiles for one SSID, and NetworkManager
+    # picks between them. On s6c-ubuntu-xps-craig (3 Sep 2026) it picked the
+    # netplan one: the install reported success, and the -10 we had just
+    # written sat inert in a profile nothing used. The 2 Sep desktop was
+    # WIRED, so it had no pre-existing wifi profile and never showed this.
+    #
+    # Modify what is already there rather than deleting it. On a wifi
+    # install that connection is carrying this script -- `nmcli connection
+    # delete` on it drops the network mid-run.
+    S6C_CONNS="$(nmcli -t -f UUID,TYPE connection show 2>/dev/null || true)"
+    S6C_EXISTING=""
+    while IFS=: read -r _uuid _type; do
+        [ "$_type" = "802-11-wireless" ] || continue
+        [ "$(nmcli -g 802-11-wireless.ssid connection show "$_uuid" 2>/dev/null)" = "S6C" ] || continue
+        S6C_EXISTING="$S6C_EXISTING $_uuid"
+    done <<< "$S6C_CONNS"
+    S6C_EXISTING="$(printf '%s' "$S6C_EXISTING" | xargs || true)"
+fi
+
+if [ -n "${S6C_PSK:-}" ] && [ -n "${S6C_EXISTING:-}" ]; then
+    for _uuid in $S6C_EXISTING; do
+        echo "Existing S6C profile $_uuid — setting autoconnect-priority=-10 in place."
+        sudo nmcli connection modify "$_uuid" \
+            connection.autoconnect yes \
+            connection.autoconnect-priority -10 \
+            || echo "WARNING: could not set the priority on S6C profile $_uuid." >&2
+    done
+elif [ -n "${S6C_PSK:-}" ]; then
     sudo mkdir -p /etc/NetworkManager/system-connections
     sudo tee /etc/NetworkManager/system-connections/S6C.nmconnection > /dev/null <<EOF
 [connection]
@@ -883,6 +922,23 @@ EOF
 else
     # Only reachable if someone explicitly passes S6C_PSK='' to opt out.
     echo "S6C_PSK empty — skipping the school wifi profile."
+fi
+
+# Assert what we just did, because this exact fault was SILENT: the install
+# exited 0 with a priority-0 profile in charge. Warn only -- a wifi
+# priority is not worth aborting a build over, and verify-install.sh fails
+# on it properly.
+if [ -n "${S6C_PSK:-}" ]; then
+    S6C_CONNS="$(nmcli -t -f UUID,TYPE connection show 2>/dev/null || true)"
+    while IFS=: read -r _uuid _type; do
+        [ "$_type" = "802-11-wireless" ] || continue
+        [ "$(nmcli -g 802-11-wireless.ssid connection show "$_uuid" 2>/dev/null)" = "S6C" ] || continue
+        _prio="$(nmcli -g connection.autoconnect-priority connection show "$_uuid" 2>/dev/null | xargs || true)"
+        case "${_prio:-?}" in
+            -*) ;;
+            *)  echo "WARNING: S6C profile $_uuid has autoconnect-priority '${_prio:-unreadable}'; it may outrank the user's own network." >&2 ;;
+        esac
+    done <<< "$S6C_CONNS"
 fi
 
 # -----------------------------------------------------------------

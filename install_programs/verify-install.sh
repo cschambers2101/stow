@@ -329,49 +329,99 @@ fi
 # directory empty while the connection itself worked perfectly. The check
 # would have reported FAIL on a healthy machine. nmcli reports the
 # connection wherever it is stored.
-if nmcli -t -f NAME connection show 2>/dev/null | grep -qx 'S6C'; then
-    pass "wifi profile present" "known to NetworkManager"
+# ENUMERATE BY SSID, NOT BY NAME.
+#
+# `connection show S6C` resolves a NAME, and a name is not unique. The
+# first laptop build (s6c-ubuntu-xps-craig, 3 Sep 2026) had TWO
+# connections called S6C: the netplan-owned one created by joining the
+# network by hand before the install -- priority 0, and the one actually
+# in use -- and the installer's own keyfile at -10, inert. nmcli returned
+# the netplan one, so this check happened to catch the fault; had the
+# order been the other way it would have read -10 off a profile nothing
+# used and passed a broken machine. Enumerating by SSID also makes the
+# duplicate itself visible, which is the underlying fault.
+S6C_CONNS="$(nmcli -t -f UUID,TYPE connection show 2>/dev/null)"
+S6C_UUIDS=""
+while IFS=: read -r U T; do
+    [ "$T" = "802-11-wireless" ] || continue
+    [ "$(nmcli -g 802-11-wireless.ssid connection show "$U" 2>/dev/null)" = "S6C" ] || continue
+    S6C_UUIDS="$S6C_UUIDS $U"
+done <<< "$S6C_CONNS"
+S6C_UUIDS="$(printf '%s' "$S6C_UUIDS" | xargs)"
+S6C_COUNT="$(printf '%s' "$S6C_UUIDS" | wc -w | xargs)"
 
-    # Effective priority, not the value we wrote. The installer sets -10 so
-    # a student's OWN network always wins when both are in range; on the
-    # machine above it had become 100, equal to the home network, which
-    # leaves NetworkManager to choose arbitrarily between them. Checking
-    # the file would never have caught that.
-    PRIO="$(nmcli -g connection.autoconnect-priority connection show S6C 2>/dev/null | xargs)"
-    if [ -z "$PRIO" ]; then
-        skip "wifi priority is negative" "could not read autoconnect-priority"
-    elif [ "$PRIO" -lt 0 ] 2>/dev/null; then
-        pass "wifi priority is negative" "$PRIO"
+if [ "${S6C_COUNT:-0}" -eq 0 ]; then
+    fail "wifi profile present" "NetworkManager has no connection for SSID S6C"
+else
+    pass "wifi profile present" "$S6C_COUNT for SSID S6C"
+
+    # A duplicate is a fault in its own right: two autoconnect profiles for
+    # one SSID leave NetworkManager to choose, and the one it chooses is
+    # not necessarily the one whose priority anybody set.
+    if [ "$S6C_COUNT" -gt 1 ]; then
+        fail "one profile per SSID" "$S6C_COUNT profiles named for S6C: $S6C_UUIDS"
     else
-        fail "wifi priority is negative" "$PRIO — S6C may outrank the user's own network"
+        pass "one profile per SSID" ""
     fi
 
-    NMFILE="$(nmcli -g NAME,FILENAME connection show 2>/dev/null | awk -F: '$1=="S6C"{print $2}')"
-    case "$NMFILE" in
-        /etc/NetworkManager/*)
-            if have_sudo; then
-                eq "wifi profile is 0600" "600" "$(sudo stat -c '%a' "$NMFILE" 2>/dev/null)"
-            else skip "wifi profile is 0600" "needs sudo"; fi ;;
-        *)  # netplan-owned: /run copies are root-only and regenerated, so
-            # file mode there is not ours to assert.
-            skip "wifi profile is 0600" "netplan-owned (${NMFILE:-unknown})" ;;
-    esac
+    # EVERY profile must be negative, not merely the first one found. The
+    # installer sets -10 so a student's OWN network always wins when both
+    # are in range; on 18WessexUbuntu (31 Aug 2026) it had become 100,
+    # equal to the home network, leaving NetworkManager to pick
+    # arbitrarily. Checking the file would never have caught that.
+    PRIOS=""; BAD=""
+    for U in $S6C_UUIDS; do
+        P="$(nmcli -g connection.autoconnect-priority connection show "$U" 2>/dev/null | xargs)"
+        PRIOS="$PRIOS ${P:-unreadable}"
+        # An unreadable priority is not a pass: it is an unknown.
+        case "${P:-x}" in
+            -[0-9]*) ;;
+            *) BAD="$BAD $U(${P:-unreadable})" ;;
+        esac
+    done
+    PRIOS="$(printf '%s' "$PRIOS" | xargs)"
+    if [ -n "$BAD" ]; then
+        fail "wifi priority is negative" "$PRIOS — S6C may outrank the user's own network:$BAD"
+    else
+        pass "wifi priority is negative" "$PRIOS"
+    fi
+
+    # File mode, per profile. Only the ones we own are ours to assert:
+    # netplan regenerates its copies under /run as root-only.
+    for U in $S6C_UUIDS; do
+        # FILENAME is a `connection show` LIST field, not a settings
+        # property: `-g connection.filename` returns empty, which read as
+        # "netplan-owned (unknown)" and silently skipped the mode check on
+        # a profile we do own. Key the list output by UUID instead, and
+        # strip only the leading UUID so a path is never split on ':'.
+        NMFILE="$(nmcli -t -f UUID,FILENAME connection show 2>/dev/null | sed -n "s|^$U:||p")"
+        case "$NMFILE" in
+            /etc/NetworkManager/*)
+                if have_sudo; then
+                    eq "wifi profile is 0600" "600" "$(sudo stat -c '%a' "$NMFILE" 2>/dev/null)"
+                else skip "wifi profile is 0600" "needs sudo"; fi ;;
+            *)  skip "wifi profile is 0600" "netplan-owned (${NMFILE:-unknown})" ;;
+        esac
+    done
 
     # The key contains '!' twice; prove it was not mangled by shell quoting.
     # `nmcli -s` only reveals a secret to root -- as a normal user it
     # returns empty, which an earlier version of this check read as a blank
     # PSK and failed a perfectly good machine.
     if have_sudo; then
-        if sudo nmcli -s -g 802-11-wireless-security.psk connection show S6C 2>/dev/null | grep -q '.'; then
+        PSK_BAD=""
+        for U in $S6C_UUIDS; do
+            sudo nmcli -s -g 802-11-wireless-security.psk connection show "$U" 2>/dev/null \
+                | grep -q '.' || PSK_BAD="$PSK_BAD $U"
+        done
+        if [ -z "$PSK_BAD" ]; then
             pass "wifi PSK non-empty" ""
         else
-            fail "wifi PSK non-empty" "psk is blank — profile will not authenticate"
+            fail "wifi PSK non-empty" "psk is blank on:$PSK_BAD — will not authenticate"
         fi
     else
         skip "wifi PSK non-empty" "needs sudo to read the secret"
     fi
-else
-    fail "wifi profile present" "NetworkManager has no S6C connection"
 fi
 
 # -----------------------------------------------------------------
