@@ -382,7 +382,12 @@ fi
 #
 # 26.04's chrony defaults to NTS sources, which need a key exchange on TCP
 # 4460; that port is filtered here, so every source sat at `^?` / Stratum 0.
-# See section 13 of the installer.
+#
+# The second failure mode is subtler and is why the "selected source" check
+# below is worth more than NTPSynchronized alone: Ubuntu's NTS pools carry
+# `prefer`, so plain replacement sources that lack it are reached, agreed
+# with, and then never selected - every one shown `^-`, reference ID
+# 00000000, and "synchronized: no". See section 0 of the installer.
 echo "--- clock ---"
 NTP_SYNC="$(timedatectl show --property=NTPSynchronized --value 2>/dev/null)"
 case "$NTP_SYNC" in
