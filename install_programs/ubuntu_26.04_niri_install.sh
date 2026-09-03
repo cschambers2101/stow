@@ -124,8 +124,9 @@ sudo apt install -y \
 #    until this CA is trusted. This block used to live in section 9,
 #    two-thirds of the way through the run, which meant the first
 #    third-party download -- dankinstall, section 5 -- died on a TLS error
-#    and took the whole install down with it under `set -e`. Hit installing
-#    at work, 2 Sep 2026.
+#    and took the whole install down with it under `set -e`. Confirmed at
+#    work, 2 Sep 2026: the run stopped at exactly that point, and completed
+#    only after the certificate was installed by hand and the script re-run.
 #
 #    Exactly two things are meant to run before it, and both are safe:
 #
