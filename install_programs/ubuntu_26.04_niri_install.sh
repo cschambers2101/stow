@@ -99,8 +99,44 @@ sudo timedatectl set-ntp true
 # reference ID of 00000000. Adding `prefer` here removes the asymmetry, so the
 # reachable sources can actually win.
 #
-# The NTS pools are left in place. They stay unreachable, and that is now
-# genuinely harmless rather than harmless-in-theory.
+# The NTS pools are left in place and stay unreachable.
+#
+# THAT IS NOT HARMLESS, and it is the actual blocker - established 3 Sep 2026
+# from `chronyc selectdata`, after two wrong guesses. chrony's
+# `authselectmode` defaults to **mix**, and the manual is explicit about what
+# mix does:
+#
+#     all authenticated NTP sources ... will get the require and trust
+#     options to prevent synchronisation to unauthenticated NTP sources if
+#     they do not agree with a majority of the authenticated sources
+#
+# `require` means: if that source is not selectable, NO source is selected.
+# The NTS sources are authenticated, so they are granted require - and they
+# are unreachable, so nothing can ever be selected. selectdata showed it
+# directly: every plain server in state `W` (waiting), EOpts `-P---`, while
+# every NTS row carried EOpts `-PTR-` - the T and R granted by mix.
+#
+# So adding plain pools can NEVER work on its own while any NTS source is
+# configured. No number of them helps. `authselectmode ignore` is what makes
+# unauthenticated sources selectable again.
+#
+# Security, stated plainly rather than glossed: `ignore` means we do
+# synchronise to unauthenticated NTP, and an on-path attacker could skew the
+# clock within chrony's maxdelay/maxdistance limits. That is a real downgrade.
+# It is still the right call here, because NTS is *impossible* on this network
+# - TCP 4460 is filtered - so the alternative is not authenticated time, it is
+# NO time, and a wrong clock breaks TLS validation and apt's Release window,
+# which is the larger security problem. This site already intercepts TLS, so
+# an on-path actor is inside the threat model by design.
+echo "Letting chrony select unauthenticated sources (NTS is unreachable here)..."
+sudo tee /etc/chrony/conf.d/50-s6c-authselectmode.conf >/dev/null <<'AUTHEOF'
+# chrony's default authselectmode is `mix`, which grants `require` to every
+# authenticated (NTS) source. An unreachable required source blocks selection
+# of ALL sources, so with NTS filtered the clock never syncs no matter how
+# many plain servers are configured. See section 0 of the installer.
+authselectmode ignore
+AUTHEOF
+
 echo "Adding plain-NTP sources (NTS needs TCP 4460, which is filtered here)..."
 sudo tee /etc/chrony/sources.d/50-s6c-plain-ntp.sources >/dev/null <<'NTPEOF'
 # Plain (non-NTS) NTP pools. See section 0 of ubuntu_26.04_niri_install.sh:
