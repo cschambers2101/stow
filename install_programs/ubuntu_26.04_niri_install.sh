@@ -79,6 +79,158 @@ case "$SECURE_BOOT" in
     *)           echo "Secure Boot: could not be determined — treating it as possibly on." ;;
 esac
 
+secure_boot_action_block() {
+    echo ""
+    echo "======================================================="
+    echo "  ACTION NEEDED — SECURE BOOT IS $(echo "$SECURE_BOOT" | tr '[:lower:]' '[:upper:]')"
+    echo "======================================================="
+    echo ""
+    echo "  Reboot into firmware setup and DISABLE Secure Boot."
+    echo "  On this Dell: F2 at the logo, Boot Configuration,"
+    echo "  Secure Boot -> Disabled. Other makes vary."
+    echo ""
+    echo "  THIS DOES NOT MEAN REINSTALLING. It is a firmware"
+    echo "  setting only:"
+    echo "    * the system boots exactly as it does now"
+    # Do NOT promise this unconditionally. A passphrase LUKS volume -- what
+    # subiquity builds, and what /etc/crypttab shows as `none luks` -- is
+    # unaffected by Secure Boot state. Ubuntu's TPM-backed FDE is NOT: it
+    # seals to PCR 7, which measures Secure Boot, so turning it off breaks
+    # the automatic unlock and needs the recovery key. Telling that user
+    # "nothing changes" would lock them out of their own disk.
+    if [ -r /etc/crypttab ] && grep -q "tpm2-device=" /etc/crypttab 2>/dev/null; then
+        echo "    * !! THIS DISK IS TPM-SEALED. Changing Secure Boot"
+        echo "      alters PCR 7 and the automatic unlock WILL fail."
+        echo "      HAVE YOUR RECOVERY KEY TO HAND before doing this."
+    else
+        echo "    * your disk encryption passphrase is UNCHANGED"
+        echo "      (this volume is not sealed to Secure Boot state)"
+    fi
+    echo "    * nothing on disk is touched"
+    echo ""
+    echo "  Why it matters on this machine:"
+    if [ "$BROADCOM_BLOCKED" = yes ]; then
+        echo "    * THIS MACHINE HAS BROADCOM WIFI and its driver was"
+        echo "      SKIPPED. Wifi will not work until you do this and"
+        echo "      re-run the script."
+    fi
+    echo "    * unsigned DKMS drivers (Broadcom wifi, NVIDIA) cannot"
+    echo "      load while Secure Boot is on"
+    echo "    * hibernation is refused outright by the locked-down"
+    echo "      kernel, so a shut laptop keeps draining"
+    echo ""
+    echo "  Then re-run this script. It is safe to run twice."
+    echo "======================================================="
+}
+
+# -----------------------------------------------------------------
+# PREFLIGHT: CAN THIS MACHINE STILL REACH A NETWORK AFTERWARDS?
+#
+# The trap this guards against: a Broadcom laptop with no ethernet port,
+# Secure Boot on, and a chip that needs the unsigned `wl` module. Section 9
+# will refuse to install `wl` -- correctly, since a locked-down kernel cannot
+# load it and installing it blacklists the in-kernel drivers too -- and the
+# machine reboots with no wifi at all.
+#
+# The test is deliberately NOT "is an ethernet cable plugged in". Three
+# reasons, all found on 4 Sep 2026:
+#
+#   1. Ethernet is the wrong question. A phone tether or a USB dongle serves
+#      as well, and the XPS 13 has NO built-in ethernet -- only a USB adapter.
+#      Asking for a cable is asking for something some hardware cannot have.
+#   2. Many Broadcom parts are driven by in-kernel brcmfmac/b43/brcmsmac,
+#      which are signed and load happily under Secure Boot. Blocking those
+#      would strand builds that would have worked. `lspci -nnk` reports the
+#      bound driver without root, so the two cases are distinguishable.
+#   3. It cannot help the worst case anyway. If `wl` really is the only route
+#      to a network, this script never ran: bootstrap.sh clones over HTTPS
+#      first. That machine needs the firmware changed at intake, before it is
+#      ever imaged -- see notes/rollout-runbook.md.
+#
+# So the question asked here is the one that matters: will this machine still
+# have a network once we refuse its wifi driver?
+# -----------------------------------------------------------------
+BROADCOM_PRESENT=no
+BROADCOM_DRIVER=""
+BROADCOM_NEEDS_WL=no
+BC_SLOTS=""
+OTHER_NET=no
+
+if command -v lspci >/dev/null 2>&1; then
+    for _slot in $(lspci -nn 2>/dev/null | grep -iE "network|wireless" | grep -i broadcom | cut -d' ' -f1); do
+        BROADCOM_PRESENT=yes
+        BC_SLOTS="$BC_SLOTS $_slot"
+        _d="$(lspci -nnks "$_slot" 2>/dev/null | sed -n 's/.*Kernel driver in use: *//p' | head -1 | xargs)"
+        [ -n "$_d" ] && BROADCOM_DRIVER="$_d"
+    done
+fi
+
+if [ "$BROADCOM_PRESENT" = yes ]; then
+    case "$BROADCOM_DRIVER" in
+        # In-kernel and signed: fine under Secure Boot, nothing to warn about.
+        brcmfmac|b43|brcmsmac|bcma|ssb)
+            echo "Broadcom wireless on $BROADCOM_DRIVER (in-kernel) — no unsigned module needed." ;;
+        # Already bound: Secure Boot cannot be blocking it.
+        wl)
+            echo "Broadcom wireless already on wl." ;;
+        "")
+            BROADCOM_NEEDS_WL=yes ;;
+        *)
+            echo "Broadcom wireless on $BROADCOM_DRIVER." ;;
+    esac
+fi
+
+# Any interface carrying a link that is NOT the Broadcom one. Covers USB
+# ethernet, phone tethers and dongles alike, which a cable check would not.
+for _if in /sys/class/net/*; do
+    _n="$(basename "$_if")"
+    [ "$_n" = lo ] && continue
+    [ "$(cat "$_if/carrier" 2>/dev/null)" = "1" ] || continue
+    _pci="$(basename "$(readlink -f "$_if/device" 2>/dev/null)" 2>/dev/null)"
+    _isbc=no
+    for _slot in $BC_SLOTS; do
+        case "$_pci" in *"$_slot") _isbc=yes ;; esac
+    done
+    [ "$_isbc" = yes ] && continue
+    OTHER_NET=yes
+done
+
+if [ "$BROADCOM_NEEDS_WL" = yes ] && { [ "$SECURE_BOOT" = on ] || [ "$SECURE_BOOT" = unknown ]; }; then
+    BROADCOM_BLOCKED=yes
+    if [ "$OTHER_NET" = no ] && [ -z "${ALLOW_NO_WIFI:-}" ]; then
+        secure_boot_action_block
+        echo ""
+        echo "STOPPING BEFORE ANY CHANGES ARE MADE."
+        echo ""
+        echo "  This machine's only wireless is Broadcom, nothing is driving"
+        echo "  it, and Secure Boot will not let the driver load. Building it"
+        echo "  now would produce a machine with NO network at all."
+        echo ""
+        echo "  Either:"
+        echo "    * disable Secure Boot as above (preferred), or"
+        echo "    * attach a wired, tethered or USB-dongle connection"
+        echo ""
+        echo "  Then re-run. To build anyway, accepting no wifi until Secure"
+        echo "  Boot is off:  ALLOW_NO_WIFI=1 ./ubuntu_26.04_niri_install.sh"
+        echo "======================================================="
+        exit 1
+    fi
+    # Either a network exists that does not depend on the refused driver, or
+    # ALLOW_NO_WIFI was set. Say so NOW rather than in forty minutes -- but do
+    # not claim a connection that is not there, which the override case is.
+    echo ""
+    echo "NOTE: Broadcom wireless here needs the unsigned wl module, which"
+    echo "      Secure Boot will not load. This machine will have no wifi"
+    echo "      until Secure Boot is disabled."
+    if [ "$OTHER_NET" = yes ]; then
+        echo "      The build continues over the connection you are on."
+    else
+        echo "      ALLOW_NO_WIFI is set and there is no other connection —"
+        echo "      the build will proceed and will fail if it needs network."
+    fi
+    secure_boot_action_block
+fi
+
 # -----------------------------------------------------------------
 # 0. THE CLOCK
 #
@@ -1733,46 +1885,9 @@ echo "-------------------------------------------------------"
 # it goes last and it answers the objection before it is raised. Craig's
 # assumption on 4 Sep 2026 was that turning Secure Boot off means a reinstall;
 # it does not, and saying so plainly is what decides whether anyone does it.
+# Defined as a function in preflight because it is ALSO printed at the start
+# on a machine whose wifi this run is about to refuse -- learning that after
+# a forty-minute build is too late to be useful.
 if [ "$SECURE_BOOT" = on ] || [ "$SECURE_BOOT" = unknown ]; then
-    echo ""
-    echo "======================================================="
-    echo "  ACTION NEEDED — SECURE BOOT IS $(echo "$SECURE_BOOT" | tr '[:lower:]' '[:upper:]')"
-    echo "======================================================="
-    echo ""
-    echo "  Reboot into firmware setup and DISABLE Secure Boot."
-    echo "  On this Dell: F2 at the logo, Boot Configuration,"
-    echo "  Secure Boot -> Disabled. Other makes vary."
-    echo ""
-    echo "  THIS DOES NOT MEAN REINSTALLING. It is a firmware"
-    echo "  setting only:"
-    echo "    * the system boots exactly as it does now"
-    # Do NOT promise this unconditionally. A passphrase LUKS volume -- what
-    # subiquity builds, and what /etc/crypttab shows as `none luks` -- is
-    # unaffected by Secure Boot state. Ubuntu's TPM-backed FDE is NOT: it
-    # seals to PCR 7, which measures Secure Boot, so turning it off breaks
-    # the automatic unlock and needs the recovery key. Telling that user
-    # "nothing changes" would lock them out of their own disk.
-    if [ -r /etc/crypttab ] && grep -q "tpm2-device=" /etc/crypttab 2>/dev/null; then
-        echo "    * !! THIS DISK IS TPM-SEALED. Changing Secure Boot"
-        echo "      alters PCR 7 and the automatic unlock WILL fail."
-        echo "      HAVE YOUR RECOVERY KEY TO HAND before doing this."
-    else
-        echo "    * your disk encryption passphrase is UNCHANGED"
-        echo "      (this volume is not sealed to Secure Boot state)"
-    fi
-    echo "    * nothing on disk is touched"
-    echo ""
-    echo "  Why it matters on this machine:"
-    if [ "$BROADCOM_BLOCKED" = yes ]; then
-        echo "    * THIS MACHINE HAS BROADCOM WIFI and its driver was"
-        echo "      SKIPPED. Wifi will not work until you do this and"
-        echo "      re-run the script."
-    fi
-    echo "    * unsigned DKMS drivers (Broadcom wifi, NVIDIA) cannot"
-    echo "      load while Secure Boot is on"
-    echo "    * hibernation is refused outright by the locked-down"
-    echo "      kernel, so a shut laptop keeps draining"
-    echo ""
-    echo "  Then re-run this script. It is safe to run twice."
-    echo "======================================================="
+    secure_boot_action_block
 fi
