@@ -43,3 +43,6 @@ alias dn='delete_note.sh' # alias to script in ~/.local/bin to search notes usin
 
 # Which Terminal
 alias whichterminal='ps -p $(ps -p $$ -o ppid=) -o args'
+
+# Shred a file securely
+alias rm='srm -i -v'
