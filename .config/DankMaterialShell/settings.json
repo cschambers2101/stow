@@ -362,7 +362,7 @@
   "batterySuspendTimeout": 0,
   "batterySuspendBehavior": 0,
   "batteryProfileName": "",
-  "batteryPostLockMonitorTimeout": 0,
+  "batteryPostLockMonitorTimeout": 5,
   "batteryChargeLimit": 100,
   "batteryNotifyChargeLimit": false,
   "batteryCriticalThreshold": 10,
