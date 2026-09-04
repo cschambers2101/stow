@@ -37,8 +37,12 @@ sudo apt install -y \
 #    On reboot you will see a blue MOK Management screen — enroll the key.
 # -----------------------------------------------------------------
 if lspci | grep -qi nvidia; then
-    echo "NVIDIA GPU detected — installing drivers..."
-    sudo ubuntu-drivers install --include-dkms nvidia:595
+    echo "NVIDIA GPU detected — installing recommended driver..."
+    # No version pin: let ubuntu-drivers pick the recommended driver for this
+    # card (the -open flavour on Ampere+, e.g. 595-open on an RTX 3060).
+    sudo ubuntu-drivers install --include-dkms || \
+        sudo ubuntu-drivers autoinstall || \
+        echo "WARNING: NVIDIA driver install failed — check 'ubuntu-drivers devices'."
     sudo tee /etc/modprobe.d/blacklist-nouveau.conf <<EOF
 blacklist nouveau
 options nouveau modeset=0
