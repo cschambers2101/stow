@@ -751,7 +751,21 @@ fi
 #    default: ubuntu-desktop pulls most of the actual desktop in via
 #    Recommends, so if anyone ever reinstates a no-recommends policy this
 #    line still produces a real desktop rather than a hollow one.
+#    thunderbird is EXCLUDED. It is not in our package list and nobody asked
+#    for it - it only arrives as a Recommends of ubuntu-desktop. The deb is a
+#    transitional shim whose postinst runs `snap install thunderbird`, and when
+#    that fails (S6C proxy corrupted the .deb download on tf02-teacher, 4 Sep
+#    2026) dpkg returns 1 and `set -e` kills the WHOLE build before the package
+#    list, greetd, fonts and wallpaper ever install. A Pin-Priority -1 keeps it
+#    from being pulled as a recommend. This does NOT stop a student who wants it
+#    later: Thunderbird proper is the snap, so `snap install thunderbird` still
+#    works and ignores this apt pin entirely.
 # -----------------------------------------------------------------
+sudo tee /etc/apt/preferences.d/no-thunderbird.pref >/dev/null <<'TBEOF'
+Package: thunderbird
+Pin: release *
+Pin-Priority: -1
+TBEOF
 sudo apt install -y --install-recommends ubuntu-desktop
 
 # The Desktop iso installs and enables gdm3. dankinstall (section 5)
