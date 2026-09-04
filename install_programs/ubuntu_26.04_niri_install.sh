@@ -34,6 +34,52 @@ SUDO_KEEPALIVE=$!
 trap 'kill "$SUDO_KEEPALIVE" 2>/dev/null || true' EXIT
 
 # -----------------------------------------------------------------
+# PREFLIGHT: SECURE BOOT
+#
+# The header of this script has always said "Requires: Secure Boot
+# DISABLED", and nothing has ever checked. The 3 Sep 2026 laptop installed
+# cleanly with it ON, because Intel graphics need no out-of-tree module --
+# so the estate now holds both states by accident rather than by decision.
+#
+# Detected HERE, before anything that depends on it, and recorded rather
+# than acted on: the build must complete either way, and a warning printed
+# at minute two has left the scrollback by minute forty. It is used twice --
+# to gate broadcom-sta-dkms in section 9, and to print an action block at
+# the very end, where the user is actually looking.
+#
+# mokutil is authoritative. The lockdown fallback is a good proxy but not
+# a synonym: a kernel can be locked down via the `lockdown=` parameter with
+# Secure Boot off.
+# -----------------------------------------------------------------
+SECURE_BOOT=unknown
+BROADCOM_BLOCKED=no
+if command -v mokutil >/dev/null 2>&1; then
+    case "$(mokutil --sb-state 2>&1)" in
+        *"SecureBoot enabled"*)  SECURE_BOOT=on ;;
+        *"SecureBoot disabled"*) SECURE_BOOT=off ;;
+        # mokutil words this two ways depending on version and firmware:
+        # "This system doesn't support Secure Boot" on a legacy-BIOS machine,
+        # "EFI variables are not supported" where efivarfs is absent. Missing
+        # the first left old BIOS-boot laptops as `unknown`, which skipped
+        # broadcom-sta-dkms over a Secure Boot they do not have -- and those
+        # are precisely the Broadcom-era machines that need it.
+        *"doesn't support"*|*"not supported"*) SECURE_BOOT=unsupported ;;
+    esac
+fi
+if [ "$SECURE_BOOT" = unknown ] && [ -r /sys/kernel/security/lockdown ]; then
+    case "$(cat /sys/kernel/security/lockdown 2>/dev/null)" in
+        *"[none]"*)                      SECURE_BOOT=off ;;
+        *"[integrity]"*|*"[confidentiality]"*) SECURE_BOOT=on ;;
+    esac
+fi
+case "$SECURE_BOOT" in
+    on)          echo "Secure Boot: ENABLED — unsigned DKMS modules will be refused. See the end of this run." ;;
+    off)         echo "Secure Boot: disabled." ;;
+    unsupported) echo "Secure Boot: not supported by this firmware — nothing to do." ;;
+    *)           echo "Secure Boot: could not be determined — treating it as possibly on." ;;
+esac
+
+# -----------------------------------------------------------------
 # 0. THE CLOCK
 #
 #    Numbered 0 because it has to come before everything, including apt.
@@ -773,9 +819,26 @@ sudo apt install -y \
 # mixed student laptops can break wifi on Broadcom parts that brcmfmac
 # already handles.
 if lspci -nn | grep -iE "network|wireless" | grep -qi broadcom; then
-    echo "Broadcom wireless detected — installing broadcom-sta-dkms..."
-    sudo apt install -y broadcom-sta-dkms || \
-        echo "WARNING: broadcom-sta-dkms failed — check wifi after reboot."
+    if [ "$SECURE_BOOT" = on ] || [ "$SECURE_BOOT" = unknown ]; then
+        # Skipping is strictly better than installing here, and the reason is
+        # the blacklist noted above. broadcom-sta-dkms blacklists b43,
+        # brcmsmac, bcma and ssb -- and a locked-down kernel then refuses to
+        # load the unsigned replacement. Installing it under Secure Boot
+        # therefore disables the in-kernel drivers that might have worked AND
+        # supplies nothing in their place: a machine that reports a clean
+        # install and has no wifi at all. Leaving it out keeps whatever
+        # brcmfmac can manage.
+        echo "WARNING: Broadcom wireless found, but Secure Boot is $SECURE_BOOT." >&2
+        echo "         broadcom-sta-dkms is unsigned and out-of-tree, so a locked-down" >&2
+        echo "         kernel will refuse it. Installing it would also blacklist the" >&2
+        echo "         in-kernel drivers, leaving NO wifi at all. Skipped." >&2
+        echo "         Disable Secure Boot and re-run this script." >&2
+        BROADCOM_BLOCKED=yes
+    else
+        echo "Broadcom wireless detected — installing broadcom-sta-dkms..."
+        sudo apt install -y broadcom-sta-dkms || \
+            echo "WARNING: broadcom-sta-dkms failed — check wifi after reboot."
+    fi
 else
     echo "No Broadcom wireless detected — skipping broadcom-sta-dkms."
 fi
@@ -1665,3 +1728,51 @@ echo ""
 echo "  NVIDIA only: watch for the MOK enrollment screen on first"
 echo "  boot and enroll the key."
 echo "-------------------------------------------------------"
+
+# The one message in this script that has to change somebody's behaviour, so
+# it goes last and it answers the objection before it is raised. Craig's
+# assumption on 4 Sep 2026 was that turning Secure Boot off means a reinstall;
+# it does not, and saying so plainly is what decides whether anyone does it.
+if [ "$SECURE_BOOT" = on ] || [ "$SECURE_BOOT" = unknown ]; then
+    echo ""
+    echo "======================================================="
+    echo "  ACTION NEEDED — SECURE BOOT IS $(echo "$SECURE_BOOT" | tr '[:lower:]' '[:upper:]')"
+    echo "======================================================="
+    echo ""
+    echo "  Reboot into firmware setup and DISABLE Secure Boot."
+    echo "  On this Dell: F2 at the logo, Boot Configuration,"
+    echo "  Secure Boot -> Disabled. Other makes vary."
+    echo ""
+    echo "  THIS DOES NOT MEAN REINSTALLING. It is a firmware"
+    echo "  setting only:"
+    echo "    * the system boots exactly as it does now"
+    # Do NOT promise this unconditionally. A passphrase LUKS volume -- what
+    # subiquity builds, and what /etc/crypttab shows as `none luks` -- is
+    # unaffected by Secure Boot state. Ubuntu's TPM-backed FDE is NOT: it
+    # seals to PCR 7, which measures Secure Boot, so turning it off breaks
+    # the automatic unlock and needs the recovery key. Telling that user
+    # "nothing changes" would lock them out of their own disk.
+    if [ -r /etc/crypttab ] && grep -q "tpm2-device=" /etc/crypttab 2>/dev/null; then
+        echo "    * !! THIS DISK IS TPM-SEALED. Changing Secure Boot"
+        echo "      alters PCR 7 and the automatic unlock WILL fail."
+        echo "      HAVE YOUR RECOVERY KEY TO HAND before doing this."
+    else
+        echo "    * your disk encryption passphrase is UNCHANGED"
+        echo "      (this volume is not sealed to Secure Boot state)"
+    fi
+    echo "    * nothing on disk is touched"
+    echo ""
+    echo "  Why it matters on this machine:"
+    if [ "$BROADCOM_BLOCKED" = yes ]; then
+        echo "    * THIS MACHINE HAS BROADCOM WIFI and its driver was"
+        echo "      SKIPPED. Wifi will not work until you do this and"
+        echo "      re-run the script."
+    fi
+    echo "    * unsigned DKMS drivers (Broadcom wifi, NVIDIA) cannot"
+    echo "      load while Secure Boot is on"
+    echo "    * hibernation is refused outright by the locked-down"
+    echo "      kernel, so a shut laptop keeps draining"
+    echo ""
+    echo "  Then re-run this script. It is safe to run twice."
+    echo "======================================================="
+fi

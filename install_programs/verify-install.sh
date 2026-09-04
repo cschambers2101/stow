@@ -460,6 +460,46 @@ else
 fi
 
 # -----------------------------------------------------------------
+echo "--- secure boot ---"
+# Conditional on what the machine actually contains, because Secure Boot on
+# is only a FAULT where something needs an unsigned module. Flagging the
+# Intel XPS for a problem it does not have would train people to ignore the
+# check -- and it would be flagging the state the fleet is now assumed to be
+# in. What it must never do is stay quiet on a Broadcom or NVIDIA machine,
+# where the consequence is no wifi or no display driver, silently.
+SB_STATE=unknown
+case "$(mokutil --sb-state 2>&1)" in
+    *"SecureBoot enabled"*)  SB_STATE=on ;;
+    *"SecureBoot disabled"*) SB_STATE=off ;;
+    # Both wordings: "This system doesn't support Secure Boot" (legacy
+    # BIOS) and "EFI variables are not supported".
+    *"doesn't support"*|*"not supported"*) SB_STATE=unsupported ;;
+esac
+NEEDS_DKMS=""
+lspci -nn 2>/dev/null | grep -iE "network|wireless" | grep -qi broadcom && NEEDS_DKMS="$NEEDS_DKMS broadcom"
+lspci -nn 2>/dev/null | grep -iE "vga|3d controller" | grep -qi nvidia   && NEEDS_DKMS="$NEEDS_DKMS nvidia"
+
+case "$SB_STATE" in
+    off)         pass "secure boot off where DKMS needed" "disabled" ;;
+    unsupported) pass "secure boot off where DKMS needed" "not supported by this firmware" ;;
+    on)
+        if [ -z "$NEEDS_DKMS" ]; then
+            pass "secure boot off where DKMS needed" "on — no DKMS hardware here; hibernate unavailable"
+        else
+            fail "secure boot off where DKMS needed" "ON, and this machine has:$NEEDS_DKMS — those modules cannot load"
+        fi ;;
+    *)           skip "secure boot off where DKMS needed" "could not read state (is mokutil installed?)" ;;
+esac
+
+# An unsigned module that is INSTALLED but cannot load is the silent case:
+# dkms reports it built, and the kernel refuses it at load time.
+if [ "$SB_STATE" = on ] && dpkg -s broadcom-sta-dkms >/dev/null 2>&1; then
+    fail "no unloadable DKMS modules" "broadcom-sta-dkms is installed under Secure Boot — it blacklists the in-kernel drivers and cannot load itself"
+else
+    pass "no unloadable DKMS modules" ""
+fi
+
+# -----------------------------------------------------------------
 echo "--- suspend ---"
 # Three outcomes have to stay distinguishable, and only one is a fault:
 #
