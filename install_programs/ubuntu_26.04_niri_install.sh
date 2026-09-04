@@ -517,8 +517,20 @@ sudo apt update || echo "WARNING: apt update reported an error (usually a post-i
 
 # -----------------------------------------------------------------
 # 2. KERNEL HEADERS, BUILD TOOLS & DRIVER UTILITIES
+#
+# Install the HWE *meta* packages, not a pinned version. linux-generic-hwe-26.04
+# tracks the latest supported 26.04 kernel and rolls forward on normal updates,
+# and linux-headers-generic-hwe-26.04 keeps matching headers present so out-of-
+# tree modules always build. This is also the track the Canonical-signed
+# prebuilt nvidia modules (linux-modules-nvidia-595-generic-hwe-26.04) follow,
+# so a kernel bump pulls the matching signed nvidia module automatically - no
+# DKMS rebuild, no MOK. The version-pinned linux-headers-$(uname -r) stays as a
+# belt-and-braces guarantee of headers for the CURRENTLY running kernel, in case
+# anything must DKMS-build before the next reboot.
 # -----------------------------------------------------------------
 sudo apt install -y \
+    linux-generic-hwe-26.04 \
+    linux-headers-generic-hwe-26.04 \
     "linux-headers-$(uname -r)" \
     build-essential \
     dkms \
