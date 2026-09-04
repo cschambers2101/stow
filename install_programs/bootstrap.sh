@@ -23,6 +23,7 @@
 set -e
 
 REPO_HTTPS="https://github.com/cschambers2101/stow.git"
+REPO_SSH="git@github.com:cschambers2101/stow.git"
 DOTFILES_DIR="$HOME/.dotfiles"
 
 if [ "$(id -u)" -eq 0 ]; then
@@ -37,11 +38,29 @@ if ! command -v git >/dev/null 2>&1; then
     sudo apt install -y git
 fi
 
+# Prefer SSH when a GitHub-authorised key is present, so `git push` works
+# without a stored HTTPS credential. The repo is public, so HTTPS can still
+# CLONE (but not push) on a fresh machine whose key is not enrolled yet.
+# GitHub's SSH endpoint always exits non-zero (it grants no shell), so match the
+# success banner rather than the exit code; BatchMode + ConnectTimeout keep a
+# filtered port 22 from hanging the build, and accept-new trusts github.com's
+# host key on first contact without an interactive prompt.
+if ssh -T -o BatchMode=yes -o ConnectTimeout=5 -o StrictHostKeyChecking=accept-new git@github.com 2>&1 | grep -q "successfully authenticated"; then
+    REPO_URL="$REPO_SSH"
+    echo "GitHub SSH key detected — using the SSH remote (push will work)."
+else
+    REPO_URL="$REPO_HTTPS"
+    echo "No usable GitHub SSH key — using the HTTPS remote (clone only; push needs a key)."
+fi
+
 # The repo is named "stow" on GitHub but MUST land in ~/.dotfiles:
 # ubuntu_26.04_niri_install.sh derives the stow target from its own
 # location, so a clone into ~/stow would stow from the wrong path.
 if [ -d "$DOTFILES_DIR/.git" ]; then
     echo "$DOTFILES_DIR already exists — pulling latest..."
+    # Re-point an existing checkout at the chosen URL, so once a key is enrolled
+    # the remote flips from HTTPS to SSH and pushes stop needing a credential.
+    git -C "$DOTFILES_DIR" remote set-url origin "$REPO_URL" 2>/dev/null || true
     git -C "$DOTFILES_DIR" pull --ff-only || \
         echo "WARNING: pull failed; continuing with the existing checkout."
 elif [ -e "$DOTFILES_DIR" ]; then
@@ -53,7 +72,7 @@ else
     # were removed from the working tree in Aug 2026. A full clone downloads
     # all of it; a shallow one fetches only the current tree, which is ~13 MB.
     # Nothing in the build reads git history, so there is nothing to lose.
-    git clone --depth 1 "$REPO_HTTPS" "$DOTFILES_DIR"
+    git clone --depth 1 "$REPO_URL" "$DOTFILES_DIR"
 fi
 
 INSTALLER="$DOTFILES_DIR/install_programs/ubuntu_26.04_niri_install.sh"
