@@ -1418,6 +1418,52 @@ else
     echo "WARNING: /etc/default/zramswap missing — is zram-tools installed?"
 fi
 
+# Deep sleep (S3) where the firmware actually offers it.
+#
+# The XPS 13 9310 of the first laptop build (3 Sep 2026) reports
+# `ACPI: PM: (supports S0 S4 S5)` -- no S3 at all -- so /sys/power/mem_sleep
+# offers only [s2idle]. Modern Standby drains a shut laptop in a way S3 does
+# not. NOTHING in Linux can conjure S3 on such a machine: mem_sleep_default
+# is ignored outright when the firmware never advertised the state, which is
+# why this is conditional by necessity rather than by caution.
+#
+# It still earns its place, because the fleet is not all XPS. Older Latitudes
+# and ThinkPads -- the likely shape of a second-hand student laptop -- do
+# advertise S3, and Ubuntu still defaults them to s2idle.
+#
+# Deliberately NOT gated on Secure Boot. A GRUB command line is unaffected by
+# kernel lockdown, unlike hibernation, which lockdown forbids outright. We
+# assume Secure Boot stays ON in the field -- students will not turn it off
+# whatever they are told -- so anything that needs it off is not a fleet
+# option. See notes/sleep-and-hibernate-plan-2026-09-04.md.
+GRUB_FILE=/etc/default/grub
+if [ ! -r /sys/power/mem_sleep ]; then
+    echo "No /sys/power/mem_sleep — skipping deep sleep configuration."
+elif ! grep -qw deep /sys/power/mem_sleep; then
+    echo "Firmware advertises no S3 (mem_sleep: $(cat /sys/power/mem_sleep)) — leaving suspend at s2idle."
+elif [ ! -f "$GRUB_FILE" ]; then
+    echo "WARNING: S3 is available but $GRUB_FILE is missing — cannot make it the default." >&2
+elif grep -q 'mem_sleep_default=deep' "$GRUB_FILE"; then
+    echo "Deep sleep is already the default in $GRUB_FILE."
+else
+    echo "Firmware offers S3 — making deep sleep the default."
+    # Strip any previous mem_sleep_default= first, so re-running this script
+    # cannot accumulate two of them on one command line.
+    sudo sed -i -E 's/[[:space:]]*mem_sleep_default=[^ "]*//g' "$GRUB_FILE" || true
+    sudo sed -i -E 's|^(GRUB_CMDLINE_LINUX_DEFAULT=")(.*)"|\1\2 mem_sleep_default=deep"|' "$GRUB_FILE" || true
+    # Tidy the leading space left when the command line started out empty.
+    sudo sed -i -E 's|^(GRUB_CMDLINE_LINUX_DEFAULT=")[[:space:]]+|\1|' "$GRUB_FILE" || true
+    # Assert rather than assume. A substitution that quietly did nothing here
+    # is invisible until someone shuts the lid a week later and finds a flat
+    # battery -- the same class of silent fault as the wifi priority.
+    if grep -q 'mem_sleep_default=deep' "$GRUB_FILE"; then
+        sudo update-grub || \
+            echo "WARNING: update-grub failed — deep sleep applies at the next successful update-grub." >&2
+    else
+        echo "WARNING: could not add mem_sleep_default=deep to $GRUB_FILE — suspend stays s2idle." >&2
+    fi
+fi
+
 sudo systemctl enable udisks2
 sudo systemctl enable cups          || true
 sudo systemctl enable avahi-daemon  || true

@@ -460,6 +460,33 @@ else
 fi
 
 # -----------------------------------------------------------------
+echo "--- suspend ---"
+# Three outcomes have to stay distinguishable, and only one is a fault:
+#
+#   * the firmware has no S3 at all -- a fact about the hardware, and the
+#     case on the XPS 13 9310 (`ACPI: PM: (supports S0 S4 S5)`). Nothing
+#     to fix, so it must not read as a failure;
+#   * S3 exists and is in use -- what we want;
+#   * S3 exists and is NOT in use -- a real miss, invisible until someone
+#     shuts the lid a week later and finds a flat battery.
+#
+# The fourth case is the awkward one: the installer has just written the
+# GRUB entry but the running kernel predates it. That is configured
+# correctly, and would otherwise fail every verify run made before the
+# first reboot.
+if [ ! -r /sys/power/mem_sleep ]; then
+    skip "deep sleep where available" "no /sys/power/mem_sleep"
+elif ! grep -qw deep /sys/power/mem_sleep; then
+    pass "deep sleep where available" "no S3 in firmware — s2idle is all there is"
+elif grep -q '\[deep\]' /sys/power/mem_sleep; then
+    pass "deep sleep where available" "deep"
+elif grep -q 'mem_sleep_default=deep' /etc/default/grub 2>/dev/null; then
+    pass "deep sleep where available" "configured — applies after reboot"
+else
+    fail "deep sleep where available" "S3 available but active is $(cat /sys/power/mem_sleep) — mem_sleep_default=deep not applied"
+fi
+
+# -----------------------------------------------------------------
 # The project's longest-standing red risk was that no real GPU driver had
 # ever been exercised -- every run before 2 Sep 2026 was a VM on virgl +
 # llvmpipe, which proves the software stack and nothing else. These checks
