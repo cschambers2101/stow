@@ -128,12 +128,19 @@ eval "$(starship init bash)"
 
 
 # nvm lands in different places depending on which build ran:
-# chromebook_setup.sh pre-sets NVM_DIR to ~/.config/nvm, while the niri
-# installer takes nvm's own default of ~/.nvm. Pinning only the first meant
-# node was SILENTLY unavailable on every niri machine -- installed, present,
-# and unreachable, because the `[ -s ... ] &&` guard just quietly did
-# nothing. Found on two machines at once, both with node v24 sitting there.
-export NVM_DIR="$HOME/.config/nvm"
-[ -s "$NVM_DIR/nvm.sh" ] || export NVM_DIR="$HOME/.nvm"
-[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
-[ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"
+# chromebook_setup.sh installs to ~/.config/nvm, while the niri installer takes
+# nvm's own default of ~/.nvm. Detect whichever actually exists BEFORE exporting
+# NVM_DIR. The old code exported ~/.config/nvm unconditionally and only then fell
+# back to ~/.nvm; on niri machines that leaked a broken NVM_DIR into the exported
+# environment, so any child that sourced nvm.sh printed "NVM_DIR set to
+# ~/.config/nvm but that directory does not exist". Only export a path we know
+# holds nvm.sh; if neither does, leave NVM_DIR unset rather than pointing nowhere.
+for _nvm in "$HOME/.config/nvm" "$HOME/.nvm"; do
+    if [ -s "$_nvm/nvm.sh" ]; then
+        export NVM_DIR="$_nvm"
+        \. "$_nvm/nvm.sh"
+        [ -s "$_nvm/bash_completion" ] && \. "$_nvm/bash_completion"
+        break
+    fi
+done
+unset _nvm
