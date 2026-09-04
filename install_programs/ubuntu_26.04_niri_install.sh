@@ -326,6 +326,16 @@ sudo timedatectl set-ntp true
 # NO time, and a wrong clock breaks TLS validation and apt's Release window,
 # which is the larger security problem. This site already intercepts TLS, so
 # an on-path actor is inside the threat model by design.
+#
+# GUARD (added 4 Sep 2026). Everything below is chrony-specific and assumes
+# chrony is on the base ISO. That holds for the vanilla-26.04 student laptops
+# but NOT for reimaged classroom PCs, which kept systemd-timesyncd from the old
+# x86/qtile build: chrony is absent, /etc/chrony/conf.d does not exist, and
+# writing into it aborted the WHOLE install under `set -e` (line 330, uutils
+# `tee` -> "No such file or directory (os error 2)"). Only apply the chrony
+# workaround when chrony is actually present; otherwise timesyncd - already
+# started by `set-ntp true` above - handles sync and we just verify it.
+if command -v chronyd >/dev/null 2>&1 && [ -d /etc/chrony ]; then
 echo "Letting chrony select unauthenticated sources (NTS is unreachable here)..."
 sudo tee /etc/chrony/conf.d/50-s6c-authselectmode.conf >/dev/null <<'AUTHEOF'
 # chrony's default authselectmode is `mix`, which grants `require` to every
@@ -427,6 +437,22 @@ done
 unset _i
 timedatectl show --property=NTPSynchronized --value 2>/dev/null | grep -q '^yes$' || \
     echo "WARNING: clock still not synchronised - check 'chronyc sources -v'."
+else
+    # No chrony (e.g. reimaged classroom PC on systemd-timesyncd). The NTS
+    # breakage the block above works around is chrony-only, so there is nothing
+    # to fix here - just confirm timesyncd got us a synced clock.
+    echo "chrony not installed - relying on systemd-timesyncd for time sync."
+    for _i in $(seq 1 20); do
+        timedatectl show --property=NTPSynchronized --value 2>/dev/null | grep -q '^yes$' && break
+        sleep 1
+    done
+    if timedatectl show --property=NTPSynchronized --value 2>/dev/null | grep -q '^yes$'; then
+        echo "   clock synchronised, now $(date '+%H:%M:%S %Z')"
+    else
+        echo "WARNING: clock not synchronised and chrony absent - check 'timedatectl status'."
+    fi
+    unset _i
+fi
 
 # -----------------------------------------------------------------
 # 1. APT SOURCES
