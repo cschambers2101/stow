@@ -26,6 +26,13 @@ rc=0
 for f in "${SH[@]}"; do
     bash -n "$f" || rc=1
 done
+
+while IFS= read -r f; do
+    case "$(git ls-files -s -- "$f" | awk '{print $1}')" in
+        100755|"") ;;
+        *) echo "not executable in git: $f (git update-index --chmod=+x)"; rc=1 ;;
+    esac
+done < <(find .local/bin -maxdepth 1 -type f ! -name '*.pyc'; find .config -type f -name '*.sh'; find install_programs -maxdepth 2 -type f -name '*.sh' ! -path '*/lib/*'; printf '%s\n' install_programs/suspend/rtw89-reload)
 shellcheck -S warning "${SH[@]}" || rc=1
 
 if [ "$rc" -eq 0 ]; then
