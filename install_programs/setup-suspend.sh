@@ -90,7 +90,8 @@ fi
 echo "--- suspend/resume: rclone mount ---"
 if has_rclone_mount || [ "$FORCE_RCLONE" = yes ]; then
     if [ "$STATUS_ONLY" = yes ]; then
-        echo "rclone mount present; rclone-sleep.service is $(systemctl is-enabled rclone-sleep.service 2>/dev/null | head -1 || echo absent)"
+        _st="$(systemctl is-enabled rclone-sleep.service 2>/dev/null | head -1)"
+        echo "rclone mount present; rclone-sleep.service is ${_st:-absent}"
     else
         if [ ! -r "$SRC/rclone-sleep.service" ]; then
             warn "$SRC/rclone-sleep.service missing — unit not installed"
