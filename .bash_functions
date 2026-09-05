@@ -38,10 +38,10 @@ myhelp() {
 
 apt() {
     local runner
-    if command -v nala >/dev/null 2>&1; then runner=nala; else runner="command apt"; fi
+    if command -v nala >/dev/null 2>&1; then runner=nala; else runner=/usr/bin/apt; fi
     case "$1" in
-        install|remove|purge|update|upgrade|autoremove|list) sudo $runner "$@" ;;
-        search|show) $runner "$@" ;;
+        install|remove|purge|update|upgrade|autoremove|list) sudo "$runner" "$@" ;;
+        search|show) "$runner" "$@" ;;
         *) command apt "$@" ;;
     esac
 }

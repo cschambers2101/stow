@@ -120,14 +120,14 @@ gpu_is() { printf '%s' "${GPU_INFO:-}" | grep -qiE "$1"; }
 secure_boot_state() {
     local state=unknown
     if have_cmd mokutil; then
-        case "$(mokutil --sb-state 2>&1)" in
+        case "$(mokutil --sb-state 2>&1 || true)" in
             *"SecureBoot enabled"*)  state=on ;;
             *"SecureBoot disabled"*) state=off ;;
             *"doesn't support"*|*"not supported"*) state=unsupported ;;
         esac
     fi
     if [ "$state" = unknown ] && [ -r /sys/kernel/security/lockdown ]; then
-        case "$(cat /sys/kernel/security/lockdown 2>/dev/null)" in
+        case "$(cat /sys/kernel/security/lockdown 2>/dev/null || true)" in
             *"[none]"*)                            state=off ;;
             *"[integrity]"*|*"[confidentiality]"*) state=on ;;
         esac
