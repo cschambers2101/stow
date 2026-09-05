@@ -19,9 +19,11 @@ bash <(wget -qO- https://raw.githubusercontent.com/cschambers2101/stow/main/inst
 the curl form of this line fails before it starts.
 
 That is the whole thing. `bootstrap.sh` shallow-clones this repo to
-`~/.dotfiles` and hands off to `ubuntu_26.04_niri_install.sh`, which runs 16
-sections: drivers, desktop base, the niri/Dank stack, packages, dotfiles,
-Node, machine identity, printing.
+`~/.dotfiles` and hands off to `ubuntu_26.04_niri_install.sh`, which runs 19
+numbered sections: clock, drivers, desktop base, the niri/Dank stack, packages,
+dotfiles, Node, machine identity, printing. `--list` prints them; `--only 10,12`,
+`--skip 16` and `--from 5` re-run part of a build on a machine that already has
+the rest. Every section is safe to run twice.
 
 **Section order matters on the school network.** Section 2A installs the
 Oakford root CA, and the site firewall intercepts TLS on everything except
@@ -140,12 +142,18 @@ Two warnings during the run are **expected and harmless**:
 |------|-------|
 | Live package list | `niri_programs_to_install.txt` — **edit this one** |
 | Main installer | `ubuntu_26.04_niri_install.sh` |
-| Student entry point | `bootstrap.sh` |
+| Shared library (constants, logging, apt, CA, Node, yt-dlp, Claude) | `lib/` — every installer sources `lib/common.sh`; the Oakford pin, the S6C key and every URL live there once |
+| Student entry point | `bootstrap.sh` — standalone on purpose; it runs before the clone exists |
 | Unattended install | `autoinstall/` |
-| Craig's qtile laptop | `ubuntu_26.04_qtile_install.sh` |
+| Post-install checks | `verify-install.sh` |
 | Suspend/resume fixes (rtw89 wifi, rclone mount) | `setup-suspend.sh` — run by the installer; re-run after `setup_rclone_for_google_drive.sh` |
 | Chromebook / Crostini | `chromebook_setup.sh` |
-| Not used by anything | `archived/` |
+| Lint (shellcheck + `bash -n`, also run by GitHub Actions) | `lint.sh` |
+| Retired: qtile, Debian, X11 tools | `../_archive/` — kept for reference, not stowed, not linted |
 
-Decisions, research and the rollout runbook live outside this repo, in the
-`linux-device-build-2026` project folder.
+The scripts carry no explanatory comments by design (Craig, 5 Sep 2026). The
+reasoning behind every step — why the CA sits at 2A, why chrony needs
+`authselectmode ignore`, why `enable --now` was not enough for zram — lives in
+the private workspace: `projects/linux-device-build-2026/notes/installer-rationale.md`
+(verbatim) and `decisions-log.md` (decisions). Decisions, research and the
+rollout runbook live there too.

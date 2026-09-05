@@ -1,0 +1,13 @@
+\.git
+\.gitignore
+\.gitmodules
+\.stow-local-ignore
+\.editorconfig
+\.shellcheckrc
+\.github
+^/README.*
+^/LICENSE.*
+^/install_programs
+^/_archive
+.+~
+\#.*\#

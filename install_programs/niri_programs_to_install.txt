@@ -146,6 +146,8 @@ unzip
 zip
 xz-utils
 zram-tools
+# secure-delete provides srm, which .bash_aliases maps rm to when present.
+secure-delete
 
 # --- media / apps ---
 alacritty

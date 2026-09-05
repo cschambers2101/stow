@@ -1,19 +1,5 @@
-#!/bin/bash
-
-# =================================================================
-# BUILD A CIDATA VOLUME FOR UNATTENDED UBUNTU INSTALLS
-#
-#   ./make-cidata.sh /dev/sdX        write to a USB stick  (⚠️ ERASES IT)
-#   ./make-cidata.sh cidata.img      write to a disk image (for VM testing)
-#
-# cloud-init's NoCloud datasource scans every block device for a volume
-# labelled exactly CIDATA holding `user-data` and `meta-data` at its root.
-# That is why this works alongside a dd-written, read-only Ubuntu ISO:
-# the config lives on a second device, so the ISO is never modified.
-#
-# Uses mtools, so writing an IMAGE needs no root at all. Writing to a real
-# device needs sudo only for mkfs.
-# =================================================================
+#!/usr/bin/env bash
+# Build a CIDATA volume for unattended Ubuntu installs: make-cidata.sh /dev/sdX (ERASES IT) | cidata.img
 
 set -euo pipefail
 
@@ -43,12 +29,8 @@ done
 STAGING="$(mktemp -d)"
 trap 'rm -rf "$STAGING"' EXIT
 
-# user-data IS autoinstall.yaml: it already carries the #cloud-config header
-# and the top-level `autoinstall:` key that cloud-init hands to subiquity.
 cp "$SRC" "$STAGING/user-data"
 
-# meta-data may be empty but must exist, or the datasource is skipped.
-# instance-id changing is what makes cloud-init treat this as a new instance.
 cat > "$STAGING/meta-data" <<EOF
 instance-id: niri-student-$(date +%Y%m%d%H%M%S)
 EOF
@@ -65,7 +47,6 @@ if [ -b "$TARGET" ]; then
     read -r -p "Type ERASE to continue: " CONFIRM
     [ "$CONFIRM" = "ERASE" ] || { echo "Aborted."; exit 1; }
 
-    # Unmount anything already mounted from it, or mkfs refuses.
     for part in $(lsblk -ln -o NAME "$TARGET" | tail -n +2); do
         sudo umount "/dev/$part" 2>/dev/null || true
     done
@@ -78,8 +59,6 @@ if [ -b "$TARGET" ]; then
     echo "Done. Plug this in alongside the Ubuntu Desktop stick and boot from"
     echo "the Ubuntu one."
 else
-    # 1 MiB is far more than two small text files need, and keeps the image
-    # comfortably above the FAT12 minimum.
     rm -f "$TARGET"
     truncate -s 1M "$TARGET"
     mkfs.vfat -n CIDATA "$TARGET" >/dev/null

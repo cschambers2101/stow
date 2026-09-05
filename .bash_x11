@@ -1,0 +1,21 @@
+# shellcheck shell=bash
+alias ss='xrandr --output eDP-1 --scale 0.5x0.5'
+alias s6cmon='bash ~/.screenlayout/s6c_monitors.sh'
+alias lapmon='bash ~/.screenlayout/laptop_monitor.sh'
+alias ms='toggle_monitors'
+
+qtile_scaling() { xrandr --output eDP-1 --scale 0.5x0.5; }
+
+toggle_monitors() {
+    local laptop="$HOME/.screenlayout/laptop_monitor.sh" s6c="$HOME/.screenlayout/s6c_monitors.sh"
+    if [ "$s6c" -nt "$laptop" ]; then
+        echo "--> Switching to laptop-only configuration..."
+        bash "$laptop" && touch "$laptop"
+    else
+        echo "--> Switching to S6C multi-monitor configuration..."
+        bash "$s6c" && touch "$s6c"
+    fi
+}
+
+# shellcheck source=/dev/null
+[ -f ~/.screenlayout/screens.sh ] && . ~/.screenlayout/screens.sh

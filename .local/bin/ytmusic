@@ -1,46 +1,13 @@
 #!/usr/bin/env bash
-#
-# ytmusic — build a music library from YouTube. Takes urls OR plain song names,
-# one per line in a text file, and works out on its own whether each thing is a
-# single track or a whole playlist.
-#
-#   ytmusic "https://youtu.be/xyz"           one song
-#   ytmusic "https://youtube.com/playlist?list=..."   whole playlist
-#   ytmusic "Thunderstruck AC/DC"            searched, first hit
-#   ytmusic --from-file rock-anthems.txt     a whole list of the above
-#
-# WHY THE DETECTION EXISTS
-#
-# yt-dlp's default for a "watch?v=XXX&list=YYY" url is to download the ENTIRE
-# playlist. That is almost never what you meant: a url like that is what you get
-# from copying the address bar while listening to one track that happens to sit
-# in a playlist. Ask for one song, get two hundred.
-#
-# The rule is deterministic and needs no network call:
-#
-#   has v= (or youtu.be/ID, or /shorts/ID) -> ONE SONG, even if list= is also
-#                                             present. You pointed at a video.
-#   list= only, starting RD                -> a Mix/radio. Generated on the fly
-#                                             and endless — never bulk-download.
-#   list= only, anything else              -> a real playlist or album.
-#   neither                                -> unknown. Ask yt-dlp (one request).
-#   not a url at all                       -> a YouTube search, first result.
-#
-# TAGS MATTER MORE THAN THEY LOOK. MPD builds its whole library from embedded
-# tags, so rmpc and the media widget show bare filenames without them. Hence
-# --embed-metadata, --embed-thumbnail, and the --parse-metadata lines that pull
-# an artist out of "Artist - Title" video names and fall back to the uploader.
-#
-# Craig Chambers / dotfiles. Portable: no absolute paths, and no GNU-grep
-# dependency (grep is ugrep on some of these machines).
+# ytmusic: build a music library from YouTube. Song vs playlist detection, tagging via ytmusic-tag. See --help.
 
 set -uo pipefail
 
-FORMAT="best"        # best = keep the original stream, no lossy re-encode
+FORMAT="best"
 KIND="auto"
 MUSIC_DIR="${YTMUSIC_DIR:-$HOME/Music}"
 ARCHIVE=""
-MAXDUR="${YTMUSIC_MAXDUR:-900}"   # seconds; guards against hour-long compilations
+MAXDUR="${YTMUSIC_MAXDUR:-900}"
 
 usage() {
     cat <<'USAGE'
@@ -77,7 +44,6 @@ prefer "Artist - Title" over a bare title.
 USAGE
 }
 
-# --- classify a target. no network. echoes: song|playlist|radio|search|unknown
 yt_kind() {
     local url="${1%%#*}" query="" vid="" list="" kv oldifs
 
@@ -101,7 +67,6 @@ yt_kind() {
     done
     IFS="$oldifs"
 
-    # Short forms carry the video id in the path, not the query string.
     if [ -z "$vid" ]; then
         case "$url" in
             *youtu.be/*) vid="${url##*youtu.be/}"; vid="${vid%%\?*}" ;;
@@ -109,12 +74,11 @@ yt_kind() {
         esac
     fi
 
-    # A specific video wins over any list it happens to sit in.
     [ -n "$vid" ] && { echo song; return; }
 
     if [ -n "$list" ]; then
         case "$list" in
-            RD*) echo radio ;;      # RD/RDMM/RDCLAK... = auto-generated mix
+            RD*) echo radio ;;
             *)   echo playlist ;;
         esac
         return
@@ -123,8 +87,6 @@ yt_kind() {
     echo unknown
 }
 
-# Only for the unknown case — a channel page, or a site that is not YouTube.
-# Costs one metadata request, which is why it is not the primary mechanism.
 probe_kind() {
     local t
     t="$(yt-dlp --flat-playlist --no-warnings --playlist-items 1 \
@@ -135,7 +97,6 @@ probe_kind() {
     esac
 }
 
-# A plain song name becomes a YouTube search for the single best match.
 to_target() {
     case "$1" in
         http://*|https://*|ytsearch*:*) printf '%s' "$1" ;;
@@ -164,8 +125,6 @@ while [ "$#" -gt 0 ]; do
             shift
             LIST="${1:?--from-file needs a path}"
             [ -r "$LIST" ] || { echo "ytmusic: cannot read '$LIST'" >&2; exit 1; }
-            # Comments and blank lines are skipped so a scraped list can be
-            # annotated in place. Trailing \r survives Windows-made files.
             while IFS= read -r line || [ -n "$line" ]; do
                 line="${line%$'\r'}"
                 line="${line#"${line%%[![:space:]]*}"}"
@@ -182,17 +141,6 @@ while [ "$#" -gt 0 ]; do
     shift
 done
 
-# --- work out what the bare arguments meant -------------------------------
-#
-# Three shapes, so none of them needs remembering:
-#
-#   ytmusic Queen Bohemian Rhapsody     bare words -> ONE search, unquoted
-#   ytmusic anthems.txt                 a readable file -> read it as a list
-#   ytmusic <url> [url ...]             urls -> one job each
-#
-# The rule for words: if NO argument contains a space, the shell has simply
-# split one phrase for us, so join it back up. If any argument does contain a
-# space, the user quoted deliberately and means several separate searches.
 WORDS=()
 for p in ${POS+"${POS[@]}"}; do
     if [ -f "$p" ] && [ -r "$p" ]; then
@@ -230,8 +178,6 @@ ARCHIVE="$MUSIC_DIR/.ytmusic-archive"
 command -v yt-dlp >/dev/null || { echo "ytmusic: yt-dlp is not installed." >&2; exit 1; }
 command -v ffmpeg >/dev/null || { echo "ytmusic: ffmpeg is not installed — extraction and tagging need it." >&2; exit 1; }
 
-# Thumbnail embedding into m4a/aac goes through AtomicParsley; mp3 goes through
-# ffmpeg. Warn once rather than letting it half-work depending on format.
 if ! command -v AtomicParsley >/dev/null 2>&1; then
     case "$FORMAT" in
         aac|best) echo "ytmusic: note — AtomicParsley is missing, so cover art may not embed into m4a/aac. Install: sudo apt install atomicparsley" >&2 ;;
@@ -274,50 +220,25 @@ for raw in "${TARGETS[@]}"; do
         --restrict-filenames
         --embed-metadata
         --embed-thumbnail
-        # Square-crop the thumbnail. This is a FALLBACK: ytmusic-tag normally
-        # replaces the art with the real cover from the Cover Art Archive, which
-        # is already square. It only shows for tracks MusicBrainz cannot match,
-        # and without it those keep YouTube's 16:9 video still -- letterboxed,
-        # usually with a vevo logo in the corner -- which looks broken sitting in
-        # a grid of square covers.
-        # crop=ih:ih, NOT crop=min(iw,ih):min(iw,ih): ffmpeg reads the comma
-        # inside min() as a filtergraph separator and dies with "Filter not
-        # found". Cropping to the height is correct anyway, since YouTube
-        # thumbnails are always landscape.
         --ppa "ThumbnailsConvertor+ffmpeg_o:-vf crop=ih:ih"
         --download-archive "$ARCHIVE"
         --paths "$MUSIC_DIR"
         --no-warnings
-        # Be polite across a long list rather than hammering and being throttled.
         --sleep-interval 1 --max-sleep-interval 3
-        # Most music videos are named "Artist - Title (Official Video)". Pull a
-        # real artist/title out of that, then strip the marketing suffix, then
-        # fall back to the uploader if there was no dash at all. Without this a
-        # searched track lands untagged and MPD files it under nothing.
-        # Separator is [-] OR an en/em dash: YouTube music channels use "–" at
-        # least as often as "-", and matching only the hyphen silently filed
-        # "Queen – Bohemian Rhapsody" under artist "Queen Official" with the
-        # artist still stuck in the title. Whitespace is REQUIRED either side,
-        # so hyphenated names like "Jay-Z" are not split in half.
         --parse-metadata "title:(?P<artist>.+?)\s+[-–—]\s+(?P<title>.+)"
         --replace-in-metadata "title,artist" "(?i)\s*[\(\[](?:official|lyric|lyrics|audio|video|hd|hq|4k|remaster(?:ed)?|music video)[^\)\]]*[\)\]]" ""
         --parse-metadata "%(artist,uploader)s:%(meta_artist)s"
-        # The YouTube description is ~4KB of lyrics, promo links and hashtags,
-        # and --embed-metadata writes it into BOTH description and synopsis on
-        # every single file. Players surface those fields, and a hundred tracks
-        # of it is pure noise. Blank them; the real tags are unaffected.
         --parse-metadata ":(?P<meta_description>)"
         --parse-metadata ":(?P<meta_synopsis>)"
         --parse-metadata ":(?P<meta_comment>)"
     )
 
-    # --audio-quality only means anything when we are actually re-encoding.
     [ "$FORMAT" != "best" ] && opts+=(--audio-quality 0)
 
     if [ "$kind" = "playlist" ]; then
         opts+=(
             --yes-playlist
-            --ignore-errors                 # one dead video must not kill the run
+            --ignore-errors
             --parse-metadata "%(playlist_title,playlist)s:%(meta_album)s"
             -o "%(playlist_uploader,artist,uploader)s/%(playlist_title,playlist)s/%(playlist_index)02d-%(title)s.%(ext)s"
         )
@@ -327,8 +248,6 @@ for raw in "${TARGETS[@]}"; do
             --no-playlist
             -o "%(artist,uploader)s/%(title)s.%(ext)s"
         )
-        # A search can land on an hour-long "greatest hits" upload. A duration
-        # ceiling is the cheapest guard against filing that as a single track.
         [ "$kind" = "search" ] && opts+=(--match-filter "duration < $MAXDUR")
         echo "[$i/$total] $kind: $raw"
     fi
@@ -340,9 +259,6 @@ for raw in "${TARGETS[@]}"; do
     fi
 done
 
-# Say so when the run ends. Without this the last thing printed is the last
-# item, so a completed run and a run that died partway look identical -- on a
-# 100-song list you cannot tell "finished" from "stopped at 100 of 400".
 echo ""
 if [ "$DRYRUN" -eq 1 ]; then
     echo "ytmusic: dry run finished — $total checked, nothing downloaded."
@@ -350,11 +266,6 @@ else
     echo "ytmusic: finished — $((total - ${#failed[@]})) of $total ok."
 fi
 
-# YouTube supplies no album metadata at all, so without this every track shows
-# as "Unknown album" and carries a 16:9 video still instead of a cover.
-# ytmusic-tag fills both in from MusicBrainz and the Cover Art Archive. It
-# skips anything already tagged, so re-running costs nothing, and it never
-# fails the download that already succeeded.
 if [ "$LOOKUP" -eq 1 ] && [ "$DRYRUN" -eq 0 ] && command -v ytmusic-tag >/dev/null 2>&1; then
     echo ""
     echo "Looking up albums and cover art..."

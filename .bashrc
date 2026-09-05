@@ -1,145 +1,53 @@
-# ~/.bashrc: executed by bash(1) for non-login shells.
-# see /usr/share/doc/bash/examples/startup-files (in the package bash-doc)
-# for examples
-
-# If not running interactively, don't do anything
+# shellcheck shell=bash
 case $- in
     *i*) ;;
-      *) return;;
+    *) return ;;
 esac
 
-# don't put duplicate lines or lines starting with space in the history.
-# See bash(1) for more options
 HISTCONTROL=ignoreboth
-
-# append to the history file, don't overwrite it
-shopt -s histappend
-
-# for setting history length see HISTSIZE and HISTFILESIZE in bash(1)
 HISTSIZE=1000
 HISTFILESIZE=2000
+shopt -s histappend checkwinsize
 
-# check the window size after each command and, if necessary,
-# update the values of LINES and COLUMNS.
-shopt -s checkwinsize
-
-# If set, the pattern "**" used in a pathname expansion context will
-# match all files and zero or more directories and subdirectories.
-#shopt -s globstar
-
-# make less more friendly for non-text input files, see lesspipe(1)
 [ -x /usr/bin/lesspipe ] && eval "$(SHELL=/bin/sh lesspipe)"
 
-# set variable identifying the chroot you work in (used in the prompt below)
-if [ -z "${debian_chroot:-}" ] && [ -r /etc/debian_chroot ]; then
-    debian_chroot=$(cat /etc/debian_chroot)
+if [ -x /usr/bin/dircolors ]; then
+    if [ -r ~/.dircolors ]; then eval "$(dircolors -b ~/.dircolors)"; else eval "$(dircolors -b)"; fi
+    alias ls='ls --color=auto'
+    alias grep='grep --color=auto'
 fi
 
-# set a fancy prompt (non-color, unless we know we "want" color)
 case "$TERM" in
-    xterm-color|*-256color) color_prompt=yes;;
+    xterm*|rxvt*) PS1="\[\e]0;\u@\h: \w\a\]\u@\h:\w\$ " ;;
+    *)            PS1='\u@\h:\w\$ ' ;;
 esac
 
-# uncomment for a colored prompt, if the terminal has the capability; turned
-# off by default to not distract the user: the focus in a terminal window
-# should be on the output of commands, not on the prompt
-#force_color_prompt=yes
+# shellcheck source=.bash_aliases
+[ -f ~/.bash_aliases ] && . ~/.bash_aliases
+# shellcheck source=.bash_functions
+[ -f ~/.bash_functions ] && . ~/.bash_functions
+if [ "${XDG_SESSION_TYPE:-}" = x11 ] && [ -f ~/.bash_x11 ]; then
+    # shellcheck source=.bash_x11
+    . ~/.bash_x11
+fi
 
-if [ -n "$force_color_prompt" ]; then
-    if [ -x /usr/bin/tput ] && tput setaf 1 >&/dev/null; then
-	# We have color support; assume it's compliant with Ecma-48
-	# (ISO/IEC-6429). (Lack of such support is extremely rare, and such
-	# a case would tend to support setf rather than setaf.)
-	color_prompt=yes
-    else
-	color_prompt=
+if ! shopt -oq posix; then
+    if [ -f /usr/share/bash-completion/bash_completion ]; then
+        . /usr/share/bash-completion/bash_completion
+    elif [ -f /etc/bash_completion ]; then
+        . /etc/bash_completion
     fi
 fi
 
-if [ "$color_prompt" = yes ]; then
-    PS1='${debian_chroot:+($debian_chroot)}\[\033[01;32m\]\u@\h\[\033[00m\]:\[\033[01;34m\]\w\[\033[00m\]\$ '
-else
-    PS1='${debian_chroot:+($debian_chroot)}\u@\h:\w\$ '
-fi
-unset color_prompt force_color_prompt
+command -v starship >/dev/null 2>&1 && eval "$(starship init bash)"
 
-# If this is an xterm set the title to user@host:dir
-case "$TERM" in
-xterm*|rxvt*)
-    PS1="\[\e]0;${debian_chroot:+($debian_chroot)}\u@\h: \w\a\]$PS1"
-    ;;
-*)
-    ;;
-esac
-
-# enable color support of ls and also add handy aliases
-if [ -x /usr/bin/dircolors ]; then
-    test -r ~/.dircolors && eval "$(dircolors -b ~/.dircolors)" || eval "$(dircolors -b)"
-    alias ls='ls --color=auto'
-    #alias dir='dir --color=auto'
-    #alias vdir='vdir --color=auto'
-
-    alias grep='grep --color=auto'
-    alias fgrep='fgrep --color=auto'
-    alias egrep='egrep --color=auto'
-fi
-
-# colored GCC warnings and errors
-#export GCC_COLORS='error=01;31:warning=01;35:note=01;36:caret=01;32:locus=01:quote=01'
-
-# some more ls aliases
-alias ll='ls -alF'
-alias la='ls -A'
-alias l='ls -CF'
-
-# Add an "alert" alias for long running commands.  Use like so:
-#   sleep 10; alert
-alias alert='notify-send --urgency=low -i "$([ $? = 0 ] && echo terminal || echo error)" "$(history|tail -n1|sed -e '\''s/^\s*[0-9]\+\s*//;s/[;&|]\s*alert$//'\'')"'
-
-# Alias definitions.
-# You may want to put all your additions into a separate file like
-# ~/.bash_aliases, instead of adding them here directly.
-# See /usr/share/doc/bash-doc/examples in the bash-doc package.
-
-if [ -f ~/.bash_aliases ]; then
-    . ~/.bash_aliases
-fi
-
-if [ -f ~/.bash_functions ]; then
-    . ~/.bash_functions
-fi
-
-if [ -f ~/.screenlayouts/screens.sh ]; then
-    . ~/.screenlayouts/screens.sh
-fi
-
-# enable programmable completion features (you don't need to enable
-# this, if it's already enabled in /etc/bash.bashrc and /etc/profile
-# sources /etc/bash.bashrc).
-if ! shopt -oq posix; then
-  if [ -f /usr/share/bash-completion/bash_completion ]; then
-    . /usr/share/bash-completion/bash_completion
-  elif [ -f /etc/bash_completion ]; then
-    . /etc/bash_completion
-  fi
-fi
-
-eval "$(starship init bash)"
-
-
-# nvm lands in different places depending on which build ran:
-# chromebook_setup.sh installs to ~/.config/nvm, while the niri installer takes
-# nvm's own default of ~/.nvm. Detect whichever actually exists BEFORE exporting
-# NVM_DIR. The old code exported ~/.config/nvm unconditionally and only then fell
-# back to ~/.nvm; on niri machines that leaked a broken NVM_DIR into the exported
-# environment, so any child that sourced nvm.sh printed "NVM_DIR set to
-# ~/.config/nvm but that directory does not exist". Only export a path we know
-# holds nvm.sh; if neither does, leave NVM_DIR unset rather than pointing nowhere.
-for _nvm in "$HOME/.config/nvm" "$HOME/.nvm"; do
+for _nvm in "$HOME/.nvm" "$HOME/.config/nvm"; do
     if [ -s "$_nvm/nvm.sh" ]; then
         export NVM_DIR="$_nvm"
-        \. "$_nvm/nvm.sh"
-        [ -s "$_nvm/bash_completion" ] && \. "$_nvm/bash_completion"
+        # shellcheck source=/dev/null
+        . "$_nvm/nvm.sh"
+        # shellcheck source=/dev/null
+        [ -s "$_nvm/bash_completion" ] && . "$_nvm/bash_completion"
         break
     fi
 done

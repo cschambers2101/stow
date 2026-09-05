@@ -1,30 +1,14 @@
 #!/usr/bin/env bash
-# setup-suspend.sh — make suspend/resume survive the two things known to break it
-#
-#   1. Realtek rtw89 wifi (RTL8852BE and family) never returns from S3 while its
-#      driver is bound.      -> sleep hook unloads the driver before sleep, reloads after
-#   2. An rclone FUSE mount (Google Drive) holds tasks in D state and the kernel
-#      freezer gives up.     -> system unit stops the mount before sleep, restarts after
-#
-# Each part is installed ONLY where the machine needs it, so on a plain student
-# laptop this usually prints two "not needed" lines and does nothing. Safe to
-# re-run: it is called from ubuntu_26.04_niri_install.sh (section 14) and again
-# from setup_rclone_for_google_drive.sh once the mount exists.
-#
-# Reasoning, test evidence and the day-to-day story:
-#     projects/linux-device-build-2026/notes/decisions-log.md      (private workspace)
-#     reference/machine-rebuild.md §Suspend/resume                 (private workspace)
-#
-# Usage:  bash setup-suspend.sh [--force-rtw89] [--force-rclone] [--status]
-#
-# Never fails the build: every problem is a WARNING on stderr and the exit code is 0.
-set -uo pipefail
+# Make suspend/resume survive Realtek rtw89 wifi and a live rclone FUSE mount. Never fails the build.
+# Usage: bash setup-suspend.sh [--force-rtw89] [--force-rclone] [--status]
 
-HERE=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)     # never a hardcoded path
+HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+S6C_NO_STRICT=1
+# shellcheck source=lib/common.sh
+. "$HERE/lib/common.sh"
+set -uo pipefail
 SRC="$HERE/suspend"
 
-# systemd 259 reads ONLY /usr/lib/systemd/system-sleep. A hook in
-# /etc/systemd/system-sleep is ignored silently (5 Sep 2026).
 HOOK_DST=/usr/lib/systemd/system-sleep/rtw89-reload
 HOOK_WRONG=/etc/systemd/system-sleep/rtw89-reload
 UNIT_DST=/etc/systemd/system/rclone-sleep.service
@@ -36,32 +20,17 @@ for a in "$@"; do
         --force-rtw89)  FORCE_RTW89=yes ;;
         --force-rclone) FORCE_RCLONE=yes ;;
         --status)       STATUS_ONLY=yes ;;
-        -h|--help) sed -n '2,20p' "$0"; exit 0 ;;
+        -h|--help) sed -n '2,3p' "$0"; exit 0 ;;
         *) echo "unknown option: $a" >&2; exit 0 ;;
     esac
 done
 
-warn() { echo "WARNING: $*" >&2; }
-
-# A wireless device currently driven by rtw89_*: the driver's sysfs directory
-# lists bound devices by bus address (PCI "0000:03:00.0", USB "1-3:1.0").
-has_rtw89() {
-    local d
-    for d in /sys/bus/*/drivers/rtw89_*/; do
-        [ -d "$d" ] || continue
-        compgen -G "${d}[0-9]*" >/dev/null 2>&1 && return 0
-    done
-    # Fallback for a card present but not bound (odd, but cheap to cover).
-    lspci -k 2>/dev/null | grep -q 'Kernel driver in use: rtw89_' && return 0
-    return 1
-}
 
 has_rclone_mount() {
     [ -f "$RCLONE_UNIT" ] && return 0
     systemctl --user list-unit-files rclone-mount.service --no-legend 2>/dev/null | grep -q rclone-mount
 }
 
-# ---------------------------------------------------------------------------
 echo "--- suspend/resume: rtw89 wifi ---"
 if has_rtw89 || [ "$FORCE_RTW89" = yes ]; then
     if [ "$STATUS_ONLY" = yes ]; then
@@ -86,7 +55,6 @@ else
     echo "no rtw89 wifi — hook not needed"
 fi
 
-# ---------------------------------------------------------------------------
 echo "--- suspend/resume: rclone mount ---"
 if has_rclone_mount || [ "$FORCE_RCLONE" = yes ]; then
     if [ "$STATUS_ONLY" = yes ]; then

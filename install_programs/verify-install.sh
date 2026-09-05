@@ -1,51 +1,25 @@
-#!/bin/bash
-# =================================================================
-# POST-INSTALL VERIFICATION
-#
-# Run this ON a machine that has just been built, as the user who
-# was set up:
-#
-#     bash ~/.dotfiles/install_programs/verify-install.sh
-#
-# Exits 0 if everything passed, 1 if anything FAILED. Checks that
-# need root are SKIPped rather than failed when sudo is unavailable,
-# so it is safe to run unprivileged -- but run it with a cached sudo
-# credential to get the full set.
-#
-# WHY THIS EXISTS: of the bugs found during testing, most were
-# SILENT. The install exited 0, printed no error, and the machine
-# looked fine -- no SVG decoding, checkerboard tray icons, a greeter
-# that never applied its wallpaper, a lock screen that could not
-# authenticate. A green install is not evidence. Every check here
-# corresponds to a bug that actually shipped; see
-# projects/linux-device-build-2026/notes/vm-test-state.md.
-# =================================================================
+#!/usr/bin/env bash
+# Post-install verification for the niri build. Exits 1 if anything FAILED.
+# Usage: bash ~/.dotfiles/install_programs/verify-install.sh
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PKG_LIST="$SCRIPT_DIR/niri_programs_to_install.txt"
-INSTALLER="$SCRIPT_DIR/ubuntu_26.04_niri_install.sh"
+HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+S6C_NO_STRICT=1
+# shellcheck source=lib/common.sh
+. "$HERE/lib/common.sh"
 
 PASS=0; FAIL=0; SKIP=0
 
-# Colour only on a terminal: piping this into a log should not embed
-# escape codes.
-if [ -t 1 ]; then C_G=$'\033[32m'; C_R=$'\033[31m'; C_Y=$'\033[33m'; C_0=$'\033[0m'
-else C_G=""; C_R=""; C_Y=""; C_0=""; fi
 
 pass() { printf "  %sPASS%s  %-32s %s\n" "$C_G" "$C_0" "$1" "$2"; PASS=$((PASS+1)); }
 fail() { printf "  %sFAIL%s  %-32s %s\n" "$C_R" "$C_0" "$1" "$2"; FAIL=$((FAIL+1)); }
 skip() { printf "  %sSKIP%s  %-32s %s\n" "$C_Y" "$C_0" "$1" "$2"; SKIP=$((SKIP+1)); }
 
-# ok <name> <command...>  -- passes when the command succeeds
 ok() { local n="$1"; shift; if "$@" >/dev/null 2>&1; then pass "$n" ""; else fail "$n" "command failed: $*"; fi; }
 
-# eq <name> <expected> <actual>
 eq() { if [ "$2" = "$3" ]; then pass "$1" "$3"; else fail "$1" "want='$2' got='$3'"; fi; }
 
-# has <name> <needle> <actual>
 has() { case "$3" in *"$2"*) pass "$1" "$(printf '%s' "$3" | head -1 | cut -c1-46)";; *) fail "$1" "want~'$2' got='$(printf '%s' "$3" | head -1 | cut -c1-40)'";; esac; }
 
-# pkg <name> <package>
 pkg() { if dpkg -s "$2" 2>/dev/null | grep -q '^Status: install ok installed'; then pass "$1" "$2"; else fail "$1" "$2 not installed"; fi; }
 
 have_sudo() { sudo -n true 2>/dev/null; }
@@ -53,15 +27,8 @@ have_sudo() { sudo -n true 2>/dev/null; }
 echo "Post-install verification — $(hostname) — $(date '+%Y-%m-%d %H:%M')"
 echo
 
-# -----------------------------------------------------------------
 echo "--- system ---"
 eq "no failed units" "0" "$(systemctl list-units --state=failed --no-legend --plain 2>/dev/null | grep -c .)"
-# The check above only sees SYSTEM units. The xdg-autostart generator puts
-# its units in the USER manager, so a failing autostart entry is invisible
-# to it -- exactly how nvidia-settings-autostart went unnoticed on
-# ubuntu-craig-office until systemctl --user was checked by hand
-# (2 Sep 2026). Guarded because there is no user manager to talk to when
-# this script is run from a bare SSH session with no login session.
 if systemctl --user is-system-running >/dev/null 2>&1 || [ -n "${XDG_RUNTIME_DIR:-}" ]; then
     USER_FAILED="$(systemctl --user list-units --state=failed --no-legend --plain 2>/dev/null | grep -c .)"
     if [ "${USER_FAILED:-0}" = "0" ]; then
@@ -75,30 +42,20 @@ fi
 eq "greetd active" "active" "$(systemctl is-active greetd 2>/dev/null)"
 eq "display-manager is greetd" "greetd.service" \
    "$(basename "$(readlink -f /etc/systemd/system/display-manager.service 2>/dev/null)" 2>/dev/null)"
-# `systemctl is-enabled` exits NON-ZERO when a unit is disabled, so a
-# `|| echo disabled` fallback appends a second line and never matches.
-# Take the first line only, and treat an absent gdm as fine.
 GDM_STATE="$(systemctl is-enabled gdm.service 2>/dev/null | head -1 | xargs)"
 case "${GDM_STATE:-absent}" in
     disabled|masked|absent) pass "gdm not enabled" "${GDM_STATE:-not installed}" ;;
     *)                      fail "gdm not enabled" "gdm is '$GDM_STATE' — it will fight greetd" ;;
 esac
 
-# -----------------------------------------------------------------
 echo "--- Qt plugins (silent bugs 7 and 8) ---"
-# Both are Recommends: of libqt6gui6, which section 1's no-recommends
-# policy drops. Without the first, no Qt app can decode an SVG; without
-# the second, every tray icon falls back to bare hicolor and renders as
-# a transparency checkerboard.
 pkg "qt6-svg-plugins" "qt6-svg-plugins"
 pkg "qt6-gtk-platformtheme" "qt6-gtk-platformtheme"
-# Arch-agnostic: do not hardcode x86_64-linux-gnu.
 if compgen -G "/usr/lib/*/qt6/plugins/imageformats/libqsvg.so" >/dev/null; then
     pass "libqsvg.so present" ""; else fail "libqsvg.so present" "not found under /usr/lib/*/qt6"; fi
 if compgen -G "/usr/lib/*/qt6/plugins/platformthemes/libqgtk3.so" >/dev/null; then
     pass "libqgtk3.so present" ""; else fail "libqgtk3.so present" "not found under /usr/lib/*/qt6"; fi
 
-# -----------------------------------------------------------------
 echo "--- packages ---"
 if [ -f "$PKG_LIST" ]; then
     MISSING=""
@@ -112,28 +69,19 @@ else
     skip "all list packages present" "list not found at $PKG_LIST"
 fi
 
-# -----------------------------------------------------------------
 echo "--- fonts ---"
 has "Atkinson Next resolves" "Atkinson Hyperlegible Next" "$(fc-match 'Atkinson Hyperlegible Next' 2>/dev/null)"
 has "Atkinson Mono resolves" "Atkinson Hyperlegible Mono" "$(fc-match 'Atkinson Hyperlegible Mono' 2>/dev/null)"
 
-# -----------------------------------------------------------------
 echo "--- machine identity (bugs 5 and 6) ---"
-# Bug 5: Ubuntu denies localed's SetX11Keyboard to every caller, root
-# included, so this must come from /etc/default/keyboard.
 has "keyboard layout gb" 'XKBLAYOUT="gb"' "$(grep XKBLAYOUT /etc/default/keyboard 2>/dev/null)"
 has "keyboard model pc105" 'XKBMODEL="pc105"' "$(grep XKBMODEL /etc/default/keyboard 2>/dev/null)"
-# Bug 6: zram-tools starts zramswap during the package sweep, so
-# `enable --now` is a no-op and the ALGO edit never reaches the live
-# device. Checking the config file would miss this -- check the device.
 ZRAM_ALGO="$(zramctl --output ALGORITHM --noheadings 2>/dev/null | head -1 | xargs)"
 if [ -z "$ZRAM_ALGO" ]; then skip "zram algorithm zstd" "no zram device active"
 else eq "zram algorithm zstd" "zstd" "$ZRAM_ALGO"; fi
 
-# -----------------------------------------------------------------
 echo "--- greeter and desktop (bugs 9 and 10) ---"
-WALL="/usr/share/backgrounds/s6c/ladybird.jpg"
-ok "wallpaper installed" test -f "$WALL"
+ok "wallpaper installed" test -f "$S6C_WALLPAPER"
 
 SETTINGS="$HOME/.config/DankMaterialShell/settings.json"
 if [ -f "$SETTINGS" ]; then
@@ -147,35 +95,22 @@ if [ -f "$SESSION" ]; then
         "$(python3 -c 'import json,sys;print(json.load(open(sys.argv[1])).get("wallpaperPath",""))' "$SESSION" 2>/dev/null)"
 else skip "desktop wallpaper seeded" "no session.json"; fi
 
-# Written by `dms greeter sync`. The greeter loads this fixed path --
-# greeterWallpaperPath is only a SOURCE, so without the sync the greeter
-# silently keeps its default wallpaper.
 OVERRIDE="/var/cache/dms-greeter/greeter_wallpaper_override.jpg"
 if [ -r "$OVERRIDE" ]; then pass "greeter override synced" ""
 elif have_sudo && sudo test -f "$OVERRIDE"; then pass "greeter override synced" ""
 elif have_sudo; then fail "greeter override synced" "missing — did 'dms greeter sync' run?"
 else skip "greeter override synced" "needs sudo"; fi
 
-# Upstream DMS passes fallbackIcon:"person", which no icon theme
-# provides, so the avatar is an empty circle unless ~/.face exists.
 if [ -f "$HOME/.face" ] || [ -f "$HOME/.face.icon" ]; then pass "avatar seeded" "$HOME/.face"
 else fail "avatar seeded" "no ~/.face — greeter will show an empty circle"; fi
 
-# Created by `dms greeter sync`. This is the PAM stack the LOCK SCREEN
-# authenticates against: without it a correct password is rejected.
 ok "pam dankshell created" test -f /etc/pam.d/dankshell
 
 if dpkg -s update-notifier 2>/dev/null | grep -q '^Status: install ok installed'; then
     fail "update-notifier purged" "still installed — tray nag returns"
 else pass "update-notifier purged" ""; fi
 
-# -----------------------------------------------------------------
 echo "--- shell stability ---"
-# quickshell crashed on 1 Sep 2026 after dank-lock.sh opened 13,281 IPC
-# connections overnight (a 2s poll while locked). It auto-restarted WITHOUT
-# reattaching its surfaces, leaving a flat wallpaper-coloured screen with a
-# working mouse -- indistinguishable from dead hardware. It ran that way for
-# twelve hours because nothing reported it.
 if [ -d "$HOME/.cache/quickshell/crashes" ] && \
    [ -n "$(ls -A "$HOME/.cache/quickshell/crashes" 2>/dev/null)" ]; then
     NCRASH="$(find "$HOME/.cache/quickshell/crashes" -mindepth 1 -maxdepth 1 -type d 2>/dev/null | wc -l)"
@@ -184,8 +119,6 @@ else
     pass "quickshell has not crashed" ""
 fi
 
-# The lock screen must not be polling. Anything above a few hundred
-# connections in a session means something is hammering the IPC socket.
 QSLOG="$(ls -t "/run/user/$(id -u)"/quickshell/by-id/*/log.qslog 2>/dev/null | head -1)"
 if [ -z "$QSLOG" ]; then
     skip "shell IPC connections sane" "no running quickshell log"
@@ -198,26 +131,7 @@ else
     fi
 fi
 
-# -----------------------------------------------------------------
 echo "--- file integrity ---"
-# Catches a corrupted install. On 31 Aug 2026 Google Chrome's 141 MB binary
-# was silently corrupt on a freshly built machine: same package version, but
-# a different md5, and it segfaulted in the dynamic linker on every launch --
-# including `--version`. Reinstalling the identical package from Google
-# fixed it. apt verifies checksums on DOWNLOAD, so the damage happened
-# during or after unpacking, and nothing reported it.
-#
-# 99% of packages ship md5sums, so this is a reliable detector; it would have
-# found that in seconds instead of an afternoon.
-#
-# CONFFILES ARE EXCLUDED -- dpkg flags them 'c' in column 2. They are the files
-# an admin is *expected* to edit, and our own installer edits two of them:
-# /etc/greetd/config.toml (section 10) and /etc/default/zramswap (section 14,
-# the fix for the zram bug). Counting those reported deliberate configuration
-# as corruption, so this check failed on every correctly built machine -- run
-# 12 flagged three files, none of them a fault. That is worse than not checking
-# at all: a permanently red FAIL teaches people to ignore the report. Chrome's
-# corrupted binary was package-owned, not a conffile, so nothing is lost.
 if have_sudo; then
     DPKGV="$(sudo dpkg -V 2>/dev/null | awk '$2 != "c"' | wc -l)"
     if [ "$DPKGV" = "0" ]; then
@@ -230,13 +144,7 @@ else
     skip "installed files match their checksums" "needs sudo"
 fi
 
-# -----------------------------------------------------------------
 echo "--- node ---"
-# Silent failure, found on two machines at once: node v24 was installed and
-# completely unreachable because .bashrc pinned NVM_DIR to ~/.config/nvm
-# while the niri installer uses nvm's default ~/.nvm. The `[ -s ... ] &&`
-# guard failed quietly, so `node --version` said "command not found" on a
-# machine that had it. Check a LOGIN shell, which is what a user gets.
 NVM_SH=""
 for d in "$HOME/.config/nvm" "$HOME/.nvm"; do
     [ -s "$d/nvm.sh" ] && { NVM_SH="$d/nvm.sh"; break; }
@@ -244,8 +152,6 @@ done
 if [ -z "$NVM_SH" ]; then
     skip "node usable in a login shell" "nvm not installed"
 else
-    # -lic, not -lc: .bashrc returns early for NON-interactive shells, so a
-    # plain `bash -lc` never loads nvm and would fail a working machine.
     NODEV="$(bash -lic 'command -v node >/dev/null 2>&1 && node --version' 2>/dev/null | tail -1)"
     if [ -n "$NODEV" ]; then
         pass "node usable in a login shell" "$NODEV"
@@ -254,24 +160,14 @@ else
     fi
 fi
 
-# -----------------------------------------------------------------
 echo "--- apt hygiene ---"
-# A background unattended-upgrades run held the dpkg lock during run 14 and
-# killed a post-install hook. Harmless that time; the next race can hit an
-# `apt install` instead, and `set -e` then ends the build -- intermittently,
-# on some machines only, which is the worst kind to diagnose.
 if apt-config dump 2>/dev/null | grep -q 'DPkg::Lock::Timeout'; then
     pass "apt waits for the dpkg lock" "$(apt-config dump 2>/dev/null | awk -F'"' '/DPkg::Lock::Timeout/{print $2 "s"}')"
 else
     fail "apt waits for the dpkg lock" "a background apt run can abort an install"
 fi
 
-# -----------------------------------------------------------------
 echo "--- music ---"
-# yt-dlp's failure mode is external: when YouTube changes, every existing copy
-# stops working. The build fetches the latest release, but that only pins the
-# problem to the build date -- hence the timer. A machine whose timer is not
-# running WILL break, silently, some weeks after it was imaged.
 if systemctl is-enabled yt-dlp-update.timer >/dev/null 2>&1; then
     pass "yt-dlp auto-update timer enabled" "$(systemctl show -p NextElapseUSecRealtime --value yt-dlp-update.timer 2>/dev/null | cut -c1-24)"
 else
@@ -284,7 +180,6 @@ else
     fail "yt-dlp present" "not installed"
 fi
 
-# Cover art embedding: ffmpeg covers mp3 and opus, AtomicParsley covers m4a/aac.
 if command -v AtomicParsley >/dev/null 2>&1; then
     pass "AtomicParsley present" "cover art for m4a/aac"
 else
@@ -297,57 +192,25 @@ else
     fail "Amberol installed" "no simple player; Rhythmbox still covers the library"
 fi
 
-# -----------------------------------------------------------------
 echo "--- security: Oakford root CA (bug 11) ---"
-CA="/usr/local/share/ca-certificates/oakford.crt"
-# Single source of truth: read the pin out of the installer rather than
-# copying it, so the two can never drift apart.
-PIN="$(grep -m1 '^OAKFORD_SHA256=' "$INSTALLER" 2>/dev/null | cut -d'"' -f2)"
+CA="$OAKFORD_CA_PATH"
+PIN="$OAKFORD_SHA256"
 
 if [ ! -f "$CA" ]; then
     fail "CA installed" "$CA missing — internal HTTPS will not be trusted"
 elif [ -z "$PIN" ]; then
-    skip "CA fingerprint pinned" "could not read OAKFORD_SHA256 from the installer"
+    skip "CA fingerprint pinned" "OAKFORD_SHA256 is empty in lib/common.sh"
 else
     pass "CA installed" ""
     GOT="$(openssl x509 -in "$CA" -noout -fingerprint -sha256 2>/dev/null | cut -d= -f2)"
     if [ "$GOT" = "$PIN" ]; then pass "CA fingerprint matches pin" "${GOT:0:23}..."
     else fail "CA fingerprint matches pin" "SECURITY: got ${GOT:-<not a certificate>}"; fi
-    # Proves it reached the trust store, not just the staging directory.
     if openssl verify -CApath /etc/ssl/certs "$CA" >/dev/null 2>&1; then
         pass "CA trusted by the system" ""
     else fail "CA trusted by the system" "not in /etc/ssl/certs — did update-ca-certificates run?"; fi
 fi
 
-# ASK NETWORKMANAGER, NOT THE FILESYSTEM.
-#
-# The first version of this checked for
-# /etc/NetworkManager/system-connections/S6C.nmconnection. That passes
-# straight after an install and then silently becomes false: on real
-# hardware (18WessexUbuntu, 31 Aug 2026) the connection was migrated into
-# /etc/netplan/90-NM-<uuid>.yaml and regenerated under /run, leaving that
-# directory empty while the connection itself worked perfectly. The check
-# would have reported FAIL on a healthy machine. nmcli reports the
-# connection wherever it is stored.
-# ENUMERATE BY SSID, NOT BY NAME.
-#
-# `connection show S6C` resolves a NAME, and a name is not unique. The
-# first laptop build (s6c-ubuntu-xps-craig, 3 Sep 2026) had TWO
-# connections called S6C: the netplan-owned one created by joining the
-# network by hand before the install -- priority 0, and the one actually
-# in use -- and the installer's own keyfile at -10, inert. nmcli returned
-# the netplan one, so this check happened to catch the fault; had the
-# order been the other way it would have read -10 off a profile nothing
-# used and passed a broken machine. Enumerating by SSID also makes the
-# duplicate itself visible, which is the underlying fault.
-S6C_CONNS="$(nmcli -t -f UUID,TYPE connection show 2>/dev/null)"
-S6C_UUIDS=""
-while IFS=: read -r U T; do
-    [ "$T" = "802-11-wireless" ] || continue
-    [ "$(nmcli -g 802-11-wireless.ssid connection show "$U" 2>/dev/null)" = "S6C" ] || continue
-    S6C_UUIDS="$S6C_UUIDS $U"
-done <<< "$S6C_CONNS"
-S6C_UUIDS="$(printf '%s' "$S6C_UUIDS" | xargs)"
+S6C_UUIDS="$(nm_wifi_uuids_for_ssid "$S6C_SSID" | xargs)"
 S6C_COUNT="$(printf '%s' "$S6C_UUIDS" | wc -w | xargs)"
 
 if [ "${S6C_COUNT:-0}" -eq 0 ]; then
@@ -355,25 +218,16 @@ if [ "${S6C_COUNT:-0}" -eq 0 ]; then
 else
     pass "wifi profile present" "$S6C_COUNT for SSID S6C"
 
-    # A duplicate is a fault in its own right: two autoconnect profiles for
-    # one SSID leave NetworkManager to choose, and the one it chooses is
-    # not necessarily the one whose priority anybody set.
     if [ "$S6C_COUNT" -gt 1 ]; then
         fail "one profile per SSID" "$S6C_COUNT profiles named for S6C: $S6C_UUIDS"
     else
         pass "one profile per SSID" ""
     fi
 
-    # EVERY profile must be negative, not merely the first one found. The
-    # installer sets -10 so a student's OWN network always wins when both
-    # are in range; on 18WessexUbuntu (31 Aug 2026) it had become 100,
-    # equal to the home network, leaving NetworkManager to pick
-    # arbitrarily. Checking the file would never have caught that.
     PRIOS=""; BAD=""
     for U in $S6C_UUIDS; do
         P="$(nmcli -g connection.autoconnect-priority connection show "$U" 2>/dev/null | xargs)"
         PRIOS="$PRIOS ${P:-unreadable}"
-        # An unreadable priority is not a pass: it is an unknown.
         case "${P:-x}" in
             -[0-9]*) ;;
             *) BAD="$BAD $U(${P:-unreadable})" ;;
@@ -386,14 +240,7 @@ else
         pass "wifi priority is negative" "$PRIOS"
     fi
 
-    # File mode, per profile. Only the ones we own are ours to assert:
-    # netplan regenerates its copies under /run as root-only.
     for U in $S6C_UUIDS; do
-        # FILENAME is a `connection show` LIST field, not a settings
-        # property: `-g connection.filename` returns empty, which read as
-        # "netplan-owned (unknown)" and silently skipped the mode check on
-        # a profile we do own. Key the list output by UUID instead, and
-        # strip only the leading UUID so a path is never split on ':'.
         NMFILE="$(nmcli -t -f UUID,FILENAME connection show 2>/dev/null | sed -n "s|^$U:||p")"
         case "$NMFILE" in
             /etc/NetworkManager/*)
@@ -404,10 +251,6 @@ else
         esac
     done
 
-    # The key contains '!' twice; prove it was not mangled by shell quoting.
-    # `nmcli -s` only reveals a secret to root -- as a normal user it
-    # returns empty, which an earlier version of this check read as a blank
-    # PSK and failed a perfectly good machine.
     if have_sudo; then
         PSK_BAD=""
         for U in $S6C_UUIDS; do
@@ -424,20 +267,6 @@ else
     fi
 fi
 
-# -----------------------------------------------------------------
-# The clock. `timedatectl set-ntp true` succeeds and reports "NTP service:
-# active" even when chrony can never reach a source, so nothing in the install
-# output reveals a free-running clock. ubuntu-craig-office had drifted 2m12s
-# fast before anyone noticed, and only because Craig compared it to his phone.
-#
-# 26.04's chrony defaults to NTS sources, which need a key exchange on TCP
-# 4460; that port is filtered here, so every source sat at `^?` / Stratum 0.
-#
-# The second failure mode is subtler and is why the "selected source" check
-# below is worth more than NTPSynchronized alone: Ubuntu's NTS pools carry
-# `prefer`, so plain replacement sources that lack it are reached, agreed
-# with, and then never selected - every one shown `^-`, reference ID
-# 00000000, and "synchronized: no". See section 0 of the installer.
 echo "--- clock ---"
 NTP_SYNC="$(timedatectl show --property=NTPSynchronized --value 2>/dev/null)"
 case "$NTP_SYNC" in
@@ -446,8 +275,6 @@ case "$NTP_SYNC" in
     *)   skip "clock synchronised" "timedatectl gave no answer" ;;
 esac
 
-# A selected source is the stronger claim: '*' marks the one in use, '+' a
-# combined one. `NTPSynchronized` can lag, and this says WHY when it is no.
 if command -v chronyc >/dev/null 2>&1; then
     SEL="$(chronyc -n sources 2>/dev/null | grep -cE '^\^[*+]')"
     if [ "${SEL:-0}" -gt 0 ]; then
@@ -459,22 +286,8 @@ else
     skip "chrony has a selected source" "chronyc not installed"
 fi
 
-# -----------------------------------------------------------------
 echo "--- secure boot ---"
-# Conditional on what the machine actually contains, because Secure Boot on
-# is only a FAULT where something needs an unsigned module. Flagging the
-# Intel XPS for a problem it does not have would train people to ignore the
-# check -- and it would be flagging the state the fleet is now assumed to be
-# in. What it must never do is stay quiet on a Broadcom or NVIDIA machine,
-# where the consequence is no wifi or no display driver, silently.
-SB_STATE=unknown
-case "$(mokutil --sb-state 2>&1)" in
-    *"SecureBoot enabled"*)  SB_STATE=on ;;
-    *"SecureBoot disabled"*) SB_STATE=off ;;
-    # Both wordings: "This system doesn't support Secure Boot" (legacy
-    # BIOS) and "EFI variables are not supported".
-    *"doesn't support"*|*"not supported"*) SB_STATE=unsupported ;;
-esac
+SB_STATE="$(secure_boot_state)"
 NEEDS_DKMS=""
 lspci -nn 2>/dev/null | grep -iE "network|wireless" | grep -qi broadcom && NEEDS_DKMS="$NEEDS_DKMS broadcom"
 lspci -nn 2>/dev/null | grep -iE "vga|3d controller" | grep -qi nvidia   && NEEDS_DKMS="$NEEDS_DKMS nvidia"
@@ -491,29 +304,13 @@ case "$SB_STATE" in
     *)           skip "secure boot off where DKMS needed" "could not read state (is mokutil installed?)" ;;
 esac
 
-# An unsigned module that is INSTALLED but cannot load is the silent case:
-# dkms reports it built, and the kernel refuses it at load time.
 if [ "$SB_STATE" = on ] && dpkg -s broadcom-sta-dkms >/dev/null 2>&1; then
     fail "no unloadable DKMS modules" "broadcom-sta-dkms is installed under Secure Boot — it blacklists the in-kernel drivers and cannot load itself"
 else
     pass "no unloadable DKMS modules" ""
 fi
 
-# -----------------------------------------------------------------
 echo "--- suspend ---"
-# Three outcomes have to stay distinguishable, and only one is a fault:
-#
-#   * the firmware has no S3 at all -- a fact about the hardware, and the
-#     case on the XPS 13 9310 (`ACPI: PM: (supports S0 S4 S5)`). Nothing
-#     to fix, so it must not read as a failure;
-#   * S3 exists and is in use -- what we want;
-#   * S3 exists and is NOT in use -- a real miss, invisible until someone
-#     shuts the lid a week later and finds a flat battery.
-#
-# The fourth case is the awkward one: the installer has just written the
-# GRUB entry but the running kernel predates it. That is configured
-# correctly, and would otherwise fail every verify run made before the
-# first reboot.
 if [ ! -r /sys/power/mem_sleep ]; then
     skip "deep sleep where available" "no /sys/power/mem_sleep"
 elif ! grep -qw deep /sys/power/mem_sleep; then
@@ -526,17 +323,8 @@ else
     fail "deep sleep where available" "S3 available but active is $(cat /sys/power/mem_sleep) — mem_sleep_default=deep not applied"
 fi
 
-# Realtek rtw89 wifi does not survive S3 with its driver bound (18WessexUbuntu,
-# 5 Sep 2026: stuck in D3hot, IOMMU page-fault storm, never reconnects). The
-# fix is a sleep hook that reloads the driver -- and it only works from
-# /usr/lib/systemd/system-sleep, because systemd 259 ignores /etc. Both facts
-# are checked, because a hook in the wrong directory looks installed and does
-# nothing. Not applicable is a PASS, not a SKIP: "no rtw89" is a fact, not an
-# untested case.
 RTW89_DEV=""
-for _d in /sys/bus/*/drivers/rtw89_*/; do
-    [ -d "$_d" ] && compgen -G "${_d}[0-9]*" >/dev/null 2>&1 && RTW89_DEV="$(basename "$_d")"
-done
+has_rtw89 && RTW89_DEV="rtw89"
 if [ -z "$RTW89_DEV" ]; then
     pass "rtw89 sleep hook" "no rtw89 wifi — not needed"
 elif [ -e /etc/systemd/system-sleep/rtw89-reload ]; then
@@ -546,20 +334,12 @@ elif [ -x /usr/lib/systemd/system-sleep/rtw89-reload ]; then
 else
     fail "rtw89 sleep hook" "$RTW89_DEV present but no /usr/lib/systemd/system-sleep/rtw89-reload — wifi will not survive suspend"
 fi
-# A live rclone FUSE mount stalls the kernel freezer and suspend never
-# happens. rclone-sleep.service stops it before sleep and restarts it after;
-# only relevant where the user mount unit exists.
 if [ -f "${XDG_CONFIG_HOME:-$HOME/.config}/systemd/user/rclone-mount.service" ]; then
     eq "rclone stopped around sleep" "enabled" "$(systemctl is-enabled rclone-sleep.service 2>/dev/null | head -1 | xargs)"
 else
     pass "rclone stopped around sleep" "no rclone mount — not needed"
 fi
 
-# -----------------------------------------------------------------
-# The project's longest-standing red risk was that no real GPU driver had
-# ever been exercised -- every run before 2 Sep 2026 was a VM on virgl +
-# llvmpipe, which proves the software stack and nothing else. These checks
-# assert real hardware acceleration, so the risk cannot silently reopen.
 echo "--- graphics (real GPU, not llvmpipe) ---"
 
 GPU_LINE="$(lspci -nnk 2>/dev/null | grep -iE 'vga compatible|3d controller' | head -1)"
@@ -580,14 +360,11 @@ else
             "$(lspci -nnk 2>/dev/null | grep -A3 -iE 'vga compatible|3d controller' | grep -i 'driver in use' | head -1 | sed 's/.*: //')"
         ok  "nvidia_drm loaded" sh -c 'lsmod | grep -q "^nvidia_drm"'
         ok  "nvidia-smi responds" sh -c 'nvidia-smi -L >/dev/null 2>&1'
-        # nouveau and the proprietary driver cannot both drive the card.
         if lsmod | grep -q '^nouveau'; then
             fail "nouveau not loaded" "nouveau is loaded alongside nvidia"
         else
             pass "nouveau not loaded" ""
         fi
-        # The NVIDIA modules are DKMS-built and unsigned, so a machine that
-        # boots with Secure Boot on will not load them at all.
         SB="$(mokutil --sb-state 2>/dev/null | head -1)"
         case "$SB" in
             *disabled*)  pass "secure boot disabled" "$SB" ;;
@@ -606,9 +383,6 @@ else
         ;;
     esac
 
-    # The decisive one. niri logs the renderer it settled on; if it could
-    # not get a GBM allocator it falls back to software and llvmpipe
-    # appears here. That is precisely what happened in every VM run.
     NIRI_LOG="$(journalctl --user -b --no-pager 2>/dev/null | grep -c -i 'llvmpipe\|software rasteriz')"
     if [ -z "$(journalctl --user -b --no-pager 2>/dev/null | head -1)" ]; then
         skip "niri not on llvmpipe" "no user journal available"
@@ -619,7 +393,6 @@ else
     fi
 fi
 
-# -----------------------------------------------------------------
 echo
 printf "PASSED %d   FAILED %d   SKIPPED %d\n" "$PASS" "$FAIL" "$SKIP"
 if [ "$FAIL" -gt 0 ]; then

@@ -1,13 +1,5 @@
 #!/usr/bin/env bash
-# s6c-booklet - make a saddle-stitched booklet on a Xerox AltaLink C8135
-#
-# The printer FOLDS AND STAPLES but does NOT impose, so we impose here.
-# Portable: no absolute paths, needs only ghostscript + poppler (both pulled in by CUPS).
-#
-#   s6c-booklet [--a4|--a5] [--print|--out FILE] INPUT.pdf
-#
-#   --a5  (default) A4 paper folded to A5   -> queue S6C-Booklet-A5, Tray 3
-#   --a4            A3 paper folded to A4   -> queue S6C-Booklet-A4, Tray 2
+# s6c-booklet: impose a PDF as a saddle-stitched booklet for the Xerox AltaLink. Usage: s6c-booklet [--a4|--a5] [--print|--out FILE] INPUT.pdf
 set -euo pipefail
 
 FMT=a5; ACTION=print; OUT=""; IN=""
@@ -16,7 +8,7 @@ while [ $# -gt 0 ]; do
     --a4) FMT=a4;; --a5) FMT=a5;;
     --print) ACTION=print;;
     --out) ACTION=out; OUT="${2:?--out needs a path}"; shift;;
-    -h|--help) sed -n '2,12p' "$0"; exit 0;;
+    -h|--help) sed -n '2,2p' "$0"; exit 0;;
     -*) echo "unknown option: $1" >&2; exit 2;;
     *) IN="$1";;
   esac; shift
@@ -27,9 +19,9 @@ done
 for t in gs pdfinfo; do command -v "$t" >/dev/null || { echo "missing required tool: $t" >&2; exit 1; }; done
 
 if [ "$FMT" = a4 ]; then
-  SHEET_W=842; SHEET_H=1191; QUEUE=S6C-Booklet-A4      # A3 sheet -> A4 pages
+  SHEET_W=842; SHEET_H=1191; QUEUE=S6C-Booklet-A4
 else
-  SHEET_W=595; SHEET_H=842;  QUEUE=S6C-Booklet-A5      # A4 sheet -> A5 pages
+  SHEET_W=595; SHEET_H=842;  QUEUE=S6C-Booklet-A5
 fi
 
 TMP=$(mktemp -d); trap 'rm -rf "$TMP"' EXIT
@@ -37,11 +29,9 @@ TMP=$(mktemp -d); trap 'rm -rf "$TMP"' EXIT
 NPAGES=$(pdfinfo "$IN" | awk '/^Pages:/{print $2}')
 [ -n "${NPAGES:-}" ] || { echo "could not read page count from $IN" >&2; exit 1; }
 
-# pad to a multiple of 4 (saddle-stitch needs whole folded sheets)
 PAD=$(( (4 - NPAGES % 4) % 4 )); TOTAL=$(( NPAGES + PAD ))
 echo "$(basename "$0"): $NPAGES pages + $PAD blank = $TOTAL, $((TOTAL/4)) sheet(s), $FMT booklet" >&2
 
-# one EPS per source page
 for n in $(seq 1 "$NPAGES"); do
   gs -q -dNOPAUSE -dBATCH -dSAFER -sDEVICE=eps2write \
      -dFirstPage="$n" -dLastPage="$n" -o "$TMP/pg-$n.eps" "$IN" 2>/dev/null
@@ -53,7 +43,6 @@ tmp, npages, total, SW, SH = sys.argv[1], int(sys.argv[2]), int(sys.argv[3]), fl
 RW, RH = SH, SW              # rotated drawing space
 HALF   = RW/2.0              # one booklet page
 
-# saddle-stitch spread order, outermost sheet first
 spreads=[]; lo,hi=1,total
 for _ in range(total//4):
     spreads.append((hi,lo)); lo+=1; hi-=1     # side A
@@ -83,8 +72,6 @@ for i,(lp,rp) in enumerate(spreads,1):
         s = min(HALF/w, RH/h)                          # fit, preserve aspect
         dx = slot*HALF + (HALF - w*s)/2.0
         dy = (RH - h*s)/2.0
-        # PostScript save/restore (not gsave) - EPS redefines showpage, and only
-        # restore rolls back dictionary changes. gsave would leave showpage a no-op.
         o += ["/epsSave save def",
               "/epsDictCount countdictstack def", "/epsOpCount count 1 sub def",
               f"{dx:.4f} {dy:.4f} translate", f"{s:.6f} {s:.6f} scale",

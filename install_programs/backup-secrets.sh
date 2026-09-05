@@ -1,41 +1,24 @@
-#!/bin/bash
+#!/usr/bin/env bash
+# Back up / restore the things that are not in git (ssh, gpg, rclone, keyrings, wifi profiles).
+# Usage: backup-secrets.sh backup [outfile.tar.gz.gpg] | restore <infile.tar.gz.gpg>
 
-# =================================================================
-# BACKUP / RESTORE THE THINGS THAT ARE NOT IN GIT
-#
-# Everything else on this machine is reproducible: the dotfiles come
-# from the repo, the packages come from apt. These do not, and losing
-# them means locking yourself out.
-#
-#   ./backup-secrets.sh backup  [outfile.tar.gz.gpg]
-#   ./backup-secrets.sh restore <infile.tar.gz.gpg>
-#
-# The archive is symmetrically encrypted with gpg (AES256) and is safe
-# to put on Google Drive, a USB stick, or anywhere else. It is only as
-# safe as the passphrase you choose, so choose a long one.
-#
-# CHICKEN AND EGG: restore ~/.ssh BEFORE you try to clone anything with
-# an SSH remote. bootstrap.sh avoids this by cloning over HTTPS, so a
-# rebuild does not depend on this archive at all — but your keys,
-# rclone tokens and wifi passwords still do.
-# =================================================================
-
-set -euo pipefail
+HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=lib/common.sh
+. "$HERE/lib/common.sh"
 
 MODE="${1:-}"
 STAMP="$(date +%Y-%m-%d)"
 DEFAULT_OUT="$HOME/secrets-backup-$(hostname)-$STAMP.tar.gz.gpg"
 
-# Paths are relative to $HOME. Missing ones are skipped, not fatal.
 PATHS=(
-    .ssh                      # 🔴 SSH keys. Without these you cannot push anywhere.
-    .gnupg                    # GPG keyring (signed commits, encrypted files)
-    .config/rclone            # OAuth tokens for gdrive-personal: and gdrive_s6c:
-    .pki                      # Chrome/NSS cert store, incl. the Oakford CA trust
-    .local/share/keyrings     # gnome-keyring: NM secrets, saved passwords
-    .config/gh                # gh CLI auth token
-    .claude/.credentials.json # Claude Code login
-    .claude.json              # Claude Code settings and project history
+    .ssh
+    .gnupg
+    .config/rclone
+    .pki
+    .local/share/keyrings
+    .config/gh
+    .claude/.credentials.json
+    .claude.json
     .netrc
     .git-credentials
     .gitconfig
@@ -49,14 +32,10 @@ usage() {
 
 do_backup() {
     local out="${1:-$DEFAULT_OUT}"
-    # NOT `local`: the EXIT trap runs after the function has returned, where a
-    # local is out of scope and `set -u` would abort on it.
     staging="$(mktemp -d)"
     trap 'rm -rf "$staging"' EXIT
 
     echo "Collecting..."
-    # Stage everything under one tree so the tar and the restore are both
-    # trivial: staging/home/<path> and staging/etc-NetworkManager/.
     mkdir -p "$staging/home"
     local found=0
     for p in "${PATHS[@]}"; do
@@ -70,18 +49,7 @@ do_backup() {
         fi
     done
 
-    # NetworkManager profiles live outside $HOME. The directory is world
-    # readable but the .nmconnection files inside are root-owned 0600, so
-    # copying them needs sudo. They hold every wifi PSK and VPN secret this
-    # machine knows. Skipping them is a warning, not a failure — the rest of
-    # the archive is still worth having.
     if [ -d /etc/NetworkManager/system-connections ]; then
-        # `sudo true`, NOT `sudo -v`. Ubuntu 26.04's sudo-rs fails `sudo -v`
-        # whenever credentials are not already cached, even where policy
-        # would allow the command -- and with stderr suppressed that failure
-        # is silent, so the wifi PSKs would be dropped from the archive
-        # while the backup still reported success. `sudo true` uses the
-        # cached timestamp if there is one and prompts if there is not.
         if sudo true 2>/dev/null; then
             echo "    NetworkManager profiles"
             mkdir -p "$staging/etc-NetworkManager"
@@ -133,7 +101,6 @@ do_restore() {
 
     gpg --decrypt "$in" | tar -xzf - -C "$staging"
 
-    # Home-directory items.
     for p in "${PATHS[@]}"; do
         if [ -e "$staging/home/$p" ]; then
             echo "    $p"
@@ -142,14 +109,12 @@ do_restore() {
         fi
     done
 
-    # Permissions matter: ssh refuses to use a key that others can read.
     if [ -d "$HOME/.ssh" ]; then
         chmod 700 "$HOME/.ssh"
         find "$HOME/.ssh" -type f -name 'id_*' ! -name '*.pub' -exec chmod 600 {} +
     fi
     if [ -d "$HOME/.gnupg" ]; then chmod 700 "$HOME/.gnupg"; fi
 
-    # NetworkManager profiles must be root-owned 0600 or NM ignores them.
     if [ -d "$staging/etc-NetworkManager" ]; then
         echo "    NetworkManager profiles"
         sudo cp -a "$staging/etc-NetworkManager/." \
