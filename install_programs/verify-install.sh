@@ -104,7 +104,15 @@ else skip "greeter override synced" "needs sudo"; fi
 if [ -f "$HOME/.face" ] || [ -f "$HOME/.face.icon" ]; then pass "avatar seeded" "$HOME/.face"
 else fail "avatar seeded" "no ~/.face — greeter will show an empty circle"; fi
 
-ok "pam dankshell created" test -f /etc/pam.d/dankshell
+if [ -f /etc/pam.d/dankshell ]; then
+    pass "lock screen pam stack" "/etc/pam.d/dankshell"
+elif [ -f "$HOME/.local/state/DankMaterialShell/pam/dankshell" ]; then
+    pass "lock screen pam stack" "user stack (DMS 1.6+)"
+elif have_cmd dms && dms auth resolve-lock --quiet >/dev/null 2>&1; then
+    pass "lock screen pam stack" "resolved by dms auth"
+else
+    fail "lock screen pam stack" "no dankshell PAM stack and 'dms auth resolve-lock' failed - lock screen may reject passwords"
+fi
 
 if dpkg -s update-notifier 2>/dev/null | grep -q '^Status: install ok installed'; then
     fail "update-notifier purged" "still installed — tray nag returns"

@@ -493,15 +493,18 @@ s10_dotfiles() {
         log "User avatar already present - left alone."
     fi
 
-    if have_cmd dms; then
+    if have_cmd dms-greeter || have_cmd dms; then
         log "Syncing settings, theme and wallpaper into the greeter..."
-        if DMS_PRIVESC=sudo dms greeter sync; then
+        local sync=(dms greeter sync)
+        have_cmd dms-greeter && sync=(dms-greeter sync)
+        if DMS_PRIVESC=sudo "${sync[@]}"; then
             log "Greeter synced."
+            dms auth resolve-lock --quiet >/dev/null 2>&1 || warn "'dms auth resolve-lock' failed - the lock screen builds its PAM stack on first use instead."
         else
-            warn "'dms greeter sync' failed - the greeter starts but with default colours, no wallpaper, and possibly no lock-screen PAM file. Re-run it by hand."
+            warn "greeter sync failed - the greeter starts but with default colours and no wallpaper. Re-run '${sync[*]}' by hand."
         fi
     else
-        warn "'dms' not on PATH - skipping greeter sync."
+        warn "neither dms-greeter nor dms is on PATH - skipping greeter sync."
     fi
 }
 
