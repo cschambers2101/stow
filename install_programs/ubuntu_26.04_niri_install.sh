@@ -1731,6 +1731,16 @@ else
     fi
 fi
 
+# Two things that stop a machine coming back from suspend, fixed only where
+# they are present: Realtek rtw89 wifi (RTL8852BE family) never returns from
+# S3 with its driver bound, so a sleep hook reloads the driver across the
+# sleep; and an rclone FUSE mount holds tasks in D state so the freezer gives
+# up, so a system unit stops the mount before sleep and restarts it after.
+# Detection, reasoning and the 5 Sep 2026 evidence live in setup-suspend.sh.
+# On most student laptops it prints two "not needed" lines. Never fails the
+# build.
+bash "$SCRIPT_DIR/setup-suspend.sh" || echo "WARNING: setup-suspend.sh failed — check suspend/resume by hand." >&2
+
 sudo systemctl enable udisks2
 sudo systemctl enable cups          || true
 sudo systemctl enable avahi-daemon  || true

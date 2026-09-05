@@ -526,6 +526,35 @@ else
     fail "deep sleep where available" "S3 available but active is $(cat /sys/power/mem_sleep) — mem_sleep_default=deep not applied"
 fi
 
+# Realtek rtw89 wifi does not survive S3 with its driver bound (18WessexUbuntu,
+# 5 Sep 2026: stuck in D3hot, IOMMU page-fault storm, never reconnects). The
+# fix is a sleep hook that reloads the driver -- and it only works from
+# /usr/lib/systemd/system-sleep, because systemd 259 ignores /etc. Both facts
+# are checked, because a hook in the wrong directory looks installed and does
+# nothing. Not applicable is a PASS, not a SKIP: "no rtw89" is a fact, not an
+# untested case.
+RTW89_DEV=""
+for _d in /sys/bus/*/drivers/rtw89_*/; do
+    [ -d "$_d" ] && compgen -G "${_d}[0-9]*" >/dev/null 2>&1 && RTW89_DEV="$(basename "$_d")"
+done
+if [ -z "$RTW89_DEV" ]; then
+    pass "rtw89 sleep hook" "no rtw89 wifi — not needed"
+elif [ -e /etc/systemd/system-sleep/rtw89-reload ]; then
+    fail "rtw89 sleep hook" "copy in /etc/systemd/system-sleep — systemd never reads it; run setup-suspend.sh"
+elif [ -x /usr/lib/systemd/system-sleep/rtw89-reload ]; then
+    pass "rtw89 sleep hook" "$RTW89_DEV — hook installed"
+else
+    fail "rtw89 sleep hook" "$RTW89_DEV present but no /usr/lib/systemd/system-sleep/rtw89-reload — wifi will not survive suspend"
+fi
+# A live rclone FUSE mount stalls the kernel freezer and suspend never
+# happens. rclone-sleep.service stops it before sleep and restarts it after;
+# only relevant where the user mount unit exists.
+if [ -f "${XDG_CONFIG_HOME:-$HOME/.config}/systemd/user/rclone-mount.service" ]; then
+    eq "rclone stopped around sleep" "enabled" "$(systemctl is-enabled rclone-sleep.service 2>/dev/null | head -1 | xargs)"
+else
+    pass "rclone stopped around sleep" "no rclone mount — not needed"
+fi
+
 # -----------------------------------------------------------------
 # The project's longest-standing red risk was that no real GPU driver had
 # ever been exercised -- every run before 2 Sep 2026 was a VM on virgl +

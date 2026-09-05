@@ -1,0 +1,41 @@
+# rclone-sleep.service — stop the user's rclone Google Drive mount before the
+# machine sleeps and start it again after resume.
+#
+# Installed by setup-suspend.sh to /etc/systemd/system/rclone-sleep.service,
+# only on machines that have the user unit rclone-mount.service (written by
+# setup_rclone_for_google_drive.sh).
+#
+# Why: a live FUSE mount over the network holds tasks in uninterruptible D
+# state, and the kernel freezer cannot freeze a task in D. Suspend then fails at
+# the freeze step ("Freezing user space processes failed after 20.003 seconds")
+# — or, on 18WessexUbuntu on 31 Aug and 4 Sep 2026, appeared to hang outright.
+# Suspend works every time once the mount is stopped first (proved 5 Sep 2026).
+# Remembering to stop it by hand is not a fix; this is.
+#
+# How: pulled in by sleep.target and ordered Before= it, so ExecStart runs while
+# the user session is still awake. (A /usr/lib/systemd/system-sleep hook cannot
+# do this — systemd freezes user.slice while hooks run, so a hook cannot talk to
+# the user's systemd instance.) RemainAfterExit keeps this unit active through
+# the sleep; when sleep.target goes away on resume, StopWhenUnneeded stops it
+# and ExecStop restarts the mount. rclone-mount.service has Restart=on-failure /
+# RestartSec=10, so if wifi is not back yet the first attempt fails harmlessly
+# and retries.
+#
+# Acts on every logged-in user, so no username is hardcoded. Every command ends
+# in || true: a problem here must never block suspend or resume.
+#
+# To remove: sudo systemctl disable --now rclone-sleep.service && sudo rm /etc/systemd/system/rclone-sleep.service
+
+[Unit]
+Description=Stop the rclone Drive mount before sleep, restart it after
+Before=sleep.target
+StopWhenUnneeded=yes
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/bin/sh -c 'for u in $(loginctl list-users --no-legend | awk "{print \\$2}"); do systemctl --user -M "$u@" stop rclone-mount.service || true; done'
+ExecStop=/bin/sh -c 'for u in $(loginctl list-users --no-legend | awk "{print \\$2}"); do systemctl --user -M "$u@" start rclone-mount.service || true; done'
+
+[Install]
+WantedBy=sleep.target

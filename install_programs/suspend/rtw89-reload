@@ -1,0 +1,95 @@
+#!/bin/bash
+# rtw89-reload — systemd sleep hook: unload the Realtek rtw89 wireless driver
+# before the machine sleeps and load it again on resume.
+#
+# Installed by setup-suspend.sh to /usr/lib/systemd/system-sleep/rtw89-reload.
+# NOT /etc/systemd/system-sleep/: systemd 259 (Ubuntu 26.04) only reads the
+# /usr/lib path. A copy in /etc is ignored with no error — that is exactly how
+# the first install of this hook looked like it had not worked (5 Sep 2026).
+#
+# Why: on 18WessexUbuntu (RTL8852BE, AMD Cezanne) the card never returns from
+# S3 while its driver is bound. After resume the kernel logs
+#     rtw89_8852be 0000:03:00.0: Unable to change power state from D3hot to D0, device inaccessible
+#     rtw89_8852be 0000:03:00.0: AMD-Vi: Event logged [IO_PAGE_FAULT ...]
+# every few seconds until reboot, and NetworkManager never reassociates. The
+# ASPM/clkreq modprobe quirks did not help. Unloading the driver first releases
+# its DMA mappings, so there is nothing stale for the IOMMU to fault on; a
+# fresh modprobe after resume brings the card up like a cold boot. Proved
+# 5 Sep 2026: reassociated within 5 s of resume.
+#
+# Hardware-agnostic within rtw89: it unloads whichever rtw89_* leaf module is
+# loaded (rtw89_8852be, rtw89_8852ce, rtw89_8851be, rtw89_8922ae, ...) and
+# records the names in /run so the same ones are reloaded. If no rtw89 module
+# is loaded it does nothing. On a card that would have survived S3 anyway the
+# only cost is a few seconds of reconnect.
+#
+# Arguments (from systemd-sleep): $1 = pre|post, $2 = suspend|hibernate|...
+# This script always exits 0 — a failure here must never block suspend.
+
+TAG="rtw89-reload"
+STATE="/run/rtw89-reload.modules"
+
+log() { logger -t "$TAG" -- "$*"; }
+
+run() {   # run <timeout> <cmd...>; logs any output, returns the command's status
+    local t="$1"; shift
+    local out rc
+    out=$(timeout "$t" "$@" 2>&1); rc=$?
+    [ -n "$out" ] && log "$* : $out"
+    return $rc
+}
+
+# Loaded rtw89_* modules as "name used-by-count".
+rtw89_loaded() { lsmod | awk '$1 ~ /^rtw89_/ { print $1, $3 }'; }
+
+# Leaves: rtw89_* modules nothing else depends on — the bus glue such as
+# rtw89_8852be. Removing a leaf cascades to the chip/common/core modules it
+# pulled in, and reloading only the leaf pulls them all back.
+rtw89_leaves() { rtw89_loaded | awk '$2 == 0 { print $1 }'; }
+
+# Only act on real sleep transitions.
+case "$2" in
+    suspend|hibernate|hybrid-sleep|suspend-then-hibernate) ;;
+    *) exit 0 ;;
+esac
+
+case "$1" in
+    pre)
+        leaves=$(rtw89_leaves)
+        if [ -z "$leaves" ]; then
+            log "pre-$2: no rtw89 modules loaded — nothing to do"
+            rm -f "$STATE"
+            exit 0
+        fi
+        printf '%s\n' $leaves > "$STATE"
+        log "pre-$2: unloading rtw89 ($(echo $leaves | tr '\n' ' '))"
+        for m in $leaves; do
+            run 10 modprobe -r "$m" || log "WARNING: modprobe -r $m failed"
+        done
+        # Mop up anything the cascade left behind: keep removing whatever now
+        # has no users until nothing changes.
+        for _pass in 1 2 3 4 5; do
+            rest=$(rtw89_leaves)
+            [ -z "$rest" ] && break
+            for m in $rest; do run 10 modprobe -r "$m"; done
+        done
+        left=$(rtw89_loaded | awk '{ print $1 }' | tr '\n' ' ')
+        [ -n "$left" ] && log "WARNING: still loaded going into $2: $left"
+        ;;
+    post)
+        if [ ! -r "$STATE" ]; then
+            log "post-$2: nothing was unloaded — nothing to reload"
+            exit 0
+        fi
+        for m in $(cat "$STATE"); do
+            if run 20 modprobe "$m"; then
+                log "post-$2: reloaded $m"
+            else
+                log "ERROR: modprobe $m failed — no wireless until reboot"
+            fi
+        done
+        rm -f "$STATE"
+        ;;
+esac
+
+exit 0

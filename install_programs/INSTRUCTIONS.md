@@ -106,6 +106,12 @@ reported success and the machine looked fine.
    password, `/etc/pam.d/dankshell` is missing — again `dms greeter sync`.
 5. **`systemctl --failed`** is empty.
 
+**Suspend/resume** is configured, not verified, by the install — nothing can
+test it over SSH. `verify-install.sh` confirms the pieces are in place (deep
+sleep where the firmware has it; the rtw89 wifi sleep hook and the rclone
+`rclone-sleep.service` on machines that need them). Then actually suspend the
+machine once and check it comes back with wifi.
+
 ### If you see this, stop
 
 ```
@@ -137,6 +143,7 @@ Two warnings during the run are **expected and harmless**:
 | Student entry point | `bootstrap.sh` |
 | Unattended install | `autoinstall/` |
 | Craig's qtile laptop | `ubuntu_26.04_qtile_install.sh` |
+| Suspend/resume fixes (rtw89 wifi, rclone mount) | `setup-suspend.sh` — run by the installer; re-run after `setup_rclone_for_google_drive.sh` |
 | Chromebook / Crostini | `chromebook_setup.sh` |
 | Not used by anything | `archived/` |
 
