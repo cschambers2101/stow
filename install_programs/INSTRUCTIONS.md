@@ -82,7 +82,7 @@ as history inside double quotes (`bash: event not found`). Passing
 
 ## After the reboot — verify
 
-Run this first. It checks 25 things in a couple of seconds and exits non-zero
+Run this first. It checks about 50 things in a few seconds and exits non-zero
 if anything is wrong:
 
 ```bash
@@ -105,7 +105,8 @@ reported success and the machine looked fine.
 3. **The wallpaper is the ladybird**, on both the greeter and the desktop. If
    the greeter shows a different one, `dms greeter sync` did not run.
 4. **You can lock and unlock** with `Mod+Alt+L`. If unlocking rejects a correct
-   password, `/etc/pam.d/dankshell` is missing — again `dms greeter sync`.
+   password, the lock screen has no PAM stack: run `dms auth resolve-lock`
+   (DMS 1.6+ keeps it per user; older DMS wrote `/etc/pam.d/dankshell`).
 5. **`systemctl --failed`** is empty.
 
 **Suspend/resume** is configured, not verified, by the install — nothing can
@@ -133,6 +134,9 @@ Two warnings during the run are **expected and harmless**:
 - `greeter auto-login sync failed: … memory.json: permission denied` — a
   group-membership race. It self-heals on first login.
 - `dsearch.service does not exist` — from `danksearch`. Cosmetic.
+- `Failed to handle gdm3: gdm3 is still in state 'alias'` — dankinstall (DMS
+  1.6) objecting to Ubuntu's gdm3→gdm alias after we already disabled gdm. It
+  re-asserts greetd straight after, and `verify-install.sh` checks the result.
 
 ---
 
