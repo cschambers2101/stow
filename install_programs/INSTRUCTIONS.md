@@ -153,7 +153,7 @@ Two warnings during the run are **expected and harmless**:
 | Suspend/resume fixes (rtw89 wifi, rclone mount) | `setup-suspend.sh` — run by the installer; re-run after `setup_rclone_for_google_drive.sh` |
 | Chromebook / Crostini | `chromebook_setup.sh` |
 | Lint (shellcheck + `bash -n`, also run by GitHub Actions) | `lint.sh` |
-| Machine stowed before Sep 2026: pull, drop stale links, restow | `tidy-old.sh` — one-off, safe to re-run |
+| Machine stowed before Sep 2026: pull, drop stale links, restow | `tidy-old.sh` — one-off, safe to re-run. The script arrives with the pull, so: `git -C ~/.dotfiles pull && bash ~/.dotfiles/install_programs/tidy-old.sh` |
 | Retired: qtile, Debian, X11 tools | `../_archive/` — kept for reference, not stowed, not linted |
 
 The scripts carry no explanatory comments by design (Craig, 5 Sep 2026). The
