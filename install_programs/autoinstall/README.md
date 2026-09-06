@@ -70,15 +70,21 @@ If you write the ISO with a tool that produces a *writable* FAT partition
 | niri/Dank setup | one command on first login (a login banner reminds them) |
 
 To make the disk step automatic too, delete `storage` from
-`interactive-sections` and add a layout, e.g.:
+`interactive-sections` and add a layout:
 
 ```yaml
   storage:
     layout:
       name: lvm
+      sizing-policy: all
 ```
 
-Do that only when you are certain which disk the machine will install to.
+`sizing-policy: all` matters. Subiquity's `lvm` layout defaults to `scaled`,
+which on a 40 GB disk made an 18.5 GB root volume and left the other half of
+the volume group unallocated — the VM test of 6 Sep 2026 filled it and the
+Claude Code install died with `ENOSPC` while 18 GB sat unused. The desktop
+build needs roughly 17 GB before user data. Do this only when you are certain
+which disk the machine will install to.
 
 ## Before you boot
 
