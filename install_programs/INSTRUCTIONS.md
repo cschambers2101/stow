@@ -103,7 +103,7 @@ reported success and the machine looked fine.
 2. **Tray icons are real icons**, not grey checkerboards. Checkerboards mean
    `qt6-gtk-platformtheme` is missing.
 3. **The wallpaper is the ladybird**, on both the greeter and the desktop. If
-   the greeter shows a different one, `dms greeter sync` did not run.
+   the greeter shows a different one, the greeter sync (`dms-greeter sync`, section 10) did not run.
 4. **You can lock and unlock** with `Mod+Alt+L`. If unlocking rejects a correct
    password, the lock screen has no PAM stack: run `dms auth resolve-lock`
    (DMS 1.6+ keeps it per user; older DMS wrote `/etc/pam.d/dankshell`).

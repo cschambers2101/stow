@@ -5,7 +5,7 @@ Craig Chambers' dotfiles and machine build scripts, deployed with GNU Stow.
 | Path | What |
 |------|------|
 | `.bashrc` `.bash_aliases` `.bash_functions` `.bash_profile` `.bash_x11` | Shell. `.bash_x11` is only sourced under an X11 session |
-| `.config/` | niri, DankMaterialShell, alacritty, dunst, starship, xfce4 helpers |
+| `.config/` | niri, DankMaterialShell, alacritty, dunst, starship, yazi, xfce4 helpers |
 | `.local/bin/` | Commands: `dank-lock.sh`, `ytmusic`, `ytmusic-tag`, `s6c-booklet`, the `*_note.sh` tools, `graph` |
 | `.local/share/` | Fonts, wallpaper, CSS, the Oakford CA copy, the default avatar |
 | `install_programs/` | Machine builds. Start at [`install_programs/INSTRUCTIONS.md`](install_programs/INSTRUCTIONS.md) |
