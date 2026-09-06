@@ -1,9 +1,7 @@
 **.swp
 *.bak
 .vim/
-.local/bin/qtile
 **/__pycache__/
-**/node_install/
 
 # Vendor CLI tools install themselves into ~/.local/bin, which is a stow
 # symlink INTO this repo -- so their binaries land inside the working tree.

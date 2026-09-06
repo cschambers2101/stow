@@ -109,7 +109,7 @@ wireguard-tools
 # every 2 seconds. It arrives as a dependency of the desktop anyway, but the
 # lock screen is a poor thing to leave depending on someone else's
 # dependency graph -- without it the script silently falls back to a 30s
-# poll. See section 3b of the failure log: the old 2s poll crashed
+# poll. The old 2s poll crashed quickshell overnight (vm-test-state.md,
 # quickshell overnight.
 dbus-bin
 
@@ -226,36 +226,13 @@ fonts-cascadia-code
 fonts-dejavu-core
 ttf-mscorefonts-installer
 libqt6svg6
-# qt6-svg-plugins is NOT optional, despite the name. libqt6svg6 ships the
-#              QtSvg *library* only; the two plugins that let Qt actually
-#              decode an SVG live here -- imageformats/libqsvg.so and
-#              iconengines/libqsvgicon.so. libqt6gui6 merely RECOMMENDS
-#              this package, and section 1 of the installer sets
-#              APT::Install-Recommends "false", so on a fresh build it is
-#              silently absent and NO Qt6 app can render any SVG. Symptom
-#              is easy to misread: quickshell logs "Unsupported image
-#              format" for its own logo and every symbolic tray icon
-#              renders as a checkerboard, while all of DMS's own icons
-#              look fine (they come from a bundled Material Symbols font,
-#              not SVG). Found in the test VM 30 Aug 2026.
+# qt6-svg-plugins and qt6-gtk-platformtheme are Recommends of libqt6gui6 and
+# are named here explicitly so they can never be lost again: without the first
+# no Qt6 app can decode an SVG (quickshell logs "Unsupported image format"),
+# without the second Qt loads no platform theme and every tray icon renders as
+# a checkerboard. Both went missing under the no-recommends policy that was in
+# force until 31 Aug 2026 (VM, 30 Aug 2026); the policy is gone, these stay.
 qt6-svg-plugins
-# qt6-gtk-platformtheme is the SECOND casualty of the same no-recommends
-#              policy, and the one that actually fixes the broken tray
-#              icons. The session sets QT_QPA_PLATFORMTHEME=gtk3, which
-#              is how a Qt app learns the GTK icon theme name. Without
-#              this plugin Qt loads no platform theme at all, so every
-#              QIcon::fromTheme() lookup falls back to bare hicolor and
-#              any app-supplied tray icon fails -- regardless of whether
-#              it is an SVG or a PNG. That last part is the giveaway:
-#              "livepatch" is a PNG and failed too, which is why
-#              qt6-svg-plugins alone did NOT fix the bar.
-#              Verified in the VM 30 Aug 2026: 3 "Could not load icon"
-#              warnings before, 0 after installing this and restarting
-#              the shell.
-#              NOT added: qt6-qpa-plugins, the third missing recommend.
-#              It only ships a TUIO touch plugin and Qt's own VNC
-#              platform plugin; xcb, wayland, offscreen and eglfs all
-#              come from libqt6gui6 itself.
 qt6-gtk-platformtheme
 qml6-module-qt5compat-graphicaleffects
 qml6-module-qtquick-layouts
