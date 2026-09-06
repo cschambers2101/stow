@@ -24,6 +24,7 @@ SECTIONS=(
     "4:s04_desktop_base:Ubuntu desktop base"
     "5:s05_dank_stack:Dank / niri stack"
     "6:s06_packages:Packages from the list"
+    "6a:s06a_file_managers:Yazi repo and Nemo defaults"
     "7:s07_chrome:Google Chrome"
     "8:s08_flatpak:Flatpak apps"
     "9:s09_networking:Networking and wifi profile"
@@ -335,6 +336,29 @@ s05_dank_stack() {
 s06_packages() {
     echo "ttf-mscorefonts-installer msttcorefonts/accepted-mscorefonts-eula select true" | sudo debconf-set-selections
     apt_install_list "$PKG_LIST"
+}
+
+s06a_file_managers() {
+    if wget -q -O - "$YAZI_KEY_URL" | sudo tee "$YAZI_KEYRING" >/dev/null && [ -s "$YAZI_KEYRING" ]; then
+        echo "$YAZI_REPO_LINE" | write_root_file /etc/apt/sources.list.d/yazi.list
+        apt_update
+        apt_install_soft yazi
+    else
+        warn "could not fetch the Yazi signing key - yazi not installed."
+    fi
+
+    if pkg_installed pcmanfm; then
+        sudo apt-get purge -y pcmanfm || warn "could not remove pcmanfm."
+    fi
+    if pkg_installed nemo; then
+        xdg-mime default nemo.desktop inode/directory || warn "could not make nemo the directory handler."
+        gsettings set org.cinnamon.desktop.default-applications.terminal exec alacritty 2>/dev/null \
+            || warn "could not point Nemo's 'Open in Terminal' at alacritty."
+        gsettings set org.nemo.desktop show-desktop-icons false 2>/dev/null \
+            || warn "could not turn off Nemo desktop icons."
+    else
+        warn "nemo is not installed - run section 6 first."
+    fi
 }
 
 s07_chrome() {

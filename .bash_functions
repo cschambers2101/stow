@@ -119,3 +119,12 @@ _ytlist() {
 musiclist() { _ytlist ""    "$@"; }
 mp3list()   { _ytlist --mp3 "$@"; }
 aaclist()   { _ytlist --aac "$@"; }
+
+y() {
+    local tmp cwd
+    tmp="$(mktemp -t yazi-cwd.XXXXXX)" || return
+    yazi "$@" --cwd-file="$tmp"
+    IFS= read -r -d '' cwd <"$tmp"
+    [ -n "$cwd" ] && [ "$cwd" != "$PWD" ] && builtin cd -- "$cwd"
+    command rm -f -- "$tmp"
+}
