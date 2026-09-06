@@ -326,10 +326,17 @@ DESKTOP
 }
 
 s05_dank_stack() {
-    curl -fsSL "$DANKINSTALL_URL" | sh -s -- \
-        --compositor niri --term alacritty --include-deps dms-greeter \
-        --danksearch --dankcalendar --yes \
-        || die "dankinstall failed."
+    local attempt
+    for attempt in 1 2 3; do
+        if curl -fsSL "$DANKINSTALL_URL" | sh -s -- \
+            --compositor niri --term alacritty --include-deps dms-greeter \
+            --danksearch --dankcalendar --yes; then
+            return 0
+        fi
+        warn "dankinstall attempt $attempt of 3 failed (Launchpad or the PPA mirror is often the cause)."
+        [ "$attempt" -lt 3 ] && sleep 60
+    done
+    die "dankinstall failed three times - re-run this script later."
 }
 
 s06_packages() {

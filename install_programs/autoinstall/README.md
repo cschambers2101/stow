@@ -35,6 +35,16 @@ scans every block device for one labelled `CIDATA`:
 Boot the machine from the Ubuntu Desktop stick with the CIDATA stick also
 plugged in.
 
+**Expect one click.** Because the config arrives via cloud-init rather than the
+kernel command line, subiquity stops at a "Ready to install — Review your
+choices" screen and waits for **Install** before it touches the disk. That is
+the documented safeguard: *"The installer prompts for a confirmation before
+modifying the disk. To skip the need for a confirmation, interrupt the booting
+process, and add the `autoinstall` parameter to the kernel command line."* On a
+`dd`-written stock ISO that means pressing `e` at the GRUB menu and adding
+`autoinstall` to the `linux` line — a manual step either way, so the click is
+the simpler one. Verified in a VM 6 Sep 2026 (run 18).
+
 The volume label must be exactly `CIDATA`, and the files must be named
 `user-data` and `meta-data` at the filesystem root. `make-cidata.sh` handles
 both; `autoinstall.yaml` is copied verbatim as `user-data` because it already
@@ -56,6 +66,7 @@ If you write the ISO with a tool that produces a *writable* FAT partition
 | Dotfiles clone into `~/.dotfiles` | automatic (`late-commands`) |
 | **Disk / partitioning** | **interactive on purpose — it erases disks** |
 | **Username and password** | **interactive — each student sets their own** |
+| "Ready to install" confirmation | **one click** (see Route A) — unavoidable without editing the kernel command line |
 | niri/Dank setup | one command on first login (a login banner reminds them) |
 
 To make the disk step automatic too, delete `storage` from
