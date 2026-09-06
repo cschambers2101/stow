@@ -7,6 +7,7 @@
 #   - the Dank stack (niri, dms, quickshell, ...) -> dankinstall
 #   - ubuntu-desktop -> needs --install-recommends, see script section 4
 #   - google-chrome-stable -> needs Google's apt repo, section 7
+#   - yazi -> not in the Ubuntu archive; the Yazi project's apt repo, section 6a
 # =================================================================
 
 # --- core / dev ---
@@ -149,9 +150,25 @@ zram-tools
 # secure-delete provides srm, which .bash_aliases maps rm to when present.
 secure-delete
 
+# --- file managers ---
+# nemo replaced pcmanfm on 6 Sep 2026. Section 6a of the install script makes
+# it the inode/directory handler, points "Open in Terminal" at alacritty and
+# purges pcmanfm on machines that still have it. cinnamon-desktop-data comes
+# along as a dependency; nothing else of Cinnamon does.
+nemo
+nemo-fileroller
+# yazi itself is NOT in the Ubuntu archive - section 6a adds the Yazi
+# project's own apt repo. These are its optional helpers that the rest of the
+# list does not already cover (fzf, ripgrep, jq, ffmpeg, 7zip, imagemagick
+# are above). chafa is what lets yazi draw image previews in alacritty, which
+# has no graphics protocol of its own.
+fd-find
+zoxide
+poppler-utils
+chafa
+
 # --- media / apps ---
 alacritty
-pcmanfm
 lxappearance
 ffmpeg
 # yt-dlp/ytmusic embed cover art through ffmpeg for mp3 and opus, but m4a

@@ -69,6 +69,13 @@ else
     skip "all list packages present" "list not found at $PKG_LIST"
 fi
 
+echo "--- file managers ---"
+ok "yazi apt source" test -s /etc/apt/sources.list.d/yazi.list
+ok "yazi installed" have_cmd yazi
+pkg "nemo" "nemo"
+eq "pcmanfm removed" "" "$(dpkg -l pcmanfm 2>/dev/null | awk '/^ii/{print $2}')"
+eq "directories open in nemo" "nemo.desktop" "$(xdg-mime query default inode/directory 2>/dev/null)"
+
 echo "--- fonts ---"
 has "Atkinson Next resolves" "Atkinson Hyperlegible Next" "$(fc-match 'Atkinson Hyperlegible Next' 2>/dev/null)"
 has "Atkinson Mono resolves" "Atkinson Hyperlegible Mono" "$(fc-match 'Atkinson Hyperlegible Mono' 2>/dev/null)"
