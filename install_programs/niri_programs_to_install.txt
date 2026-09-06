@@ -109,8 +109,7 @@ wireguard-tools
 # every 2 seconds. It arrives as a dependency of the desktop anyway, but the
 # lock screen is a poor thing to leave depending on someone else's
 # dependency graph -- without it the script silently falls back to a 30s
-# poll. The old 2s poll crashed quickshell overnight (vm-test-state.md,
-# quickshell overnight.
+# poll. The old 2s poll crashed quickshell overnight (vm-test-state.md).
 dbus-bin
 
 # --- printing (PaperCut) ---
