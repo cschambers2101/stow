@@ -138,6 +138,22 @@ Two warnings during the run are **expected and harmless**:
   1.6) objecting to Ubuntu's gdm3→gdm alias after we already disabled gdm. It
   re-asserts greetd straight after, and `verify-install.sh` checks the result.
 
+## Known quirks on a running niri desktop
+
+- **Two "Files" entries in the launcher.** Nautilus stays installed because
+  `xdg-desktop-portal-gnome`, which niri uses for screen sharing, depends on
+  it. Section 6a hides its launcher entry with a `NoDisplay` override in
+  `~/.local/share/applications/`; Nemo is the real file manager.
+- **Garbled text and icons after a DMS upgrade.** Upgrading the `dms` package
+  while the shell is running replaces its bundled fonts underneath it, and the
+  next screen to draw new glyphs (usually the lock screen) comes out as random
+  symbols. It looks like a foreign language; it is not. `dms restart` fixes it.
+- **Claude Code pastes an old screenshot.** Claude Code reads the X11 clipboard
+  first and only falls back to Wayland if that fails. Under niri the X11 side
+  (xwayland-satellite) only updates while an X11 window is focused, so it goes
+  stale. `.bash_aliases` runs `claude` with `DISPLAY` unset on Wayland so it
+  always reads the Wayland clipboard.
+
 ---
 
 ## Where things are

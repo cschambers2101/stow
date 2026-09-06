@@ -75,6 +75,7 @@ ok "yazi installed" have_cmd yazi
 pkg "nemo" "nemo"
 eq "pcmanfm removed" "" "$(dpkg -l pcmanfm 2>/dev/null | awk '/^ii/{print $2}')"
 eq "directories open in nemo" "nemo.desktop" "$(xdg-mime query default inode/directory 2>/dev/null)"
+has "nautilus hidden from launchers" "NoDisplay=true" "$(cat "$HOME/.local/share/applications/org.gnome.Nautilus.desktop" 2>/dev/null)"
 
 echo "--- fonts ---"
 has "Atkinson Next resolves" "Atkinson Hyperlegible Next" "$(fc-match 'Atkinson Hyperlegible Next' 2>/dev/null)"

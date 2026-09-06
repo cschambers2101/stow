@@ -366,6 +366,17 @@ s06a_file_managers() {
     else
         warn "nemo is not installed - run section 6 first."
     fi
+
+    if pkg_installed nautilus; then
+        mkdir -p "$HOME/.local/share/applications"
+        cat > "$HOME/.local/share/applications/org.gnome.Nautilus.desktop" <<'DESKTOP'
+[Desktop Entry]
+Type=Application
+Name=Files
+Exec=nautilus --new-window %U
+NoDisplay=true
+DESKTOP
+    fi
 }
 
 s07_chrome() {

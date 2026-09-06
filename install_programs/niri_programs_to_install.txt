@@ -37,6 +37,9 @@ python3-pip
 python3-psutil
 python3-venv
 ripgrep
+# shellcheck is what install_programs/lint.sh runs over every shell file;
+# without it the lint stops early and only the bash -n syntax pass happens.
+shellcheck
 # openssh-client only. The "ssh" metapackage also pulls openssh-server,
 # which would leave a listening sshd on every student laptop. Uncomment
 # openssh-server below only if you need to reach the machines remotely.
@@ -153,7 +156,10 @@ secure-delete
 # nemo replaced pcmanfm on 6 Sep 2026. Section 6a of the install script makes
 # it the inode/directory handler, points "Open in Terminal" at alacritty and
 # purges pcmanfm on machines that still have it. cinnamon-desktop-data comes
-# along as a dependency; nothing else of Cinnamon does.
+# along as a dependency; nothing else of Cinnamon does. Nautilus stays
+# installed because xdg-desktop-portal-gnome (niri's screen-sharing portal)
+# depends on it; section 6a hides its launcher entry instead so only one
+# "Files" appears.
 nemo
 nemo-fileroller
 # yazi itself is NOT in the Ubuntu archive - section 6a adds the Yazi
