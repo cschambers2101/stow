@@ -19,7 +19,7 @@ bash <(wget -qO- https://raw.githubusercontent.com/cschambers2101/stow/main/inst
 the curl form of this line fails before it starts.
 
 That is the whole thing. `bootstrap.sh` shallow-clones this repo to
-`~/.dotfiles` and hands off to `ubuntu_26.04_niri_install.sh`, which runs 19
+`~/.dotfiles` and hands off to `ubuntu_26.04_niri_install.sh`, which runs 20
 numbered sections: clock, drivers, desktop base, the niri/Dank stack, packages,
 dotfiles, Node, machine identity, printing. `--list` prints them; `--only 10,12`,
 `--skip 16` and `--from 5` re-run part of a build on a machine that already has
@@ -28,7 +28,7 @@ the rest. Every section is safe to run twice.
 **Section order matters on the school network.** Section 2A installs the
 Oakford root CA, and the site firewall intercepts TLS on everything except
 Ubuntu archive traffic and `oakfordhelp.co.uk`. Every download from anywhere
-else — dankinstall (5), Chrome (7), Flathub (8), Node (11), yt-dlp and Claude
+else — dankinstall (5), Yazi (6A), Chrome (7), Flathub (8), Node (11), yt-dlp and Claude
 Code (12) — fails certificate validation until that CA is trusted, and under
 `set -e` the first failure ends the install. **Do not add a third-party
 download above section 2A.** It will work everywhere except on site.

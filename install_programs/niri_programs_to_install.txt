@@ -7,6 +7,7 @@
 #   - the Dank stack (niri, dms, quickshell, ...) -> dankinstall
 #   - ubuntu-desktop -> needs --install-recommends, see script section 4
 #   - google-chrome-stable -> needs Google's apt repo, section 7
+#   - yazi -> not in the Ubuntu archive; the Yazi project's apt repo, section 6a
 # =================================================================
 
 # --- core / dev ---
