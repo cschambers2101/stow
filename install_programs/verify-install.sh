@@ -29,7 +29,7 @@ echo
 
 echo "--- system ---"
 eq "no failed units" "0" "$(systemctl list-units --state=failed --no-legend --plain 2>/dev/null | grep -c .)"
-if systemctl --user is-system-running >/dev/null 2>&1 || [ -n "${XDG_RUNTIME_DIR:-}" ]; then
+if systemctl --user show-environment 2>/dev/null | grep -qE '^(WAYLAND_DISPLAY|DISPLAY)='; then
     USER_FAILED="$(systemctl --user list-units --state=failed --no-legend --plain 2>/dev/null | grep -c .)"
     if [ "${USER_FAILED:-0}" = "0" ]; then
         pass "no failed user units" ""
@@ -37,7 +37,7 @@ if systemctl --user is-system-running >/dev/null 2>&1 || [ -n "${XDG_RUNTIME_DIR
         fail "no failed user units" "$(systemctl --user list-units --state=failed --no-legend --plain 2>/dev/null | awk '{print $1}' | tr '\n' ' ')"
     fi
 else
-    skip "no failed user units" "no user session to query"
+    skip "no failed user units" "no graphical session — run from a desktop terminal, not SSH"
 fi
 eq "greetd active" "active" "$(systemctl is-active greetd 2>/dev/null)"
 eq "display-manager is greetd" "greetd.service" \
