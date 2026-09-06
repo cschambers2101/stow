@@ -32,8 +32,20 @@ while IFS= read -r link; do
 done < <(find "$HOME" "$HOME/.config" "$HOME/.local/bin" "$HOME/.local/share" -maxdepth 1 -xtype l -lname '*.dotfiles*' 2>/dev/null)
 log "removed $removed stale link(s)"
 
-section "Restowing"
+section "Moving aside real files the repo now owns"
+for d in niri DankMaterialShell danksearch alacritty; do
+    if [ -e "$HOME/.config/$d" ] && [ ! -L "$HOME/.config/$d" ]; then
+        mv -v "$HOME/.config/$d" "$HOME/.config/$d.pre-stow.bak"
+    fi
+done
 cd "$DOTFILES_DIR"
+while IFS= read -r f; do
+    if [ -f "$HOME/$f" ] && [ ! -L "$HOME/$f" ]; then
+        mv -v "$HOME/$f" "$HOME/$f.pre-stow.bak"
+    fi
+done < <(find . -maxdepth 1 -type f -name '.*' -printf '%f\n')
+
+section "Restowing"
 conflicts="$(stow -n -R . 2>&1 | grep -v 'in simulation mode' || true)"
 if [ -n "$conflicts" ]; then
     warn "stow reported conflicts:"
@@ -48,4 +60,5 @@ left="$(find "$HOME" "$HOME/.config" "$HOME/.local/bin" -maxdepth 1 -xtype l -ln
 [ -z "$left" ] && log "no dangling dotfiles links" || warn "still dangling: $left"
 [ -x "$HOME/.local/bin/dank-lock.sh" ] && log "dank-lock.sh is executable" || warn "dank-lock.sh is not executable - run 'git -C $DOTFILES_DIR pull'"
 [ -e "$HOME/install_programs" ] && warn "$HOME/install_programs still exists" || log "$HOME/install_programs gone"
+ls -d "$HOME"/.config/*.pre-stow.bak "$HOME"/.*.pre-stow.bak 2>/dev/null | sed 's/^/moved aside: /' || true
 log "done. Open a new terminal to pick up the shell changes."
