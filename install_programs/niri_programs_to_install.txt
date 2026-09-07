@@ -173,6 +173,15 @@ poppler-utils
 chafa
 
 # --- media / apps ---
+# ubuntu-restricted-addons is what the Ubuntu installer's "Download and install
+# support for additional media formats" tickbox installs (MP3, H.264, and the
+# rest of the non-free gstreamer set). The autoinstall sets codecs.install:
+# true, but a hand-installed machine only has it if the student ticked the box,
+# and nothing told them to. Listing it here means section 6 installs it either
+# way and verify-install.sh checks for it. This is restricted-ADDONS, not
+# -extras: -extras additionally pulls ttf-mscorefonts-installer, which is
+# already in the fonts section below with its EULA preseeded in section 6.
+ubuntu-restricted-addons
 alacritty
 lxappearance
 ffmpeg

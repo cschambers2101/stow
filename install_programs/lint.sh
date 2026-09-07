@@ -33,6 +33,11 @@ while IFS= read -r f; do
         *) echo "not executable in git: $f (git update-index --chmod=+x)"; rc=1 ;;
     esac
 done < <(find .local/bin -maxdepth 1 -type f ! -name '*.pyc'; find .config -type f -name '*.sh'; find install_programs -maxdepth 2 -type f -name '*.sh' ! -path '*/lib/*'; printf '%s\n' install_programs/suspend/rtw89-reload)
+if ! command -v shellcheck >/dev/null 2>&1; then
+    echo "lint: shellcheck is NOT installed - only the bash -n and mode passes ran." >&2
+    echo "lint: install it (sudo apt install shellcheck) for the real lint." >&2
+    exit 1
+fi
 shellcheck -S warning "${SH[@]}" || rc=1
 
 if [ "$rc" -eq 0 ]; then

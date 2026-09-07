@@ -271,6 +271,20 @@ CONF
         log "AMD GPU detected - ensuring firmware and Vulkan..."
         apt_install_soft linux-firmware libdrm-amdgpu1
     fi
+
+    local offered
+    offered="$(ubuntu-drivers list 2>/dev/null | grep -v '^[[:space:]]*$' || true)"
+    if [ -z "$offered" ]; then
+        log "No third-party drivers offered for this hardware."
+    elif [ "${SECURE_BOOT:-unknown}" = off ]; then
+        log "Third-party drivers offered:"
+        printf '%s\n' "$offered" | sed 's/^/    /'
+        sudo ubuntu-drivers install || warn "ubuntu-drivers install failed - see 'ubuntu-drivers devices'."
+    else
+        warn "Secure Boot is ${SECURE_BOOT:-unknown}, so these are NOT installed - DKMS modules cannot load:"
+        printf '%s\n' "$offered" | sed 's/^/    /' >&2
+        warn "Disable Secure Boot, then re-run with --only 3."
+    fi
 }
 
 s03b_rtw89_quirk() {
@@ -355,8 +369,14 @@ s06a_file_managers() {
     fi
 
     if pkg_installed pcmanfm; then
-        sudo apt-get purge -y pcmanfm || warn "could not remove pcmanfm."
+        sudo apt-get purge -y --autoremove pcmanfm || warn "could not remove pcmanfm."
     fi
+    local leftover
+    for leftover in libfm-data libfm4t64 lxmenu-data lxde-icon-theme; do
+        if dpkg -l "$leftover" 2>/dev/null | grep -q '^rc'; then
+            sudo apt-get purge -y "$leftover" || warn "could not purge leftover $leftover."
+        fi
+    done
     if pkg_installed nemo; then
         xdg-mime default nemo.desktop inode/directory || warn "could not make nemo the directory handler."
         gsettings set org.cinnamon.desktop.default-applications.terminal exec alacritty 2>/dev/null \

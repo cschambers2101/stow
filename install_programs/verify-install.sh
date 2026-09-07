@@ -157,7 +157,7 @@ if have_sudo; then
              "$DPKGV package file(s) differ — run: sudo dpkg -V | awk '\$2 != \"c\"'"
     fi
 else
-    skip "installed files match their checksums" "needs sudo"
+    skip "installed files match their checksums" "needs sudo - CORRUPTION NOT CHECKED, re-run after 'sudo -v'"
 fi
 
 echo "--- node ---"
