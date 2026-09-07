@@ -3,9 +3,7 @@
   "currentThemeCategory": "dynamic",
   "cornerRadius": 12,
   "firstDayOfWeek": 1,
-  "nightModeEnabled": false,
   "systemTrayIconTintMode": "secondary",
-  "batteryPillPercentSign": false,
   "controlCenterShowMicPercent": true,
   "showWorkspaceIndex": true,
   "workspaceActiveAppHighlightEnabled": true,
@@ -38,10 +36,9 @@
   "acPostLockMonitorTimeout": 60,
   "batteryLockTimeout": 300,
   "batteryPostLockMonitorTimeout": 15,
-  "gtkThemingEnabled": false,
-  "qtThemingEnabled": false,
   "terminalsAlwaysDark": true,
   "notificationOverlayEnabled": true,
+  "lockScreenWallpaperPath": "/run/user/1000/danklock/1788760162297675752.png",
   "notificationCompactMode": true,
   "notificationShowTimeoutBar": true,
   "osdPowerProfileEnabled": true,
@@ -125,6 +122,32 @@
       "hoverPopoutDelay": 150
     }
   ],
+  "desktopClockCustomColor": {
+    "r": 1,
+    "g": 1,
+    "b": 1,
+    "a": 1,
+    "hsvHue": -1,
+    "hsvSaturation": 0,
+    "hsvValue": 1,
+    "hslHue": -1,
+    "hslSaturation": 0,
+    "hslLightness": 1,
+    "valid": true
+  },
+  "systemMonitorCustomColor": {
+    "r": 1,
+    "g": 1,
+    "b": 1,
+    "a": 1,
+    "hsvHue": -1,
+    "hsvSaturation": 0,
+    "hsvValue": 1,
+    "hslHue": -1,
+    "hslSaturation": 0,
+    "hslLightness": 1,
+    "valid": true
+  },
   "builtInPluginSettings": {
     "dms_settings_search": {
       "trigger": "?"
@@ -133,6 +156,5 @@
       "trigger": "cb"
     }
   },
-  "configVersion": 17,
-  "closeNiriOverviewOnWindowFocus": true
+  "configVersion": 17
 }
