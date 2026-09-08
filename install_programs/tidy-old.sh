@@ -42,6 +42,10 @@ fi
 
 LIVE_DMS="$DOTFILES_DIR/.config/DankMaterialShell/settings.json"
 PRESERVED=""
+CHANGED=no
+FORCE_GREETER=no
+[ "${1:-}" = --greeter ] && { FORCE_GREETER=yes; PULL=no; }
+HEAD_BEFORE="$(git -C "$DOTFILES_DIR" rev-parse HEAD 2>/dev/null || echo none)"
 
 # --- migration: settings.json became untracked (8 Sep 2026) -------------------
 # Before that commit the file was tracked, and DMS rewrites it constantly, so
@@ -60,6 +64,7 @@ if [ "$PULL" = yes ] && git -C "$DOTFILES_DIR" ls-files --error-unmatch \
         .config/DankMaterialShell/settings.json >/dev/null 2>&1; then
     section "Migrating DankMaterialShell settings.json out of git"
     if [ -f "$LIVE_DMS" ]; then
+        CHANGED=yes
         PRESERVED="$(mktemp -t dms-settings-XXXXXX.json)"
         cp "$LIVE_DMS" "$PRESERVED"
         log "preserved your live settings to $PRESERVED"
@@ -131,13 +136,26 @@ fi
 # Merge in any S6C fleet keys this machine is missing. These no longer arrive by
 # git pull, because the live file is untracked. Adds only what is absent, so a
 # setting the user has changed is never overwritten.
-seed_dms_settings "$HERE/dms-settings.s6c.json" "$LIVE_DMS" \
-    || warn "could not seed the S6C DMS settings."
+seed_out="$(seed_dms_settings "$HERE/dms-settings.s6c.json" "$LIVE_DMS" 2>&1)" \
+    || warn "could not seed all the S6C DMS settings - see above."
+printf '%s\n' "$seed_out"
+case "$seed_out" in
+    *"set "*"key"*|*"seeded "*"key"*) CHANGED=yes ;;
+esac
 
 section "Greeter"
 # s10_dotfiles ends with this; tidy-old.sh did not, so a restowed machine kept
 # a stale greeter wallpaper and colours until the next full installer run.
-if have_cmd dms-greeter || have_cmd dms; then
+#
+# But only when something actually changed. `dms greeter sync` needs sudo, resets
+# ACLs and reloads an AppArmor profile, and writes the greetd config twice --
+# leaving TWO /etc/greetd/config.toml.backup-* files on every run. In a script
+# meant to be re-run, that grows without bound in /etc and prompts for a
+# password on a run that did nothing. Force it with --greeter.
+[ "$(git -C "$DOTFILES_DIR" rev-parse HEAD 2>/dev/null || echo none)" = "$HEAD_BEFORE" ] || CHANGED=yes
+if [ "$CHANGED" = no ] && [ "$FORCE_GREETER" = no ]; then
+    log "nothing changed - skipping the greeter sync (force it with --greeter)"
+elif have_cmd dms-greeter || have_cmd dms; then
     sync=(dms greeter sync)
     have_cmd dms-greeter && sync=(dms-greeter sync)
     if DMS_PRIVESC=sudo "${sync[@]}"; then
