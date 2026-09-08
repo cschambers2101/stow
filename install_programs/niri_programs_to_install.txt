@@ -149,7 +149,7 @@ unzip
 zip
 xz-utils
 zram-tools
-# secure-delete provides srm, which .bash_aliases maps rm to when present.
+# secure-delete provides srm; .bash_aliases adds -i -v to it when present.
 secure-delete
 
 # --- file managers ---

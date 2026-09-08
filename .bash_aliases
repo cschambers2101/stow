@@ -31,6 +31,6 @@ alias snf='find_note_file.sh'
 alias snt='find_note_tag.sh'
 alias dn='delete_note.sh'
 
-command -v srm >/dev/null 2>&1 && alias rm='srm -i -v'
+command -v srm >/dev/null 2>&1 && alias srm='srm -i -v'
 
 [ -n "${WAYLAND_DISPLAY:-}" ] && alias claude='env -u DISPLAY claude'

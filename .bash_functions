@@ -30,7 +30,10 @@ extract() {
 
 myhelp() {
     echo "Aliases"
-    grep -hE '^alias ' ~/.bash_aliases ~/.bash_x11 2>/dev/null | sed "s/^alias //; s/^/  /"
+    # Read from the shell, not the files: guarded aliases (`command -v x && alias
+    # ...`) never matched a ^alias grep, and .bash_x11's aliases matched it even
+    # under Wayland, where .bashrc has not sourced them.
+    alias | sed "s/^alias //; s/^/  /"
     echo
     echo "Functions"
     declare -F | awk '{print $3}' | grep -vE '^_|^__' | sed 's/^/  /'
