@@ -107,6 +107,21 @@ if [ -d "$DOTFILES_DIR/.git" ]; then
         fail "settings.json untracked" "still tracked - it will churn on every DMS save"
     else pass "settings.json untracked" ""; fi
     ok "DMS config dir is a stow symlink" test -L "$HOME/.config/DankMaterialShell"
+    # If the key works, origin must be SSH. Catches a regression to the old
+    # unconditional rewrite, which left machines unable to push.
+    ORIGIN="$(git -C "$DOTFILES_DIR" remote get-url origin 2>/dev/null || true)"
+    case "$ORIGIN" in
+        *github.com*)
+            if github_ssh_works; then
+                case "$ORIGIN" in
+                    git@github.com:*) pass "origin uses SSH (key works)" "$ORIGIN" ;;
+                    *) fail "origin uses SSH (key works)" "key authenticates but origin is $ORIGIN - push will fail" ;;
+                esac
+            else
+                skip "origin uses SSH (key works)" "no GitHub-registered SSH key; HTTPS is correct"
+            fi ;;
+        *) skip "origin uses SSH (key works)" "origin is not a github.com remote" ;;
+    esac
 else
     skip "settings.json untracked" "no git checkout at $DOTFILES_DIR"
     skip "DMS config dir is a stow symlink" "no git checkout at $DOTFILES_DIR"

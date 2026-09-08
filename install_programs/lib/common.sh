@@ -90,6 +90,46 @@ write_root_file() {
     sudo chmod "$mode" "$path"
 }
 
+# Does this machine's SSH key authenticate to GitHub?
+#
+# The output is captured rather than piped, deliberately. `ssh -T git@github.com`
+# exits 1 even on success ("does not provide shell access"), and this file sets
+# pipefail, so `ssh ... | grep -q` would report failure on a perfectly good key.
+# bootstrap.sh carries its own copy of this test because it is piped to bash
+# before this repo exists; it survives on `set -e` without pipefail. Keep the
+# two in step.
+github_ssh_works() {
+    local out
+    out="$(ssh -T -o BatchMode=yes -o ConnectTimeout=5 \
+        -o StrictHostKeyChecking=accept-new git@github.com 2>&1 || true)"
+    case "$out" in *"successfully authenticated"*) return 0 ;; esac
+    return 1
+}
+
+# Move origin between the SSH and HTTPS forms, keeping owner/repo as they are.
+# Anything that is not a github.com remote is left untouched.
+set_origin_protocol() {
+    local want="$1" dir="$2" url path new
+    url="$(git -C "$dir" remote get-url origin 2>/dev/null)" || return 1
+    case "$url" in
+        git@github.com:*)     path="${url#git@github.com:}" ;;
+        https://github.com/*) path="${url#https://github.com/}" ;;
+        *) echo "   origin is not a github.com remote ($url) - left alone"; return 0 ;;
+    esac
+    path="${path%.git}"
+    case "$want" in
+        ssh)   new="git@github.com:${path}.git" ;;
+        https) new="https://github.com/${path}.git" ;;
+        *) return 1 ;;
+    esac
+    if [ "$url" = "$new" ]; then
+        echo "   origin already $want ($url)"
+        return 0
+    fi
+    git -C "$dir" remote set-url origin "$new"
+    echo "   origin $url -> $new"
+}
+
 json_set_default() {
     local file="$1" key="$2" value="$3"
     mkdir -p "$(dirname "$file")"

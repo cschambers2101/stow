@@ -666,19 +666,43 @@ s14_post_install() {
 }
 
 s15_git_identity() {
-    local old new
-    if git -C "$DOTFILES_DIR" remote get-url origin 2>/dev/null | grep -q '^git@github.com:'; then
-        old="$(git -C "$DOTFILES_DIR" remote get-url origin)"
-        new="https://github.com/${old#git@github.com:}"
-        log "Rewriting origin to HTTPS so pushes use this student's own credentials: $old -> $new"
-        git -C "$DOTFILES_DIR" remote set-url origin "$new"
-    fi
+    # Key first, then decide the protocol. The old order did the opposite --
+    # it rewrote origin to HTTPS and only then generated the key -- so a fresh
+    # machine could never reach an SSH remote: bootstrap.sh ran before any key
+    # existed and picked HTTPS, and nothing afterwards ever re-tested or
+    # promoted it.
     if [ ! -f "$HOME/.ssh/id_ed25519" ]; then
         log "Generating a per-machine SSH key..."
         mkdir -p "$HOME/.ssh"
         chmod 700 "$HOME/.ssh"
         ssh-keygen -t ed25519 -N "" -C "$(id -un)@$(hostname)" -f "$HOME/.ssh/id_ed25519" >/dev/null
     fi
+
+    # Prefer SSH whenever the key actually authenticates. The old rewrite to
+    # HTTPS was justified as "so pushes use this student's own credentials",
+    # which confused whose credentials with which transport: the per-machine
+    # key generated just above IS this user's own credential, so SSH satisfies
+    # that rule and leaves push working, which HTTPS did not.
+    #
+    # Nothing interactive happens here on purpose. No 'gh auth login': the
+    # autoinstall route is unattended and a browser or device-code flow would
+    # hang the build with no output.
+    if github_ssh_works; then
+        log "GitHub SSH key authenticates - using the SSH remote."
+        set_origin_protocol ssh "$DOTFILES_DIR" || warn "could not set origin to SSH."
+    else
+        log "No GitHub-registered SSH key - using the HTTPS remote (clone works, push needs credentials)."
+        set_origin_protocol https "$DOTFILES_DIR" || warn "could not set origin to HTTPS."
+        # Only wires up an ALREADY-authorised gh. Never authenticates anything.
+        if have_cmd gh && gh auth status -h github.com >/dev/null 2>&1; then
+            if gh auth setup-git -h github.com >/dev/null 2>&1; then
+                log "   gh is authorised - set as the git credential helper, so HTTPS push works."
+            else
+                warn "'gh auth setup-git' failed - HTTPS push will ask for a username."
+            fi
+        fi
+    fi
+
     [ -n "$(git config --global user.email 2>/dev/null || true)" ] || GIT_IDENTITY_SET=no
 }
 
