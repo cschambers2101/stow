@@ -532,7 +532,7 @@ s10_dotfiles() {
     # user has already changed survives. Must run before the greeter sync below,
     # which reads this file.
     log "Seeding S6C DankMaterialShell settings..."
-    json_seed_defaults "$HERE/dms-settings.s6c.json" \
+    seed_dms_settings "$HERE/dms-settings.s6c.json" \
         "$HOME/.config/DankMaterialShell/settings.json" \
         || warn "could not seed the S6C DMS settings."
 

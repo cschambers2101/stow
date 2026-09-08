@@ -192,6 +192,120 @@ print(f"   seeded {len(added)} key(s): {', '.join(added)}")
 PYEOF
 }
 
+# Seed the S6C keys into DankMaterialShell, by whichever route is safe.
+#
+# Writing settings.json directly is only correct when DMS is NOT running. DMS
+# holds its settings in memory, offers no ipc "reload", and rewrites the file
+# atomically on every save -- so a key written to the file underneath a live DMS
+# is invisible until it restarts AND liable to be erased by the next save, which
+# writes DMS's in-memory state. That save happens often: dank-lock.sh sets
+# lockScreenWallpaperPath on every screen lock. So when DMS is up, go through
+# ipc, which updates the live state and lets DMS persist it itself.
+#
+# Same semantics either route: fill gaps, never override. A key DMS reports as
+# explicitly set (`settings dump`) is a deliberate choice -- by the user or by
+# DMS -- and is left alone. Only unset keys are candidates.
+#
+# Of those candidates, one further filter. DMS persists only what differs from
+# its defaults, so a seeded key whose value equals a DMS default never appears
+# in the dump and would be re-sent on every run. Checking the effective value
+# from `settings get` skips those. Objects compare as a subset, because DMS adds
+# sub-keys of its own -- cursorSettings.dwl -- which is not a real difference.
+seed_dms_settings() {
+    local seed="$1" file="$2" key val live tmp dump ok=0 bad=0 failed=""
+    [ -f "$seed" ] || { echo "   seed $seed missing - skipped"; return 1; }
+
+    if ! have_cmd dms || ! timeout 5 dms ipc call settings get cornerRadius >/dev/null 2>&1; then
+        echo "   DMS not running - writing settings.json directly"
+        json_seed_defaults "$seed" "$file"
+        return $?
+    fi
+
+    tmp="$(mktemp -t dms-live-XXXXXX)"
+    dump="$(mktemp -t dms-dump-XXXXXX)"
+    timeout 10 dms ipc call settings dump >"$dump" 2>/dev/null || true
+    while IFS= read -r key; do
+        [ -n "$key" ] || continue
+        live="$(timeout 10 dms ipc call settings get "$key" 2>/dev/null || true)"
+        printf '%s\t%s\n' "$key" "$live" >> "$tmp"
+    done < <(python3 -c 'import json,sys;print("\n".join(json.load(open(sys.argv[1]))))' "$seed")
+
+    while IFS="$(printf '\t')" read -r key val; do
+        [ -n "$key" ] || continue
+        if timeout 10 dms ipc call settings set "$key" "$val" >/dev/null 2>&1; then
+            ok=$((ok + 1))
+        else
+            bad=$((bad + 1)); failed="$failed $key"
+        fi
+    done < <(python3 - "$seed" "$tmp" "$file" "$dump" <<'PYEOF'
+import json, sys
+
+def parse(raw):
+    raw = raw.strip()
+    if raw == "":
+        return None
+    try:
+        return json.loads(raw)
+    except ValueError:
+        return raw          # `get` returns bare strings unquoted
+
+def satisfied(want, got):
+    """Is `want` already reflected in `got`? Objects compare as a subset."""
+    if isinstance(want, dict):
+        if not isinstance(got, dict):
+            return False
+        return all(k in got and satisfied(v, got[k]) for k, v in want.items())
+    return want == got
+
+seed_path, live_path, file_path, dump_path = sys.argv[1:5]
+with open(seed_path) as fh:
+    seed = json.load(fh)
+
+# What DMS reports as explicitly set. Falls back to the file if dump is unusable.
+try:
+    with open(dump_path) as fh:
+        explicit = json.load(fh)
+    if not isinstance(explicit, dict):
+        raise ValueError
+except (FileNotFoundError, ValueError):
+    try:
+        with open(file_path) as fh:
+            explicit = json.load(fh)
+        if not isinstance(explicit, dict):
+            explicit = {}
+    except (FileNotFoundError, ValueError):
+        explicit = {}
+
+effective = {}
+with open(live_path) as fh:
+    for line in fh:
+        k, _, raw = line.rstrip("\n").partition("\t")
+        effective[k] = parse(raw)
+
+for k, v in seed.items():
+    if k in explicit:                       # deliberate choice - leave alone
+        continue
+    if satisfied(v, effective.get(k)):      # already effectively correct
+        continue
+    print(f"{k}\t{v if isinstance(v, str) else json.dumps(v, separators=(',', ':'))}")
+PYEOF
+    )
+    rm -f "$tmp" "$dump"
+
+    if [ "$ok" = 0 ] && [ "$bad" = 0 ]; then
+        echo "   DMS is running - all S6C keys already set, nothing to do"
+        return 0
+    fi
+    echo "   DMS is running - seeded through ipc, so the values are live now"
+    [ "$ok" -gt 0 ] && echo "   set $ok key(s)"
+    if [ "$bad" -gt 0 ]; then
+        echo "   WARNING: $bad key(s) DMS would not accept over ipc:$failed"
+        echo "   Log out and back in, then re-run this script to write them to the file."
+        return 1
+    fi
+    return 0
+}
+
 detect_gpu() { GPU_INFO="$(lspci -nn 2>/dev/null | grep -iE 'vga|3d controller|display controller' || true)"; }
 gpu_is() { printf '%s' "${GPU_INFO:-}" | grep -qiE "$1"; }
 

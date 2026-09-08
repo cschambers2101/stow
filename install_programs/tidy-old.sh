@@ -131,8 +131,23 @@ fi
 # Merge in any S6C fleet keys this machine is missing. These no longer arrive by
 # git pull, because the live file is untracked. Adds only what is absent, so a
 # setting the user has changed is never overwritten.
-json_seed_defaults "$HERE/dms-settings.s6c.json" "$LIVE_DMS" \
+seed_dms_settings "$HERE/dms-settings.s6c.json" "$LIVE_DMS" \
     || warn "could not seed the S6C DMS settings."
+
+section "Greeter"
+# s10_dotfiles ends with this; tidy-old.sh did not, so a restowed machine kept
+# a stale greeter wallpaper and colours until the next full installer run.
+if have_cmd dms-greeter || have_cmd dms; then
+    sync=(dms greeter sync)
+    have_cmd dms-greeter && sync=(dms-greeter sync)
+    if DMS_PRIVESC=sudo "${sync[@]}"; then
+        log "greeter synced"
+    else
+        warn "greeter sync failed - re-run '${sync[*]}' by hand."
+    fi
+else
+    log "no dms/dms-greeter on PATH - skipping greeter sync"
+fi
 
 section "Git remote"
 # Prefer SSH whenever the key authenticates. Machines built before 8 Sep 2026
