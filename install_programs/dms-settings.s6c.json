@@ -38,7 +38,6 @@
   "batteryPostLockMonitorTimeout": 15,
   "terminalsAlwaysDark": true,
   "notificationOverlayEnabled": true,
-  "lockScreenWallpaperPath": "/run/user/1000/danklock/1788760162297675752.png",
   "notificationCompactMode": true,
   "notificationShowTimeoutBar": true,
   "osdPowerProfileEnabled": true,
@@ -122,32 +121,6 @@
       "hoverPopoutDelay": 150
     }
   ],
-  "desktopClockCustomColor": {
-    "r": 1,
-    "g": 1,
-    "b": 1,
-    "a": 1,
-    "hsvHue": -1,
-    "hsvSaturation": 0,
-    "hsvValue": 1,
-    "hslHue": -1,
-    "hslSaturation": 0,
-    "hslLightness": 1,
-    "valid": true
-  },
-  "systemMonitorCustomColor": {
-    "r": 1,
-    "g": 1,
-    "b": 1,
-    "a": 1,
-    "hsvHue": -1,
-    "hsvSaturation": 0,
-    "hsvValue": 1,
-    "hslHue": -1,
-    "hslSaturation": 0,
-    "hslLightness": 1,
-    "valid": true
-  },
   "builtInPluginSettings": {
     "dms_settings_search": {
       "trigger": "?"
@@ -155,6 +128,5 @@
     "dms_clipboard_search": {
       "trigger": "cb"
     }
-  },
-  "configVersion": 17
+  }
 }

@@ -97,6 +97,21 @@ if [ -f "$SETTINGS" ]; then
         "$(python3 -c 'import json,sys;print(json.load(open(sys.argv[1])).get("greeterWallpaperPath",""))' "$SETTINGS" 2>/dev/null)"
 else skip "greeter wallpaper set" "no settings.json"; fi
 
+# settings.json is deliberately untracked: DMS owns it and rewrites it, so
+# tracking it guaranteed a permanent spurious diff. The fleet keys live in the
+# seed and are merged in by s10. These three checks guard that arrangement.
+ok "S6C settings seed present" test -f "$HERE/dms-settings.s6c.json"
+if [ -d "$DOTFILES_DIR/.git" ]; then
+    if git -C "$DOTFILES_DIR" ls-files --error-unmatch \
+        .config/DankMaterialShell/settings.json >/dev/null 2>&1; then
+        fail "settings.json untracked" "still tracked - it will churn on every DMS save"
+    else pass "settings.json untracked" ""; fi
+    ok "DMS config dir is a stow symlink" test -L "$HOME/.config/DankMaterialShell"
+else
+    skip "settings.json untracked" "no git checkout at $DOTFILES_DIR"
+    skip "DMS config dir is a stow symlink" "no git checkout at $DOTFILES_DIR"
+fi
+
 SESSION="$HOME/.local/state/DankMaterialShell/session.json"
 if [ -f "$SESSION" ]; then
     has "desktop wallpaper seeded" "ladybird" \

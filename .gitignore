@@ -27,6 +27,19 @@
 # recurring spurious diff. If a fleet-wide cursor theme is wanted it has to go
 # somewhere DMS does not overwrite -- not here.
 .config/niri/dms/cursor.kdl
+# settings.json is DMS's own live state and it owns the file: it rewrites it
+# atomically on every save. Two keys guarantee a diff forever -- 1.6 serialises
+# desktopClockCustomColor and systemMonitorCustomColor as eleven-field QColor
+# objects while their defaults are declared as the string "#ffffff", and a
+# string can never compare equal to an object. On top of that the file holds
+# machine state that must not travel: lockScreenWallpaperPath is a per-boot
+# /run/user path (ab906c0 committed one by accident) and networkPreference is
+# per-machine. The S6C keys that DO belong to the fleet live in
+# install_programs/dms-settings.s6c.json and are merged in by the installer,
+# which never overwrites a value already set. .gitkeep keeps this directory in
+# git so stow still folds it into a single symlink -- without it a fresh clone
+# has no directory here, DMS creates a real one, and s10_dotfiles rm -rf's it.
+.config/DankMaterialShell/settings.json
 .config/DankMaterialShell/firefox.css
 .config/DankMaterialShell/zen.css
 .config/DankMaterialShell/.firstlaunch

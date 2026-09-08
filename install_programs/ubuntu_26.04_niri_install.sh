@@ -527,6 +527,15 @@ s10_dotfiles() {
     cd "$HERE"
     fc-cache -f
 
+    # settings.json is untracked (DMS owns it and rewrites it - see .gitignore).
+    # Merge the S6C fleet keys in, adding only what is missing so a value the
+    # user has already changed survives. Must run before the greeter sync below,
+    # which reads this file.
+    log "Seeding S6C DankMaterialShell settings..."
+    json_seed_defaults "$HERE/dms-settings.s6c.json" \
+        "$HOME/.config/DankMaterialShell/settings.json" \
+        || warn "could not seed the S6C DMS settings."
+
     src="$HOME/.local/share/backgrounds/0288.jpg"
     if [ -f "$src" ]; then
         if sudo install -d -m 0755 "$(dirname "$S6C_WALLPAPER")" && sudo install -m 0644 "$src" "$S6C_WALLPAPER"; then

@@ -117,6 +117,41 @@ print(f"   {key} set to {value}")
 PYEOF
 }
 
+# Merge a seed file's keys into a live JSON config, adding only keys the live
+# file does not already have. Used for DankMaterialShell's settings.json, which
+# DMS owns and rewrites: the fleet keys ship in the seed, DMS keeps everything
+# else, and a value a user has already changed is never clobbered.
+json_seed_defaults() {
+    local seed="$1" file="$2"
+    [ -f "$seed" ] || { echo "   seed $seed missing - skipped"; return 1; }
+    mkdir -p "$(dirname "$file")"
+    python3 - "$seed" "$file" <<'PYEOF'
+import json, os, sys
+seed_path, path = sys.argv[1:3]
+with open(seed_path) as fh:
+    seed = json.load(fh)
+try:
+    with open(path) as fh:
+        data = json.load(fh)
+except (FileNotFoundError, ValueError):
+    data = {}
+if not isinstance(data, dict):
+    print(f"   {path} is not a JSON object - left alone")
+    sys.exit(0)
+added = [k for k in seed if k not in data]
+for k in added:
+    data[k] = seed[k]
+if not added:
+    print(f"   all {len(seed)} S6C keys already present - left alone")
+    sys.exit(0)
+tmp = path + ".tmp"
+with open(tmp, "w") as fh:
+    json.dump(data, fh, indent=2)
+os.replace(tmp, path)
+print(f"   seeded {len(added)} key(s): {', '.join(added)}")
+PYEOF
+}
+
 detect_gpu() { GPU_INFO="$(lspci -nn 2>/dev/null | grep -iE 'vga|3d controller|display controller' || true)"; }
 gpu_is() { printf '%s' "${GPU_INFO:-}" | grep -qiE "$1"; }
 
