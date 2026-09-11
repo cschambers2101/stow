@@ -640,12 +640,24 @@ s14_post_install() {
         log "No /sys/power/mem_sleep - skipping deep sleep configuration."
     elif ! grep -qw deep /sys/power/mem_sleep; then
         log "Firmware advertises no S3 (mem_sleep: $(cat /sys/power/mem_sleep)) - leaving suspend at s2idle."
+    elif platform_low_power_s0; then
+        log "Platform advertises Low Power S0 Idle (Modern Standby) - keeping s2idle; forcing deep on these machines commonly hangs resume."
+        if [ -f "$grub" ] && grep -q 'mem_sleep_default=deep' "$grub"; then
+            sudo sed -i -E 's/[[:space:]]*mem_sleep_default=deep//g' "$grub" || true
+            sudo sed -i -E 's|^(GRUB_CMDLINE_LINUX_DEFAULT=")[[:space:]]+|\1|' "$grub" || true
+            if grep -q 'mem_sleep_default=deep' "$grub"; then
+                warn "could not strip stale mem_sleep_default=deep from $grub - resume may hang."
+            else
+                sudo update-grub || warn "update-grub failed - stale mem_sleep_default=deep stays active until the next update-grub."
+                log "Removed stale mem_sleep_default=deep from $grub - suspend returns to s2idle after reboot."
+            fi
+        fi
     elif [ ! -f "$grub" ]; then
         warn "S3 is available but $grub is missing - cannot make it the default."
     elif grep -q 'mem_sleep_default=deep' "$grub"; then
         log "Deep sleep is already the default in $grub."
     else
-        log "Firmware offers S3 - making deep sleep the default."
+        log "Firmware offers real S3 (no Low Power S0 Idle) - making deep sleep the default."
         sudo sed -i -E 's/[[:space:]]*mem_sleep_default=[^ "]*//g' "$grub" || true
         sudo sed -i -E 's|^(GRUB_CMDLINE_LINUX_DEFAULT=")(.*)"|\1\2 mem_sleep_default=deep"|' "$grub" || true
         sudo sed -i -E 's|^(GRUB_CMDLINE_LINUX_DEFAULT=")[[:space:]]+|\1|' "$grub" || true

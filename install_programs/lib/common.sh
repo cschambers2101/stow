@@ -327,6 +327,19 @@ secure_boot_state() {
     printf '%s' "$state"
 }
 
+# True if the platform's ACPI FADT advertises Low Power S0 Idle (Modern Standby).
+# Such machines usually also list S3/deep in /sys/power/mem_sleep but frequently
+# cannot resume from it, so deep must never be forced on them - s2idle is what the
+# vendor validates. Keys on the "S0" token the kernel prints from the FADT: a
+# traditional S3-only machine prints "(supports S3 S4 S5)" with no S0. Unknown
+# (line unreadable) returns false, preserving the force-deep path for that case.
+platform_low_power_s0() {
+    local line
+    line="$(journalctl -k -b 0 2>/dev/null | grep -m1 -F 'ACPI: PM: (supports')"
+    [ -n "$line" ] || line="$(dmesg 2>/dev/null | grep -m1 -F 'ACPI: PM: (supports')"
+    printf '%s' "$line" | grep -qw S0
+}
+
 has_broadcom_wifi() { lspci -nn 2>/dev/null | grep -iE "network|wireless" | grep -qi broadcom; }
 has_realtek_rtw89_hw() { lspci -nn 2>/dev/null | grep -qiE "RTL885[0-9]|Realtek.*802\\.11|802\\.11.*Realtek"; }
 has_rtw89() {
