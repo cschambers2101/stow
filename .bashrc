@@ -52,3 +52,4 @@ for _nvm in "$HOME/.nvm" "$HOME/.config/nvm"; do
     fi
 done
 unset _nvm
+export SSL_CERT_DIR="$HOME/.aspnet/dev-certs/trust:/usr/lib/ssl/certs"
