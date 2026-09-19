@@ -7,7 +7,7 @@
 # Both forms do the same thing. The script works out what the machine needs:
 # clone and full install, or converge on the latest build and update.
 #
-# Usage: install.sh [--strict] [--no-pull] [--greeter] [--help]
+# Usage: install.sh [--strict] [--no-pull] [--greeter] [--no-reboot] [--help]
 #
 # On an existing machine it also runs the installer's update-safe sections, so a
 # new package, driver or service reaches the machine. `ubuntu_26.04_niri_install.sh
@@ -34,11 +34,13 @@ DMS_PRESERVED=""
 STRICT=no
 PULL=yes
 FORCE_GREETER=no
+NO_REBOOT=no
 for arg in "$@"; do
     case "$arg" in
         --strict)   STRICT=yes ;;
         --no-pull)  PULL=no ;;
         --greeter)  FORCE_GREETER=yes ;;
+        --no-reboot) NO_REBOOT=yes ;;
         --help|-h)  sed -n '2,10p' "$0"; exit 0 ;;
         *)          echo "unknown option: $arg" >&2; exit 2 ;;
     esac
@@ -345,3 +347,50 @@ if [ "$PRESERVED_COUNT" -gt 0 ]; then
     warn "Your copies are safe in $PRESERVE_DIR"
 fi
 log "done. Open a new terminal to pick up the shell changes."
+
+# A fresh build always needs one, to reach niri at all. An update needs one only
+# if something boot-time changed: apt writes /run/reboot-required for kernels and
+# drivers, and the installer now touches it for our own initramfs and grub work.
+# Never prompt without a terminal to ask at -- the autoinstall route and every SSH
+# run would hang on it.
+section "Reboot"
+if [ "$MODE" = install ]; then
+    REBOOT_WHY="the build is not finished until this machine reboots into niri"
+elif [ -e /run/reboot-required ] || [ -e /var/run/reboot-required ]; then
+    REBOOT_WHY="a kernel, driver or boot setting changed"
+else
+    REBOOT_WHY=""
+fi
+
+if [ -z "$REBOOT_WHY" ]; then
+    log "no reboot needed"
+elif [ "$NO_REBOOT" = yes ]; then
+    warn "REBOOT REQUIRED - $REBOOT_WHY. Skipped: --no-reboot."
+elif [ ! -t 0 ]; then
+    warn "REBOOT REQUIRED - $REBOOT_WHY."
+    warn "Not asking: no terminal. Reboot this machine when convenient."
+else
+    echo ""
+    echo "  REBOOT REQUIRED - $REBOOT_WHY."
+    echo ""
+    # Default yes on a fresh build (nothing is in progress to lose), no on an
+    # update (the student may be mid-lesson). Timeout answers for an unattended
+    # terminal rather than waiting for ever.
+    if [ "$MODE" = install ]; then prompt="Reboot now? [Y/n] "; default=y
+    else                           prompt="Reboot now? [y/N] "; default=n; fi
+    ans=""; rc=0
+    read -r -t 60 -p "  $prompt" ans || rc=$?
+    # Pressing Enter accepts the default (rc 0, empty answer). A timeout (rc>128)
+    # or a closed stdin (rc 1) is not an answer -- nobody is there, so never
+    # reboot a machine on their behalf.
+    if [ "$rc" -ne 0 ]; then
+        echo ""
+        warn "no answer - not rebooting. Do it before using the machine."
+    else
+        [ -n "$ans" ] || ans="$default"
+        case "$ans" in
+            [Yy]*) log "rebooting..."; sudo reboot ;;
+            *)     warn "not rebooting. Do it before using the machine - $REBOOT_WHY." ;;
+        esac
+    fi
+fi

@@ -287,6 +287,7 @@ CONF
 options nvidia_drm modeset=1
 CONF
         sudo dracut -f
+        sudo touch /run/reboot-required
     fi
     if gpu_is intel; then
         log "Intel GPU detected - installing VA-API drivers..."
@@ -321,6 +322,7 @@ options rtw89_pci disable_aspm_l1=y disable_aspm_l1ss=y disable_clkreq=y
 options rtw89_core disable_ps_mode=y
 CONF
     sudo update-initramfs -u >/dev/null 2>&1 || warn "initramfs rebuild failed - the quirk still applies after the next reboot."
+    sudo touch /run/reboot-required
 }
 
 s04_desktop_base() {
@@ -678,6 +680,7 @@ s14_post_install() {
             sudo sed -i -E 's|^(GRUB_CMDLINE_LINUX_DEFAULT=")[[:space:]]+|\1|' "$grub" || true
             if grep -q 'mem_sleep_default=s2idle' "$grub"; then
                 sudo update-grub || warn "update-grub failed - s2idle applies at the next successful update-grub."
+                sudo touch /run/reboot-required
                 log "Set mem_sleep_default=s2idle in $grub."
             else
                 warn "could not set mem_sleep_default=s2idle in $grub - resume may hang."
@@ -699,6 +702,7 @@ s14_post_install() {
         sudo sed -i -E 's|^(GRUB_CMDLINE_LINUX_DEFAULT=")[[:space:]]+|\1|' "$grub" || true
         if grep -q 'mem_sleep_default=deep' "$grub"; then
             sudo update-grub || warn "update-grub failed - deep sleep applies at the next successful update-grub."
+            sudo touch /run/reboot-required
         else
             warn "could not add mem_sleep_default=deep to $grub - suspend stays s2idle."
         fi
