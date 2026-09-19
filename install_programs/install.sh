@@ -112,9 +112,16 @@ if [ -z "${S6C_INSTALL_PHASE_B:-}" ]; then
                 a_die "--strict: local changes above. Commit or stash them, then re-run."
             fi
             while IFS= read -r rel; do
-                [ -n "$rel" ] && [ "$rel" != "$DMS_REL" ] && keep "$rel"
+                [ -n "$rel" ] || continue
+                [ "$rel" = "$DMS_REL" ] && continue
+                # Build scripts are ours, never the user's. The pre-19-Sep
+                # self-update stages install_programs/ before handing over, so
+                # without this every migrating machine "preserves" six of our own
+                # files and warns the student about changes they never made.
+                case "$rel" in install_programs/*) continue ;; esac
+                keep "$rel"
             done < <(git -C "$DOTFILES_DIR" diff --name-only HEAD)
-            a_say "set aside $PRESERVED_COUNT locally-changed file(s)"
+            [ "$PRESERVED_COUNT" -gt 0 ] && a_say "set aside $PRESERVED_COUNT locally-changed file(s)"
         fi
 
         # An untracked file sitting where an incoming commit adds one blocks the
