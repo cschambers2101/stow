@@ -20,7 +20,7 @@ unfocused_hollow = true
 hide_when_typing = true
 
 [selection]
-save_to_clipboard = false
+save_to_clipboard = true
 
 [bell]
 duration = 0

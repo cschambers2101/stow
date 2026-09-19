@@ -37,6 +37,7 @@
   "batteryLockTimeout": 300,
   "batteryPostLockMonitorTimeout": 15,
   "terminalsAlwaysDark": true,
+  "clipboardEnterToPaste": true,
   "notificationOverlayEnabled": true,
   "notificationCompactMode": true,
   "notificationShowTimeoutBar": true,

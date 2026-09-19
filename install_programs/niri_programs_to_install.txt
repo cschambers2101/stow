@@ -203,7 +203,6 @@ libreoffice
 hunspell-en-gb
 obs-studio
 caca-utils
-xclip
 
 # --- fonts & qt ---
 # DMS's UI font is set to "Inter Variable" in
