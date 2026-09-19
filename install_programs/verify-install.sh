@@ -27,6 +27,33 @@ have_sudo() { sudo -n true 2>/dev/null; }
 echo "Post-install verification — $(hostname) — $(date '+%Y-%m-%d %H:%M')"
 echo
 
+echo "--- build ---"
+# Without a stamp there is no way to tell whether a machine is on the current
+# build. That absence is why 18WessexUbuntu sat 7 commits behind unnoticed until
+# 19 Sep 2026, with a verify that passed throughout.
+STAMP="$HOME/.local/state/s6c/build"
+if [ ! -f "$STAMP" ]; then
+    fail "build stamp present" "no $STAMP - run install.sh to record what this machine is on"
+else
+    stamped="$(sed -n 's/^commit=//p' "$STAMP" | head -1)"
+    stamped_on="$(sed -n 's/^date=//p' "$STAMP" | head -1)"
+    if [ ! -d "$DOTFILES_DIR/.git" ]; then
+        skip "machine on the latest build" "no git checkout at $DOTFILES_DIR"
+    elif ! git -C "$DOTFILES_DIR" rev-parse --verify --quiet origin/main >/dev/null; then
+        skip "machine on the latest build" "no origin/main ref - fetch first"
+    else
+        head_now="$(git -C "$DOTFILES_DIR" rev-parse HEAD)"
+        behind="$(git -C "$DOTFILES_DIR" rev-list --count "HEAD..origin/main" 2>/dev/null || echo 0)"
+        if [ "$stamped" != "$head_now" ]; then
+            fail "machine on the latest build" "stamped ${stamped:0:7} but checkout is ${head_now:0:7} - run install.sh"
+        elif [ "${behind:-0}" -gt 0 ]; then
+            fail "machine on the latest build" "$behind commit(s) behind origin/main - run install.sh"
+        else
+            pass "machine on the latest build" "${head_now:0:7}, stamped $stamped_on"
+        fi
+    fi
+fi
+
 echo "--- system ---"
 eq "no failed units" "0" "$(systemctl list-units --state=failed --no-legend --plain 2>/dev/null | grep -c .)"
 if systemctl --user show-environment 2>/dev/null | grep -qE '^(WAYLAND_DISPLAY|DISPLAY)='; then

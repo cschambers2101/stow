@@ -1,9 +1,6 @@
 #!/usr/bin/env bash
-# Kept forever: this URL is in INSTRUCTIONS.md and in anything already handed to
-# students. The build has one entry point now -- install.sh -- which handles both
-# a new machine and an existing one.
-#
-# Fetched with wget there is no repo on disk yet, so fall back to fetching too.
+# Alias for install.sh, because "run the update script" is how an existing
+# machine is talked about. One script does both.
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" 2>/dev/null && pwd)" || HERE=""
 if [ -n "$HERE" ] && [ -f "$HERE/install.sh" ]; then
     exec bash "$HERE/install.sh" "$@"

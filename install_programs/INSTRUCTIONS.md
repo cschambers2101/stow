@@ -12,14 +12,16 @@ Run as your normal user — *not* root, and not with `sudo`.
 Install Ubuntu 26.04 Desktop as usual, log in, open a terminal and run:
 
 ```bash
-bash <(wget -qO- https://raw.githubusercontent.com/cschambers2101/stow/main/install_programs/bootstrap.sh)
+bash <(wget -qO- https://raw.githubusercontent.com/cschambers2101/stow/main/install_programs/install.sh)
 ```
 
 **`wget`, not `curl`.** Ubuntu 26.04.1 Desktop ships `wget` but not `curl`, so
 the curl form of this line fails before it starts.
 
-That is the whole thing. `bootstrap.sh` shallow-clones this repo to
-`~/.dotfiles` and hands off to `ubuntu_26.04_niri_install.sh`, which runs 20
+That is the whole thing, and it is the same line on a new machine and an
+existing one. `install.sh` works out which it is: it clones this repo to
+`~/.dotfiles` or brings an existing checkout to the latest build, then hands off
+to `ubuntu_26.04_niri_install.sh`, which runs 20
 numbered sections: clock, drivers, desktop base, the niri/Dank stack, packages,
 dotfiles, Node, machine identity, printing. `--list` prints them; `--only 10,12`,
 `--skip 16` and `--from 5` re-run part of a build on a machine that already has
@@ -163,13 +165,13 @@ Two warnings during the run are **expected and harmless**:
 | Live package list | `niri_programs_to_install.txt` — **edit this one** |
 | Main installer | `ubuntu_26.04_niri_install.sh` |
 | Shared library (constants, logging, apt, CA, Node, yt-dlp, Claude) | `lib/` — every installer sources `lib/common.sh`; the Oakford pin, the S6C key and every URL live there once |
-| Student entry point | `bootstrap.sh` — standalone on purpose; it runs before the clone exists |
+| Entry point, install **and** update | `install.sh` — phase A is standalone on purpose, it runs before the clone exists; `bootstrap.sh`, `tidy-old.sh` and `update.sh` are permanent shims to it |
 | Unattended install | `autoinstall/` |
 | Post-install checks | `verify-install.sh` |
 | Suspend/resume fixes (rtw89 wifi, rclone mount) | `setup-suspend.sh` — run by the installer; re-run after `setup_rclone_for_google_drive.sh` |
 | Chromebook / Crostini | `chromebook_setup.sh` |
 | Lint (shellcheck + `bash -n`, also run by GitHub Actions) | `lint.sh` |
-| Machine stowed before Sep 2026: pull, drop stale links, restow | `tidy-old.sh` — one-off, safe to re-run. The script arrives with the pull, so: `git -C ~/.dotfiles pull && bash ~/.dotfiles/install_programs/tidy-old.sh` |
+| Bring any machine to the latest build | `install.sh` — one command, `bash ~/.dotfiles/install_programs/install.sh`. Converges on `origin/main`, preserving anything changed locally into `~/.local/state/s6c/preserved/`, and records what it landed on in `~/.local/state/s6c/build` |
 | Retired: qtile, Debian, X11 tools | `../_archive/` — kept for reference, not stowed, not linted |
 
 The scripts carry no explanatory comments by design (Craig, 5 Sep 2026). The
