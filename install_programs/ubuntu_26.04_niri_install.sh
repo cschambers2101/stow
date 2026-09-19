@@ -641,16 +641,26 @@ s14_post_install() {
     elif ! grep -qw deep /sys/power/mem_sleep; then
         log "Firmware advertises no S3 (mem_sleep: $(cat /sys/power/mem_sleep)) - leaving suspend at s2idle."
     elif platform_low_power_s0; then
-        log "Platform advertises Low Power S0 Idle (Modern Standby) - keeping s2idle; forcing deep on these machines commonly hangs resume."
-        if [ -f "$grub" ] && grep -q 'mem_sleep_default=deep' "$grub"; then
-            sudo sed -i -E 's/[[:space:]]*mem_sleep_default=deep//g' "$grub" || true
+        log "Platform advertises Low Power S0 Idle (Modern Standby) - selecting s2idle; forcing deep on these machines commonly hangs resume."
+        if [ ! -f "$grub" ]; then
+            warn "$grub is missing - cannot make s2idle the default."
+        elif grep -q 'mem_sleep_default=s2idle' "$grub"; then
+            log "s2idle is already the default in $grub."
+        else
+            sudo sed -i -E 's/[[:space:]]*mem_sleep_default=[^ "]*//g' "$grub" || true
+            sudo sed -i -E 's|^(GRUB_CMDLINE_LINUX_DEFAULT=")(.*)"|\1\2 mem_sleep_default=s2idle"|' "$grub" || true
             sudo sed -i -E 's|^(GRUB_CMDLINE_LINUX_DEFAULT=")[[:space:]]+|\1|' "$grub" || true
-            if grep -q 'mem_sleep_default=deep' "$grub"; then
-                warn "could not strip stale mem_sleep_default=deep from $grub - resume may hang."
+            if grep -q 'mem_sleep_default=s2idle' "$grub"; then
+                sudo update-grub || warn "update-grub failed - s2idle applies at the next successful update-grub."
+                log "Set mem_sleep_default=s2idle in $grub."
             else
-                sudo update-grub || warn "update-grub failed - stale mem_sleep_default=deep stays active until the next update-grub."
-                log "Removed stale mem_sleep_default=deep from $grub - suspend returns to s2idle after reboot."
+                warn "could not set mem_sleep_default=s2idle in $grub - resume may hang."
             fi
+        fi
+        if grep -q '\[deep\]' /sys/power/mem_sleep 2>/dev/null; then
+            echo s2idle | sudo tee /sys/power/mem_sleep >/dev/null \
+                && log "Switched the running kernel to s2idle - no reboot needed." \
+                || warn "could not switch the running kernel to s2idle - it applies after a reboot."
         fi
     elif [ ! -f "$grub" ]; then
         warn "S3 is available but $grub is missing - cannot make it the default."

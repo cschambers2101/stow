@@ -362,10 +362,12 @@ if [ ! -r /sys/power/mem_sleep ]; then
 elif ! grep -qw deep /sys/power/mem_sleep; then
     pass "deep sleep where available" "no S3 in firmware — s2idle is all there is"
 elif platform_low_power_s0; then
-    if grep -q '\[deep\]' /sys/power/mem_sleep || grep -q 'mem_sleep_default=deep' /etc/default/grub 2>/dev/null; then
-        fail "s2idle on Modern Standby" "Low Power S0 Idle platform but deep is selected/configured — resume will hang; strip mem_sleep_default=deep and update-grub"
+    if grep -q '\[s2idle\]' /sys/power/mem_sleep; then
+        pass "s2idle on Modern Standby" "Low Power S0 Idle platform — s2idle active"
+    elif grep -q 'mem_sleep_default=s2idle' /etc/default/grub 2>/dev/null; then
+        pass "s2idle on Modern Standby" "configured — applies after reboot"
     else
-        pass "s2idle on Modern Standby" "Low Power S0 Idle platform — s2idle kept, deep correctly not forced"
+        fail "s2idle on Modern Standby" "Low Power S0 Idle platform but active is $(cat /sys/power/mem_sleep) — set mem_sleep_default=s2idle and update-grub"
     fi
 elif grep -q '\[deep\]' /sys/power/mem_sleep; then
     pass "deep sleep where available" "deep"
