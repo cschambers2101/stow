@@ -27,6 +27,19 @@ rclone config
 echo "[4/6] Creating background service..."
 mkdir -p "$(dirname "$SERVICE_FILE")"
 
+# --vfs-cache-mode full, not writes.
+#
+# "writes" caches writes only; reads are never cached to disk, so every read of
+# a file on the mount goes back to Drive. Measured on 18WessexUbuntu on
+# 19 September 2026 against the claude_cowork workspace: the same 2 KB script
+# took 26 ms from /tmp and 300 ms - 9.3 s from the mount, per read. Claude Code
+# runs its hook scripts from the mount on every single tool call, so that cost
+# was being paid continuously.
+#
+# "full" adds an on-disk read cache, bounded by the max-age and max-size below.
+# Leave --dir-cache-time and --poll-interval at their defaults (5m / 1m): this
+# Drive is shared between machines and several concurrent sessions, and raising
+# them delays noticing someone else's change.
 cat <<EOF > "$SERVICE_FILE"
 [Unit]
 Description=Rclone Google Drive Mount
@@ -34,7 +47,7 @@ After=network-online.target
 
 [Service]
 Type=simple
-ExecStart=/usr/bin/rclone mount $REMOTE_NAME: $MOUNT_DIR --vfs-cache-mode writes --vfs-cache-max-age 24h --vfs-cache-max-size 10G --vfs-read-chunk-size 32M
+ExecStart=/usr/bin/rclone mount $REMOTE_NAME: $MOUNT_DIR --vfs-cache-mode full --vfs-cache-max-age 24h --vfs-cache-max-size 10G --vfs-read-chunk-size 32M
 ExecStop=/usr/bin/fusermount -uz $MOUNT_DIR
 Restart=on-failure
 RestartSec=10
