@@ -9,6 +9,10 @@
 #
 # Usage: install.sh [--strict] [--no-pull] [--greeter] [--help]
 #
+# On an existing machine it also runs the installer's update-safe sections, so a
+# new package, driver or service reaches the machine. `ubuntu_26.04_niri_install.sh
+# --list` marks the sections that stay install-only, with the reason.
+#
 # Phase A below is deliberately standalone -- no lib/common.sh -- because it has
 # to run before the repo exists. It ends by re-execing the repo's own copy, so
 # the rest always runs the newest code. Plan and reasoning:
@@ -200,6 +204,26 @@ if [ "$MODE" = install ]; then
     chmod +x "$INSTALLER" 2>/dev/null || true
     "$INSTALLER" || die "the installer did not finish - fix the errors above and re-run."
     CHANGED=yes
+else
+    # The update-safe sections: packages, drivers, repos, services. Section 10 is
+    # deliberately not among them -- the dotfiles path below owns that on an update,
+    # because it carries the settings.json preserve/restore and the migrations that
+    # section 10 does not. `--list` marks what --update leaves out, and why.
+    section "Build sections"
+    INSTALLER="$HERE/ubuntu_26.04_niri_install.sh"
+    if [ ! -f "$INSTALLER" ]; then
+        warn "$INSTALLER not found - skipping the build sections."
+    elif sudo -n true 2>/dev/null || [ -t 0 ]; then
+        chmod +x "$INSTALLER" 2>/dev/null || true
+        if "$INSTALLER" --update; then
+            CHANGED=yes
+        else
+            warn "some build sections failed - see above. The dotfiles steps below still run."
+        fi
+    else
+        warn "no cached sudo and no terminal to ask at - skipping the build sections."
+        warn "Packages, drivers and services are unchanged. Re-run from a desktop terminal for those."
+    fi
 fi
 
 section "Removing links the old layout created"

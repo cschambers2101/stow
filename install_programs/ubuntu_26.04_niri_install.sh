@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Ubuntu 26.04 niri / DankMaterialShell student laptop build.
-# Usage: ubuntu_26.04_niri_install.sh [--list] [--only IDS] [--skip IDS] [--from ID]
+# Usage: ubuntu_26.04_niri_install.sh [--list] [--only IDS] [--skip IDS] [--from ID] [--update] [--dry-run]
 # Env:   TARGET_HOSTNAME  PAPERCUT_SERVER  PAPERCUT_STRICT_SSL  S6C_PSK  S6C_PERSONAL  ALLOW_NO_WIFI
 # Rationale for every step: projects/linux-device-build-2026/notes/installer-rationale.md (private workspace).
 
@@ -37,6 +37,21 @@ SECTIONS=(
     "16:s16_papercut:PaperCut printing"
 )
 
+# Sections --update does NOT run, audited 19 Sep 2026. Everything else is safe to
+# repeat unattended on a machine already in service.
+#
+#   5  Dank / niri stack  -- upgrades DMS under a live session; the 6 Sep 1.6
+#                            upgrade needed a shell and greeter restart afterwards,
+#                            so this stays a deliberate `--only 5`.
+#   9  Networking         -- runs `netplan apply`, which drops the link and is
+#                            fatal over SSH, and wants S6C_PSK.
+#   10 Dotfiles           -- install.sh owns this path on an update: it has the
+#                            settings.json preserve/restore and the migrations
+#                            that this section does not.
+#   13 Identity           -- prompts for a hostname at a tty.
+#   16 PaperCut           -- prompts for a server URL at a tty, and is site work.
+UPDATE_SKIP="5,9,10,13,16"
+
 SECURE_BOOT=unknown
 BROADCOM_BLOCKED=no
 BROADCOM_PRESENT=no
@@ -48,29 +63,40 @@ GIT_IDENTITY_SET=yes
 S6C_PSK="${S6C_PSK-$S6C_PSK_DEFAULT}"
 
 
+in_list() { case ",$2," in *",$1,"*) return 0 ;; esac; return 1; }
+
 usage() { sed -n '2,5p' "$0"; }
 
 list_sections() {
-    local s
+    local s id
     for s in "${SECTIONS[@]}"; do
-        printf '  %-3s %s\n' "${s%%:*}" "${s##*:}"
+        id="${s%%:*}"
+        if in_list "$id" "$UPDATE_SKIP"; then
+            printf '  %-3s %-34s install only\n' "$id" "${s##*:}"
+        else
+            printf '  %-3s %s\n' "$id" "${s##*:}"
+        fi
     done
 }
 
-ONLY=""; SKIP=""; FROM=""
+ONLY=""; SKIP=""; FROM=""; UPDATE=no; DRYRUN=no
 while [ $# -gt 0 ]; do
     case "$1" in
         --list) list_sections; exit 0 ;;
         --only) ONLY="${2:?--only needs a list of ids}"; shift ;;
         --skip) SKIP="${2:?--skip needs a list of ids}"; shift ;;
         --from) FROM="${2:?--from needs an id}"; shift ;;
+        --update) UPDATE=yes ;;
+        --dry-run) DRYRUN=yes ;;
         -h|--help) usage; echo; list_sections; exit 0 ;;
         *) die "unknown option: $1" ;;
     esac
     shift
 done
 
-in_list() { case ",$2," in *",$1,"*) return 0 ;; esac; return 1; }
+if [ "$UPDATE" = yes ]; then
+    SKIP="${SKIP:+$SKIP,}$UPDATE_SKIP"
+fi
 
 
 secure_boot_action_block() {
@@ -805,6 +831,17 @@ print_summary() {
 
 
 main() {
+    if [ "$DRYRUN" = yes ]; then
+        local s id title
+        echo "Sections that would run:"
+        for s in "${SECTIONS[@]}"; do
+            id="${s%%:*}"; title="${s##*:}"
+            if [ -n "$ONLY" ] && ! in_list "$id" "$ONLY"; then continue; fi
+            if [ -n "$SKIP" ] && in_list "$id" "$SKIP"; then continue; fi
+            printf '  %-3s %s\n' "$id" "$title"
+        done
+        return 0
+    fi
     require_not_root
     sudo_keepalive
     preflight_secure_boot
