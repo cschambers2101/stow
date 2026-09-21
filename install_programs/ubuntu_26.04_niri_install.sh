@@ -80,7 +80,7 @@ list_sections() {
     done
 }
 
-ONLY=""; SKIP=""; FROM=""; UPDATE=no; DRYRUN=no
+ONLY=""; SKIP=""; FROM=""; UPDATE=no; DRYRUN=no; RAN=""
 while [ $# -gt 0 ]; do
     case "$1" in
         --list) list_sections; exit 0 ;;
@@ -372,7 +372,7 @@ DESKTOP
 s05_dank_stack() {
     local attempt ok=no
     for attempt in 1 2 3; do
-        if curl -fsSL "$DANKINSTALL_URL" | sh -s -- \
+        if curl -fsSL "$DANKINSTALL_URL" | DMS_PRIVESC=sudo sh -s -- \
             --compositor niri --term alacritty --include-deps dms-greeter \
             --danksearch --dankcalendar --yes; then
             ok=yes
@@ -846,6 +846,14 @@ CONF
 
 
 print_summary() {
+    if [ -n "$ONLY" ] || [ -n "$FROM" ] || [ "$UPDATE" = yes ]; then
+        echo ""
+        if [ -n "$RAN" ]; then log "Done: section(s) $RAN."; else warn "no section matched - see --list."; fi
+        if [ "$SECURE_BOOT" = on ] || [ "$SECURE_BOOT" = unknown ]; then
+            secure_boot_action_block
+        fi
+        return 0
+    fi
     echo ""
     echo "-------------------------------------------------------"
     echo "SETUP COMPLETE."
@@ -906,6 +914,7 @@ main() {
         if [ -n "$SKIP" ] && in_list "$id" "$SKIP"; then log "Skipping $id: $title"; continue; fi
         section "$id. $title"
         "$fn"
+        RAN="${RAN:+$RAN, }$id"
     done
     print_summary
 }
