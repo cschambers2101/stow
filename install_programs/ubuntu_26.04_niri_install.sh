@@ -594,9 +594,11 @@ s10_dotfiles() {
 
     if have_cmd dms-greeter || have_cmd dms; then
         log "Syncing settings, theme and wallpaper into the greeter..."
-        local sync=(dms greeter sync)
-        have_cmd dms-greeter && sync=(dms-greeter sync)
-        if DMS_PRIVESC=sudo "${sync[@]}"; then
+        local sync=()
+        mapfile -t sync < <(greeter_sync_cmd) || true
+        if [ "${#sync[@]}" -eq 0 ]; then
+            warn "$GREETER_STALE_HINT"
+        elif DMS_PRIVESC=sudo "${sync[@]}"; then
             log "Greeter synced."
             dms auth resolve-lock --quiet >/dev/null 2>&1 || warn "'dms auth resolve-lock' failed - the lock screen builds its PAM stack on first use instead."
         else

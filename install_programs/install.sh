@@ -294,9 +294,11 @@ if [ "$CHANGED" = no ] && [ "$FORCE_GREETER" = no ]; then
 elif [ -z "${WAYLAND_DISPLAY:-}" ] && [ ! -t 0 ] && [ "$FORCE_GREETER" = no ]; then
     warn "no graphical session and no tty - skipping the greeter sync. Run 'dms-greeter sync' when next at the desktop."
 elif have_cmd dms-greeter || have_cmd dms; then
-    sync=(dms greeter sync)
-    have_cmd dms-greeter && sync=(dms-greeter sync)
-    if DMS_PRIVESC=sudo "${sync[@]}"; then
+    sync=()
+    mapfile -t sync < <(greeter_sync_cmd) || true
+    if [ "${#sync[@]}" -eq 0 ]; then
+        warn "$GREETER_STALE_HINT"
+    elif DMS_PRIVESC=sudo "${sync[@]}"; then
         log "greeter synced"
     else
         warn "greeter sync failed - re-run '${sync[*]}' by hand."

@@ -18,6 +18,8 @@ S6C_PSK_DEFAULT='!BY0D!S6C'
 NVM_VERSION="v0.40.3"
 NVM_HOME="$HOME/.nvm"
 YTDLP_URL="https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp"
+GREETER_PPA="ppa:avengemedia/danklinux"
+GREETER_STALE_HINT="no greeter sync command on this machine - /usr/bin/dms-greeter is the old launcher wrapper, which has no subcommands. Upgrade it with 'sudo apt update && sudo apt install dms-greeter' ($GREETER_PPA), then run 'dms-greeter sync'."
 TPM_REPO="https://github.com/tmux-plugins/tpm"
 CLAUDE_INSTALL_URL="https://claude.ai/install.sh"
 CHROME_KEY_URL="https://dl.google.com/linux/linux_signing_key.pub"
@@ -61,6 +63,21 @@ pkg_installed() { dpkg -s "$1" 2>/dev/null | grep -q '^Status: install ok instal
 is_root() { [ "$(id -u)" -eq 0 ]; }
 require_not_root() { is_root && die "run this as your normal user, not root."; return 0; }
 require_cmds() { local c; for c in "$@"; do have_cmd "$c" || die "$c is required but not installed."; done; }
+
+greeter_sync_cmd() {
+    local help=""
+    if have_cmd dms-greeter; then
+        help="$(dms-greeter --help 2>&1 || true)"
+        case "$help" in
+            *"Available Commands:"*sync*) printf '%s\n' dms-greeter sync; return 0 ;;
+        esac
+    fi
+    if have_cmd dms && dms greeter --help >/dev/null 2>&1; then
+        printf '%s\n' dms greeter sync
+        return 0
+    fi
+    return 1
+}
 
 sudo_keepalive() {
     sudo true
