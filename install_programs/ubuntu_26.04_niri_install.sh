@@ -23,6 +23,7 @@ SECTIONS=(
     "3b:s03b_rtw89_quirk:Realtek rtw89 wifi quirk"
     "4:s04_desktop_base:Ubuntu desktop base"
     "5:s05_dank_stack:Dank / niri stack"
+    "5b:s05b_dms_currency:DMS package currency"
     "6:s06_packages:Packages from the list"
     "6a:s06a_file_managers:Yazi repo and Nemo defaults"
     "7:s07_chrome:Google Chrome"
@@ -380,6 +381,43 @@ s05_dank_stack() {
         [ "$attempt" -lt 3 ] && sleep 60
     done
     die "dankinstall failed three times - re-run this script later."
+}
+
+s05b_dms_currency() {
+    apt_update
+    local pkg upgraded=no behind=""
+    for pkg in $DMS_LIVE_SAFE_PKGS; do
+        pkg_installed "$pkg" || continue
+        if pkg_behind "$pkg"; then
+            log "Upgrading $pkg $(pkg_version "$pkg") -> $(pkg_candidate "$pkg") - not a running process while a session is open."
+            if apt_install_soft "$pkg"; then upgraded=yes; fi
+        fi
+    done
+    for pkg in $DMS_SESSION_PKGS; do
+        pkg_installed "$pkg" || continue
+        if pkg_behind "$pkg"; then
+            behind="${behind:+$behind, }$pkg $(pkg_version "$pkg") -> $(pkg_candidate "$pkg")"
+        fi
+    done
+    if [ "$upgraded" = yes ]; then
+        local sync=()
+        mapfile -t sync < <(greeter_sync_cmd) || true
+        if [ "${#sync[@]}" -eq 0 ]; then
+            warn "$GREETER_STALE_HINT"
+        elif DMS_PRIVESC=sudo "${sync[@]}"; then
+            log "Greeter synced after the upgrade."
+        else
+            warn "greeter sync failed after the upgrade - re-run '${sync[*]}' by hand."
+        fi
+    fi
+    if [ -n "$behind" ]; then
+        warn "DMS session packages are behind: $behind"
+        warn "They run inside the live session, so this section leaves them. Upgrade deliberately with '$0 --only 5' and reboot afterwards."
+    fi
+    if [ "$upgraded" = no ] && [ -z "$behind" ]; then
+        log "DMS packages are current."
+    fi
+    return 0
 }
 
 s06_packages() {

@@ -19,6 +19,8 @@ NVM_VERSION="v0.40.3"
 NVM_HOME="$HOME/.nvm"
 YTDLP_URL="https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp"
 GREETER_PPA="ppa:avengemedia/danklinux"
+DMS_LIVE_SAFE_PKGS="dms-greeter"
+DMS_SESSION_PKGS="dms quickshell dgop danksearch dankcalendar-git"
 GREETER_STALE_HINT="no greeter sync command on this machine - /usr/bin/dms-greeter is the old launcher wrapper, which has no subcommands. Upgrade it with 'sudo apt update && sudo apt install dms-greeter' ($GREETER_PPA), then run 'dms-greeter sync'."
 TPM_REPO="https://github.com/tmux-plugins/tpm"
 CLAUDE_INSTALL_URL="https://claude.ai/install.sh"
@@ -60,6 +62,15 @@ trap run_cleanup EXIT
 
 have_cmd() { command -v "$1" >/dev/null 2>&1; }
 pkg_installed() { dpkg -s "$1" 2>/dev/null | grep -q '^Status: install ok installed'; }
+pkg_version() { dpkg-query -W -f='${Version}' "$1" 2>/dev/null; }
+pkg_candidate() { LC_ALL=C apt-cache policy "$1" 2>/dev/null | awk '/Candidate:/ {c=$2} END {print c}'; }
+pkg_behind() {
+    local inst cand
+    inst="$(pkg_version "$1")" || return 1
+    cand="$(pkg_candidate "$1")"
+    [ -n "$inst" ] && [ -n "$cand" ] && [ "$cand" != "(none)" ] || return 1
+    dpkg --compare-versions "$inst" lt "$cand"
+}
 is_root() { [ "$(id -u)" -eq 0 ]; }
 require_not_root() { is_root && die "run this as your normal user, not root."; return 0; }
 require_cmds() { local c; for c in "$@"; do have_cmd "$c" || die "$c is required but not installed."; done; }
