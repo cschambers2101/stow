@@ -370,17 +370,22 @@ DESKTOP
 }
 
 s05_dank_stack() {
-    local attempt
+    local attempt ok=no
     for attempt in 1 2 3; do
         if curl -fsSL "$DANKINSTALL_URL" | sh -s -- \
             --compositor niri --term alacritty --include-deps dms-greeter \
             --danksearch --dankcalendar --yes; then
-            return 0
+            ok=yes
+            break
         fi
         warn "dankinstall attempt $attempt of 3 failed (Launchpad or the PPA mirror is often the cause)."
         [ "$attempt" -lt 3 ] && sleep 60
     done
-    die "dankinstall failed three times - re-run this script later."
+    [ "$ok" = yes ] || die "dankinstall failed three times - re-run this script later."
+    local -a pkgs
+    read -ra pkgs <<<"$DMS_LIVE_SAFE_PKGS $DMS_SESSION_PKGS"
+    log "Bringing the Dank packages to the PPA candidate - dankinstall leaves installed ones as they are."
+    apt_install_soft "${pkgs[@]}"
 }
 
 s05b_dms_currency() {
