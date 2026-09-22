@@ -96,8 +96,29 @@ sudo_keepalive() {
     add_cleanup "kill $! 2>/dev/null"
 }
 
+# The lists lock is not covered by the DPkg::Lock::Timeout s01 installs -- that
+# governs the dpkg locks, and apt has no equivalent for /var/lib/apt/lists/lock.
+# apt-daily.timer firing mid-build is enough to lose it (dell-ubuntu, 22 Sep 2026),
+# and apt-get gives up instantly, so retry. Always returns 0: callers run under
+# `set -e` and a stale index is a warning, not a reason to stop the build.
 apt_update() {
-    sudo apt-get update || warn "apt update reported an error (usually a post-invoke hook, not the index) - continuing."
+    local attempt rc out
+    out="$(mktemp)"
+    add_cleanup "rm -f '$out'"
+    for attempt in 1 2 3 4; do
+        rc=0
+        sudo apt-get update 2>&1 | tee "$out" || rc=$?
+        [ "$rc" -eq 0 ] && return 0
+        if ! grep -qE 'Could not get lock|Unable to lock' "$out"; then
+            warn "apt update reported an error (often a post-invoke hook, not the index) - continuing."
+            return 0
+        fi
+        [ "$attempt" -lt 4 ] || break
+        warn "apt update lost a lock race (attempt $attempt of 4) - retrying in ${S6C_APT_RETRY_SLEEP:-15}s."
+        sleep "${S6C_APT_RETRY_SLEEP:-15}"
+    done
+    warn "apt update could not get the lists lock after 4 tries - THE INDEX WAS NOT REFRESHED."
+    return 0
 }
 apt_install() { sudo apt-get install -y "$@"; }
 apt_install_soft() { sudo apt-get install -y "$@" || warn "could not install: $*"; }
