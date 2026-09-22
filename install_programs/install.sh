@@ -54,9 +54,23 @@ if [ -z "${S6C_INSTALL_PHASE_B:-}" ]; then
 
     [ "$(id -u)" -eq 0 ] && a_die "run this as your normal user, not root."
 
-    if ! command -v git >/dev/null 2>&1; then
-        a_head "Installing git"
-        sudo apt update && sudo apt install -y git || a_die "could not install git."
+    # Keep this list in step with `require_cmds git stow` in Phase B. Bootstrapping
+    # git alone was the 21 Sep 2026 student failure: stow is in the package list and
+    # the installer does install it, but the Phase B assertion aborts the run long
+    # before the installer is reached, so that step could never run.
+    bootstrap_missing=""
+    for c in git stow; do
+        command -v "$c" >/dev/null 2>&1 || bootstrap_missing="$bootstrap_missing $c"
+    done
+    if [ -n "$bootstrap_missing" ]; then
+        a_head "Installing bootstrap prerequisites:$bootstrap_missing"
+        # Only when something is missing: the build sections call apt_update
+        # themselves, and a stale index fails the install below on a machine
+        # that has not updated in months.
+        sudo apt-get update || a_say "apt update reported an error - continuing."
+        # shellcheck disable=SC2086 # deliberate word splitting: a space-separated list
+        sudo apt-get install -y $bootstrap_missing \
+            || a_die "could not install:$bootstrap_missing"
     fi
 
     if ssh -T -o BatchMode=yes -o ConnectTimeout=5 \
