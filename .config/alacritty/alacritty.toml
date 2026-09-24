@@ -25,13 +25,40 @@ save_to_clipboard = true
 [bell]
 duration = 0
 
-[keyboard]
-bindings = [
-  { key = "C",       mods = "Control|Shift", action = "Copy"  },
-  { key = "V",       mods = "Control|Shift", action = "Paste" },
-  { key = "N",       mods = "Control|Shift", action = "SpawnNewInstance" },
-  { key = "Equals",  mods = "Control|Shift", action = "IncreaseFontSize" },
-  { key = "Minus",   mods = "Control",       action = "DecreaseFontSize" },
-  { key = "Key0",    mods = "Control",       action = "ResetFontSize"    },
-  { key = "Enter",   mods = "Shift",         chars = "\u001B\r" },
-]
+[[keyboard.bindings]]
+key = "C"
+mods = "Control|Shift"
+action = "Copy"
+
+[[keyboard.bindings]]
+key = "V"
+mods = "Control|Shift"
+action = "Paste"
+
+[[keyboard.bindings]]
+key = "N"
+mods = "Control|Shift"
+action = "SpawnNewInstance"
+
+[[keyboard.bindings]]
+key = "Equals"
+mods = "Control|Shift"
+action = "IncreaseFontSize"
+
+[[keyboard.bindings]]
+key = "Minus"
+mods = "Control"
+action = "DecreaseFontSize"
+
+[[keyboard.bindings]]
+key = "Key0"
+mods = "Control"
+action = "ResetFontSize"
+
+# Shift+Enter for Claude Code. Written as a [[keyboard.bindings]] table, not an
+# inline array, so Claude Code's first-run terminal setup can append its own
+# table without making the file invalid TOML (24 Sep 2026).
+[[keyboard.bindings]]
+key = "Enter"
+mods = "Shift"
+chars = "\u001B\r"
