@@ -441,6 +441,14 @@ else
             "$(lspci -nnk 2>/dev/null | grep -A3 -iE 'vga compatible|3d controller' | grep -i 'driver in use' | head -1 | sed 's/.*: //')"
         ok  "nvidia_drm loaded" sh -c 'lsmod | grep -q "^nvidia_drm"'
         ok  "nvidia-smi responds" sh -c 'nvidia-smi -L >/dev/null 2>&1'
+        NEWEST_K="$(newest_installed_kernel)"
+        if [ -z "$NEWEST_K" ]; then
+            skip "nvidia module for newest kernel" "no linux-image-* package found"
+        elif kernel_has_module "$NEWEST_K" nvidia; then
+            pass "nvidia module for newest kernel" "$NEWEST_K"
+        else
+            fail "nvidia module for newest kernel" "$NEWEST_K has no nvidia module — the next reboot is a black screen"
+        fi
         if lsmod | grep -q '^nouveau'; then
             fail "nouveau not loaded" "nouveau is loaded alongside nvidia"
         else

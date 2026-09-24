@@ -258,12 +258,18 @@ s01_apt_sources() {
 }
 
 s02_kernel_build_tools() {
+    local -a nvidia=()
+    mapfile -t nvidia < <(nvidia_meta_pkgs)
+    if [ "${#nvidia[@]}" -gt 0 ]; then
+        log "NVIDIA driver installed - moving ${nvidia[*]} in the same transaction as the kernel."
+    fi
     apt_install \
         linux-generic-hwe-26.04 \
         linux-headers-generic-hwe-26.04 \
         "linux-headers-$(uname -r)" \
         build-essential dkms ubuntu-drivers-common pciutils usbutils \
-        software-properties-common libnss3-tools git curl wget stow
+        software-properties-common libnss3-tools git curl wget stow \
+        ${nvidia[@]+"${nvidia[@]}"}
 }
 
 s02a_oakford_ca() {
@@ -277,9 +283,16 @@ s03_graphics() {
     apt_install mesa-va-drivers mesa-vulkan-drivers libva2 vainfo vulkan-tools
 
     if gpu_is nvidia; then
-        log "NVIDIA GPU detected - installing drivers..."
-        sudo ubuntu-drivers install --include-dkms || sudo ubuntu-drivers autoinstall \
-            || warn "NVIDIA driver install failed - check 'ubuntu-drivers devices'."
+        local -a nvidia=()
+        mapfile -t nvidia < <(nvidia_meta_pkgs)
+        if [ "${#nvidia[@]}" -gt 0 ]; then
+            log "NVIDIA driver already installed - bringing ${nvidia[*]} to the archive candidate (ubuntu-drivers leaves installed packages alone)."
+            apt_install_soft "${nvidia[@]}"
+        else
+            log "NVIDIA GPU detected - installing drivers..."
+            sudo ubuntu-drivers install --include-dkms || sudo ubuntu-drivers autoinstall \
+                || warn "NVIDIA driver install failed - check 'ubuntu-drivers devices'."
+        fi
         write_root_file /etc/modprobe.d/blacklist-nouveau.conf <<'CONF'
 blacklist nouveau
 options nouveau modeset=0
@@ -289,6 +302,7 @@ options nvidia_drm modeset=1
 CONF
         sudo dracut -f
         sudo touch /run/reboot-required
+        nvidia_module_guard
     fi
     if gpu_is intel; then
         log "Intel GPU detected - installing VA-API drivers..."
@@ -754,6 +768,19 @@ s14_post_install() {
     fi
 
     bash "$HERE/setup-suspend.sh" || warn "setup-suspend.sh failed - check suspend/resume by hand."
+
+    local greeter_home gdir
+    greeter_home="$(getent passwd greeter | cut -d: -f6)"
+    if [ -n "$greeter_home" ] && [ -f /usr/lib/systemd/user/dsearch.service ]; then
+        gdir="$greeter_home/.config/systemd/user"
+        if [ ! -L "$gdir/dsearch.service" ]; then
+            log "Masking dsearch for the greeter user - it competes with the session's dsearch for port 43654."
+            sudo install -d -o greeter -g greeter -m 0755 "$gdir"
+            sudo ln -sfn /dev/null "$gdir/dsearch.service"
+            sudo systemctl --user --machine=greeter@.host daemon-reload 2>/dev/null || true
+            sudo systemctl --user --machine=greeter@.host stop dsearch.service 2>/dev/null || true
+        fi
+    fi
 
     sudo systemctl enable udisks2
     sudo systemctl enable cups         || true

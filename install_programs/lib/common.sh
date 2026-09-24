@@ -358,6 +358,37 @@ PYEOF
 detect_gpu() { GPU_INFO="$(lspci -nn 2>/dev/null | grep -iE 'vga|3d controller|display controller' || true)"; }
 gpu_is() { printf '%s' "${GPU_INFO:-}" | grep -qiE "$1"; }
 
+nvidia_meta_pkgs() {
+    { dpkg-query -W -f '${db:Status-Abbrev} ${Package}\n' \
+        'linux-modules-nvidia-*-generic-hwe-26.04' 'nvidia-driver-*' 2>/dev/null || true; } \
+        | awk '$1 == "ii" {print $2}'
+}
+newest_installed_kernel() {
+    { dpkg-query -W -f '${db:Status-Abbrev} ${Package}\n' 'linux-image-[0-9]*' 2>/dev/null || true; } \
+        | awk '$1 == "ii" {sub(/^linux-image-/, "", $2); print $2}' | sort -V | tail -1
+}
+kernel_has_module() { modinfo -k "$1" "$2" >/dev/null 2>&1; }
+
+nvidia_module_guard() {
+    local kernel pkg=""
+    kernel="$(newest_installed_kernel)"
+    [ -n "$kernel" ] || return 0
+    if kernel_has_module "$kernel" nvidia; then
+        log "NVIDIA module present for the newest installed kernel ($kernel)."
+        return 0
+    fi
+    pkg="$(nvidia_meta_pkgs | sed -n 's/^\(linux-modules-nvidia-.*\)-generic-hwe-26\.04$/\1/p' | head -1)"
+    if [ -n "$pkg" ]; then
+        warn "kernel $kernel has no NVIDIA module - installing ${pkg}-${kernel}."
+        apt_install_soft "${pkg}-${kernel}"
+        if kernel_has_module "$kernel" nvidia; then
+            log "NVIDIA module present for $kernel."
+            return 0
+        fi
+    fi
+    die "kernel $kernel is installed but has no NVIDIA module - the next reboot would come up with a BLACK SCREEN. If that happens, boot the previous kernel from GRUB > Advanced options. Fix: sudo apt-get install ${pkg:-linux-modules-nvidia-<version>-open}-${kernel}"
+}
+
 secure_boot_state() {
     local state=unknown
     if have_cmd mokutil; then
