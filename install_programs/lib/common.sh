@@ -21,6 +21,8 @@ YTDLP_URL="https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp"
 GREETER_PPA="ppa:avengemedia/danklinux"
 DMS_LIVE_SAFE_PKGS="dms-greeter"
 DMS_SESSION_PKGS="dms quickshell dgop danksearch dankcalendar-git"
+GREETD_GPU_WAIT="/etc/systemd/system/greetd.service.d/wait-for-gpu.conf"
+GDM_GREETER_GPUS="1002:15e7"
 GREETER_STALE_HINT="no greeter sync command on this machine - /usr/bin/dms-greeter is the old launcher wrapper, which has no subcommands. Upgrade it with 'sudo apt update && sudo apt install dms-greeter' ($GREETER_PPA), then run 'dms-greeter sync'."
 TPM_REPO="https://github.com/tmux-plugins/tpm"
 CLAUDE_INSTALL_URL="https://claude.ai/install.sh"
@@ -357,6 +359,12 @@ PYEOF
 
 detect_gpu() { GPU_INFO="$(lspci -nn 2>/dev/null | grep -iE 'vga|3d controller|display controller' || true)"; }
 gpu_is() { printf '%s' "${GPU_INFO:-}" | grep -qiE "$1"; }
+greeter_needs_gdm() {
+    local id
+    detect_gpu
+    for id in $GDM_GREETER_GPUS; do gpu_is "$id" && return 0; done
+    return 1
+}
 
 nvidia_meta_pkgs() {
     { dpkg-query -W -f '${db:Status-Abbrev} ${Package}\n' \

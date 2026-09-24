@@ -785,7 +785,22 @@ s14_post_install() {
     sudo systemctl enable udisks2
     sudo systemctl enable cups         || true
     sudo systemctl enable avahi-daemon || true
-    sudo systemctl enable greetd
+    log "Holding greetd until a GPU render node exists, so niri does not bind to simpledrm..."
+    write_root_file "$GREETD_GPU_WAIT" <<'EOF'
+[Service]
+ExecStartPre=/bin/sh -c 'for i in $(seq 1 200); do ls /dev/dri/renderD* >/dev/null 2>&1 && exit 0; sleep 0.1; done; exit 0'
+EOF
+    sudo systemctl daemon-reload
+    if greeter_needs_gdm; then
+        warn "this GPU loses its eDP link under the niri greeter - using GDM as the login screen; niri stays the session."
+        sudo systemctl disable greetd 2>/dev/null || true
+        sudo systemctl enable gdm
+        sudo busctl --system call org.freedesktop.Accounts "/org/freedesktop/Accounts/User$(id -u)" \
+            org.freedesktop.Accounts.User SetSession s niri \
+            || warn "could not make niri the default GDM session - pick niri at the login screen once."
+    else
+        sudo systemctl enable greetd
+    fi
     sudo systemctl set-default graphical.target
 }
 

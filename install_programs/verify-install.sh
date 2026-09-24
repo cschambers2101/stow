@@ -66,14 +66,26 @@ if systemctl --user show-environment 2>/dev/null | grep -qE '^(WAYLAND_DISPLAY|D
 else
     skip "no failed user units" "no graphical session — run from a desktop terminal, not SSH"
 fi
-eq "greetd active" "active" "$(systemctl is-active greetd 2>/dev/null)"
-eq "display-manager is greetd" "greetd.service" \
-   "$(basename "$(readlink -f /etc/systemd/system/display-manager.service 2>/dev/null)" 2>/dev/null)"
+DM_UNIT="$(basename "$(readlink -f /etc/systemd/system/display-manager.service 2>/dev/null)" 2>/dev/null)"
 GDM_STATE="$(systemctl is-enabled gdm.service 2>/dev/null | head -1 | xargs)"
-case "${GDM_STATE:-absent}" in
-    disabled|masked|absent) pass "gdm not enabled" "${GDM_STATE:-not installed}" ;;
-    *)                      fail "gdm not enabled" "gdm is '$GDM_STATE' — it will fight greetd" ;;
-esac
+if greeter_needs_gdm; then
+    eq "display-manager is gdm (GPU quirk)" "gdm.service" "$DM_UNIT"
+    eq "gdm active" "active" "$(systemctl is-active gdm 2>/dev/null)"
+    case "$(systemctl is-enabled greetd 2>/dev/null | head -1 | xargs)" in
+        enabled) fail "greetd not enabled" "greetd is enabled — it will fight gdm" ;;
+        *)       pass "greetd not enabled" "GPU quirk" ;;
+    esac
+    has "gdm default session is niri" '"niri"' \
+        "$(busctl --system get-property org.freedesktop.Accounts "/org/freedesktop/Accounts/User$(id -u)" org.freedesktop.Accounts.User Session 2>/dev/null)"
+else
+    eq "greetd active" "active" "$(systemctl is-active greetd 2>/dev/null)"
+    eq "display-manager is greetd" "greetd.service" "$DM_UNIT"
+    case "${GDM_STATE:-absent}" in
+        disabled|masked|absent) pass "gdm not enabled" "${GDM_STATE:-not installed}" ;;
+        *)                      fail "gdm not enabled" "gdm is '$GDM_STATE' — it will fight greetd" ;;
+    esac
+fi
+ok "greetd waits for the GPU" test -f "$GREETD_GPU_WAIT"
 
 echo "--- Qt plugins (silent bugs 7 and 8) ---"
 pkg "qt6-svg-plugins" "qt6-svg-plugins"
