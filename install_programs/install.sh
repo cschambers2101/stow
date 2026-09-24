@@ -7,7 +7,11 @@
 # Both forms do the same thing. The script works out what the machine needs:
 # clone and full install, or converge on the latest build and update.
 #
-# Usage: install.sh [--strict] [--no-pull] [--greeter] [--no-reboot] [--help]
+# Usage: install.sh [--strict] [--no-pull] [--greeter] [--no-reboot] [--drive] [--help]
+#
+# --drive runs the interactive Google Drive (rclone) setup for a staff machine.
+# Without it, a machine that already has the gdrive_s6c remote gets its mount
+# unit converged on every run; a machine without one is left alone.
 #
 # On an existing machine it also runs the installer's update-safe sections, so a
 # new package, driver or service reaches the machine. `ubuntu_26.04_niri_install.sh
@@ -35,13 +39,15 @@ STRICT=no
 PULL=yes
 FORCE_GREETER=no
 NO_REBOOT=no
+DRIVE=no
 for arg in "$@"; do
     case "$arg" in
         --strict)   STRICT=yes ;;
         --no-pull)  PULL=no ;;
         --greeter)  FORCE_GREETER=yes ;;
         --no-reboot) NO_REBOOT=yes ;;
-        --help|-h)  sed -n '2,10p' "$0"; exit 0 ;;
+        --drive)    DRIVE=yes ;;
+        --help|-h)  sed -n '2,14p' "$0"; exit 0 ;;
         *)          echo "unknown option: $arg" >&2; exit 2 ;;
     esac
 done
@@ -184,6 +190,8 @@ fi
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=lib/common.sh
 . "$HERE/lib/common.sh"
+# shellcheck source=lib/rclone.sh
+. "$HERE/lib/rclone.sh"
 
 PRESERVE_DIR="${S6C_PRESERVE_DIR:-$PRESERVE_DIR}"
 PRESERVED_COUNT="${S6C_PRESERVED_COUNT:-0}"
@@ -333,6 +341,19 @@ else
             && log "   gh is authorised - set as the git credential helper." \
             || warn "'gh auth setup-git' failed - HTTPS push will ask for a username."
     fi
+fi
+
+section "Google Drive mount"
+# Opt-in, because staff machines mount the S6C Drive and student machines never
+# will: with no gdrive_s6c remote this is a one-line skip. --drive runs the
+# interactive first-time setup. Otherwise the unit is regenerated from
+# lib/rclone.sh and the mount restarted only when the text differs. Until
+# 24 Sep 2026 nothing converged the generated unit, so the 19 Sep cache-mode
+# change never reached ubuntu-craig-office and its session starts took minutes.
+if [ "$DRIVE" = yes ]; then
+    rclone_setup_drive
+else
+    rclone_converge_mount
 fi
 
 section "Check"
