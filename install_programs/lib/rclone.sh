@@ -40,7 +40,7 @@ rclone_mounted() { mountpoint -q "$RCLONE_MOUNT_DIR" 2>/dev/null; }
 
 rclone_wait_mounted() {
     local _i
-    for _i in $(seq 1 "${1:-$RCLONE_MOUNT_WAIT}"); do
+    for _i in $(seq 1 "$RCLONE_MOUNT_WAIT"); do
         rclone_mounted && return 0
         sleep 1
     done
