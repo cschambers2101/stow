@@ -87,10 +87,10 @@ rclone_setup_drive() {
     if rclone_remote_configured; then
         log "rclone remote '$RCLONE_REMOTE' already configured"
     else
-        log "Starting rclone configuration. Name the remote '$RCLONE_REMOTE', storage type 'drive', accept every other default."
-        sleep 2
-        rclone config
-        rclone_remote_configured || die "no remote named '$RCLONE_REMOTE' after rclone config - re-run with --drive and use that exact name."
+        log "Creating the rclone remote '$RCLONE_REMOTE'. A browser will open for the Google sign-in: use the account that owns the S6C Drive."
+        rclone config create "$RCLONE_REMOTE" drive scope drive \
+            || die "rclone could not create the '$RCLONE_REMOTE' remote - see above, then re-run with --drive."
+        rclone_remote_configured || die "'$RCLONE_REMOTE' is not in 'rclone listremotes' after config create - re-run with --drive."
     fi
     rclone_converge_mount
     bash "$INSTALL_DIR/setup-suspend.sh" || warn "setup-suspend.sh failed - stop the mount by hand before suspending."
