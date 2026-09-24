@@ -34,7 +34,7 @@ After=network-online.target
 
 [Service]
 Type=simple
-ExecStart=/usr/bin/rclone mount $REMOTE_NAME: $MOUNT_DIR --vfs-cache-mode full --vfs-cache-max-age 24h --vfs-cache-max-size 10G --vfs-read-chunk-size 32M
+ExecStart=/usr/bin/rclone mount $REMOTE_NAME: $MOUNT_DIR --vfs-cache-mode full --vfs-cache-max-age 24h --vfs-cache-max-size 10G --vfs-read-chunk-size 32M --dir-cache-time 1h --poll-interval 1m
 ExecStop=/usr/bin/fusermount -uz $MOUNT_DIR
 Restart=on-failure
 RestartSec=10
