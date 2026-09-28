@@ -8,6 +8,7 @@ mapfile -t FILES < <(
     {
         find install_programs -path install_programs/archived -prune -o -type f -name '*.sh' -print
         find install_programs/lib install_programs/suspend -type f
+        printf '%s\n' install_programs/gnome/s6c-gnome-keys
         find .local/bin -maxdepth 1 -type f ! -name '*.py' ! -name '*.pyc'
         find .config -type f -name '*.sh'
         printf '%s\n' .bashrc .bash_aliases .bash_functions .bash_profile .bash_x11
@@ -32,7 +33,7 @@ while IFS= read -r f; do
         100755|"") ;;
         *) echo "not executable in git: $f (git update-index --chmod=+x)"; rc=1 ;;
     esac
-done < <(find .local/bin -maxdepth 1 -type f ! -name '*.pyc'; find .config -type f -name '*.sh'; find install_programs -maxdepth 2 -type f -name '*.sh' ! -path '*/lib/*'; printf '%s\n' install_programs/suspend/rtw89-reload)
+done < <(find .local/bin -maxdepth 1 -type f ! -name '*.pyc'; find .config -type f -name '*.sh'; find install_programs -maxdepth 2 -type f -name '*.sh' ! -path '*/lib/*'; printf '%s\n' install_programs/suspend/rtw89-reload install_programs/gnome/s6c-gnome-keys)
 if ! command -v shellcheck >/dev/null 2>&1; then
     echo "lint: shellcheck is NOT installed - only the bash -n and mode passes ran." >&2
     echo "lint: install it (sudo apt install shellcheck) for the real lint." >&2

@@ -88,6 +88,8 @@ fwupd
 # bluetooth widget, blueman is the fallback for stubborn pairings.
 blueman
 gnome-disk-utility
+# Super+M and Ctrl+Alt+Delete in the Ubuntu session (installer section 5d).
+gnome-system-monitor
 simple-scan
 # seahorse manages the gnome-keyring where NM wifi/VPN secrets and any
 # SSH key passphrases end up.

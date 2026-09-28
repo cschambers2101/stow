@@ -25,6 +25,7 @@ SECTIONS=(
     "5:s05_dank_stack:Dank / niri stack"
     "5b:s05b_dms_currency:DMS package currency"
     "5c:s05c_hyprland:Hyprland compositor"
+    "5d:s05d_gnome_keys:GNOME keybindings"
     "6:s06_packages:Packages from the list"
     "6a:s06a_file_managers:Yazi repo and Nemo defaults"
     "7:s07_chrome:Google Chrome"
@@ -470,6 +471,18 @@ CONF
         *"${HYPR_PPA#ppa:}/"*) ;;
         *) warn "apt does not list $HYPR_PPA for hyprland - check $HYPR_PIN and the sources." ;;
     esac
+}
+
+s05d_gnome_keys() {
+    if ! pkg_installed gnome-shell || ! have_cmd dconf; then
+        warn "gnome-shell or dconf is not installed - run section 4 first. GNOME keybindings not set."
+        return 0
+    fi
+    sudo install -D -m 0644 "$GNOME_DIR/dconf-profile-user" "$DCONF_PROFILE"
+    sudo install -D -m 0644 "$GNOME_DIR/20-s6c-keybindings" "$DCONF_KEYFILE"
+    sudo install -D -m 0755 "$GNOME_DIR/s6c-gnome-keys" "$GNOME_KEYS_BIN"
+    sudo dconf update || die "dconf update failed - check $DCONF_KEYFILE."
+    log "GNOME keybindings set as system defaults; they apply from the next Ubuntu session login."
 }
 
 s06_packages() {

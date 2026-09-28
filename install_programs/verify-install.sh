@@ -24,6 +24,35 @@ pkg() { if dpkg -s "$2" 2>/dev/null | grep -q '^Status: install ok installed'; t
 
 have_sudo() { sudo -n true 2>/dev/null; }
 
+gnome_bindings() {
+    local s p
+    for s in org.gnome.desktop.wm.keybindings org.gnome.shell.keybindings org.gnome.mutter.keybindings \
+             org.gnome.mutter.wayland.keybindings org.gnome.settings-daemon.plugins.media-keys \
+             org.gnome.shell.extensions.tiling-assistant; do
+        gsettings list-recursively "$s" 2>/dev/null | awk -v s="$s" '$3 ~ /^\[?'\''/ {k=$2; $1=$2=""; print s" "k"\t"$0}'
+    done
+    for p in $(gsettings get org.gnome.settings-daemon.plugins.media-keys custom-keybindings 2>/dev/null | tr -d "[],'"); do
+        printf 'custom %s\t%s\n' "$p" "$(gsettings get "org.gnome.settings-daemon.plugins.media-keys.custom-keybinding:$p" binding 2>/dev/null)"
+    done
+}
+
+gnome_dupes_awk() {
+    cat <<'AWK'
+BEGIN { FS = "\t"; split("alt control shift super", order, " ") }
+{
+    n = split($2, part, "'")
+    for (i = 2; i <= n; i += 2) {
+        b = tolower(part[i]); if (b == "") continue
+        delete mods
+        while (match(b, /^<[^>]+>/)) { m = substr(b, 2, RLENGTH - 2); if (m == "ctrl" || m == "primary") m = "control"; mods[m] = 1; b = substr(b, RLENGTH + 1) }
+        key = ""; for (j = 1; j <= 4; j++) if (order[j] in mods) key = key "<" order[j] ">"
+        key = key b
+        if ((key in seen) && seen[key] != $1) printf "%s %s / %s; ", key, seen[key], $1; else seen[key] = $1
+    }
+}
+AWK
+}
+
 echo "Post-install verification — $(hostname) — $(date '+%Y-%m-%d %H:%M')"
 echo
 
@@ -133,6 +162,23 @@ else
     skip "hyprctl configerrors empty" "not in a Hyprland session"
     skip "hyprland keymap is UK" "not in a Hyprland session"
     skip "dms.service active" "not in a Hyprland session"
+fi
+
+echo "--- Ubuntu session keybindings ---"
+ok "dconf user profile current" cmp -s "$GNOME_DIR/dconf-profile-user" "$DCONF_PROFILE"
+ok "gnome keyfile current" cmp -s "$GNOME_DIR/20-s6c-keybindings" "$DCONF_KEYFILE"
+ok "dconf database compiled" test -s /etc/dconf/db/local -a ! /etc/dconf/db/local -ot "$DCONF_KEYFILE"
+ok "gnome cheat sheet installed" test -x "$GNOME_KEYS_BIN"
+pkg "gnome-system-monitor" "gnome-system-monitor"
+if have_cmd gsettings && gsettings list-schemas 2>/dev/null | grep -qx org.gnome.shell.keybindings; then
+    eq "Super+Q closes" "['<Super>q']" "$(gsettings get org.gnome.desktop.wm.keybindings close 2>/dev/null)"
+    eq "Super+1 is workspace 1" "['<Super>1']" "$(gsettings get org.gnome.desktop.wm.keybindings switch-to-workspace-1 2>/dev/null)"
+    eq "Super+Escape locks" "['<Super>Escape']" "$(gsettings get org.gnome.settings-daemon.plugins.media-keys screensaver 2>/dev/null)"
+    has "ubuntu dock disabled" "ubuntu-dock@ubuntu.com" "$(gsettings get org.gnome.shell disabled-extensions 2>/dev/null)"
+    GNOME_DUPES="$(gnome_bindings | awk -f <(gnome_dupes_awk))"
+    eq "no gnome key bound twice" "" "$GNOME_DUPES"
+else
+    skip "gnome keybindings live" "no GNOME schemas on this machine"
 fi
 
 echo "--- Qt plugins (silent bugs 7 and 8) ---"

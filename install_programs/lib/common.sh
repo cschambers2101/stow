@@ -46,6 +46,10 @@ HYPR_PKGS="hyprland hyprland-guiutils xdg-desktop-portal-hyprland xwayland"
 HYPR_PIN="/etc/apt/preferences.d/s6c-hyprland.pref"
 HYPR_UWSM_ENTRY="/usr/share/wayland-sessions/hyprland-uwsm.desktop"
 HYPR_MACHINE_LUA="$HOME/.config/hypr/dms/s6c-machine.lua"
+GNOME_DIR="$INSTALL_DIR/gnome"
+DCONF_PROFILE="/etc/dconf/profile/user"
+DCONF_KEYFILE="/etc/dconf/db/local.d/20-s6c-keybindings"
+GNOME_KEYS_BIN="/usr/local/bin/s6c-gnome-keys"
 GREETER_MEMORY="/var/cache/dms-greeter/.local/state/memory.json"
 
 if [ -t 2 ]; then
