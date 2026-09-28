@@ -213,14 +213,14 @@ binds {
     Mod+Equal { set-column-width "+10%"; }
     Mod+Shift+Minus { set-window-height "-10%"; }
     Mod+Shift+Equal { set-window-height "+10%"; }
-    Mod+Alt+Right { set-column-width "+20"; }
-    Mod+Alt+Left { set-column-width "-20"; }
-    Mod+Alt+Up { set-window-height "-20"; }
-    Mod+Alt+Down { set-window-height "+20"; }
-    Mod+Alt+L { set-column-width "+20"; }
-    Mod+Alt+H { set-column-width "-20"; }
-    Mod+Alt+K { set-window-height "-20"; }
-    Mod+Alt+J { set-window-height "+20"; }
+    Mod+Alt+Right hotkey-overlay-title="Grow window width" { set-column-width "+20"; }
+    Mod+Alt+Left hotkey-overlay-title="Shrink window width" { set-column-width "-20"; }
+    Mod+Alt+Up hotkey-overlay-title="Shrink window height" { set-window-height "-20"; }
+    Mod+Alt+Down hotkey-overlay-title="Grow window height" { set-window-height "+20"; }
+    Mod+Alt+L hotkey-overlay-title="Grow window width" { set-column-width "+20"; }
+    Mod+Alt+H hotkey-overlay-title="Shrink window width" { set-column-width "-20"; }
+    Mod+Alt+K hotkey-overlay-title="Shrink window height" { set-window-height "-20"; }
+    Mod+Alt+J hotkey-overlay-title="Grow window height" { set-window-height "+20"; }
 
     // === Screenshots ===
     XF86Launch1 { screenshot; }
