@@ -42,7 +42,7 @@ fi
 S6C_WM="${S6C_WM:-niri}"
 HYPR_PPA="ppa:cppiber/hyprland"
 HYPR_PPA_ORIGIN="LP-PPA-cppiber-hyprland"
-HYPR_PKGS="hyprland xdg-desktop-portal-hyprland xwayland"
+HYPR_PKGS="hyprland hyprland-guiutils xdg-desktop-portal-hyprland xwayland"
 HYPR_PIN="/etc/apt/preferences.d/s6c-hyprland.pref"
 HYPR_UWSM_ENTRY="/usr/share/wayland-sessions/hyprland-uwsm.desktop"
 HYPR_MACHINE_LUA="$HOME/.config/hypr/dms/s6c-machine.lua"
@@ -76,6 +76,7 @@ trap run_cleanup EXIT
 
 have_cmd() { command -v "$1" >/dev/null 2>&1; }
 wm_is_hyprland() { [ "$S6C_WM" = hyprland ]; }
+hypr_reload_if_running() { if [ -n "${HYPRLAND_INSTANCE_SIGNATURE:-}" ] && have_cmd hyprctl; then hyprctl reload >/dev/null 2>&1 || true; fi; }
 session_name() { if wm_is_hyprland; then printf 'hyprland'; else printf 'niri'; fi; }
 require_valid_wm() {
     case "$S6C_WM" in

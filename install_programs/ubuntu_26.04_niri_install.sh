@@ -646,6 +646,7 @@ s10_dotfiles() {
     fc-cache -f
     log "Creating the Hyprland files DMS generates and the repo does not track..."
     hypr_setup_generated
+    hypr_reload_if_running
 
     # settings.json is untracked (DMS owns it and rewrites it - see .gitignore).
     # Merge the S6C fleet keys in, adding only what is missing so a value the

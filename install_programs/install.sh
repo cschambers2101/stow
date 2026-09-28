@@ -307,6 +307,7 @@ fi
 stow -R .
 log "restowed from $(git -C "$DOTFILES_DIR" log --oneline -1)"
 hypr_setup_generated
+hypr_reload_if_running
 log "Hyprland generated files present"
 
 section "DankMaterialShell settings"
