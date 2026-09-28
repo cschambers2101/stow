@@ -1,0 +1,58 @@
+@import url("/usr/share/themes/Yaru-dark/gnome-shell/gnome-shell.css");
+
+stage { font-family: "Atkinson Hyperlegible Next", sans-serif; color: {{on_surface}} !important; }
+
+#panel, #panel.solid { background-color: {{surface_container_highest}} !important; }
+#panel .panel-button { color: {{on_surface}} !important; }
+#panel .panel-button:hover, #panel .panel-button:active, #panel .panel-button:checked, #panel .panel-button:focus { background-color: {{surface_container_highest}} !important; color: {{on_surface}} !important; }
+#panel .workspace-dot { background-color: {{on_surface_variant}} !important; }
+#panel .workspace-dot.active { background-color: {{primary_container}} !important; }
+
+.popup-menu-content, .candidate-popup-content, .quick-settings { background-color: {{surface_container_high}} !important; color: {{on_surface}} !important; border-color: {{outline_variant}} !important; }
+.popup-menu-item:hover, .popup-menu-item:focus, .popup-menu-item:selected { background-color: {{surface_container_highest}} !important; color: {{on_surface}} !important; }
+.popup-menu-item:checked, .popup-menu-item:active { background-color: {{primary_container}} !important; color: {{on_primary_container}} !important; }
+.popup-separator-menu-item .popup-separator-menu-item-separator { background-color: {{outline_variant}} !important; }
+
+.quick-toggle, .quick-menu-toggle .quick-toggle-arrow, .quick-settings-system-item .icon-button, .quick-settings .icon-button { background-color: {{surface_container_highest}} !important; color: {{on_surface}} !important; }
+.quick-toggle:hover, .quick-settings .icon-button:hover { background-color: {{surface_bright}} !important; }
+.quick-toggle:checked, .quick-menu-toggle .quick-toggle-arrow:checked { background-color: {{primary_container}} !important; color: {{on_primary_container}} !important; }
+.quick-toggle:checked:hover, .quick-menu-toggle .quick-toggle-arrow:checked:hover { background-color: {{primary_container_hover}} !important; }
+.quick-toggle-menu { background-color: {{surface_container_low}} !important; color: {{on_surface}} !important; }
+.quick-toggle-menu .header .icon.active { background-color: {{primary_container}} !important; color: {{on_primary_container}} !important; }
+
+.toggle-switch:checked { background-color: {{primary_container}} !important; }
+.slider { -barlevel-active-background-color: {{primary_container}} !important; -barlevel-background-color: {{outline_variant}} !important; -slider-handle-border-color: {{primary}} !important; color: {{primary}} !important; }
+
+#dash .dash-background, #dashtodockContainer .dash-background, #dashtodockContainer #dash .dash-background { background-color: {{surface_rgba92}} !important; }
+#dashtodockContainer .app-well-app-running-dot, .app-grid-running-dot, .app-well-app-running-dot { background-color: {{primary}} !important; }
+.dash-item-container .app-well-app:hover .overview-icon, .dash-item-container .show-apps:hover .overview-icon { background-color: {{surface_container_highest}} !important; }
+
+.search-entry { background-color: {{surface_container_high}} !important; color: {{on_surface}} !important; border-color: {{outline_variant}} !important; }
+.search-entry:focus { border-color: {{primary}} !important; }
+.search-section-content { background-color: {{surface_container_low}} !important; }
+.search-provider-icon:hover, .list-search-result:hover, .grid-search-result:hover, .search-provider-icon:selected, .list-search-result:selected, .grid-search-result:selected { background-color: {{surface_container_highest}} !important; }
+
+.workspace-thumbnail.active, .workspace-thumbnail:hover { border-color: {{primary}} !important; }
+.window-picker .window-clone-border, .window-clone-border { border-color: {{primary}} !important; }
+
+.modal-dialog, .end-session-dialog, .prompt-dialog { background-color: {{surface_container_high}} !important; color: {{on_surface}} !important; border-color: {{outline_variant}} !important; }
+.modal-dialog-button-box .button { background-color: {{surface_container_highest}} !important; color: {{on_surface}} !important; }
+.modal-dialog-button-box .button:hover { background-color: {{surface_bright}} !important; }
+.modal-dialog-button-box .button:default { background-color: {{primary_container}} !important; color: {{on_primary_container}} !important; }
+
+.message, .notification-banner { background-color: {{surface_container_high}} !important; color: {{on_surface}} !important; }
+.message:hover { background-color: {{surface_container_highest}} !important; }
+.calendar, .datemenu-today-button, .events-button, .world-clocks-button, .weather-button { color: {{on_surface}} !important; }
+.calendar-day:hover, .datemenu-today-button:hover, .events-button:hover { background-color: {{surface_container_highest}} !important; }
+.calendar-today, .calendar-today:selected { background-color: {{primary_container}} !important; color: {{on_primary_container}} !important; }
+.calendar-day-with-events { color: {{primary}} !important; }
+
+.osd-window { background-color: {{surface_container_high}} !important; color: {{on_surface}} !important; }
+.osd-window .level { -barlevel-active-background-color: {{primary_container}} !important; -barlevel-background-color: {{outline_variant}} !important; }
+
+.switcher-list, .workspace-switcher { background-color: {{surface_container_high}} !important; }
+.switcher-list .item-box:selected { background-color: {{surface_container_highest}} !important; }
+
+StScrollBar StButton#vhandle, StScrollBar StButton#hhandle { background-color: {{outline}} !important; }
+.button:focus, .icon-button:focus { box-shadow: inset 0 0 0 2px {{primary}} !important; }
+.quick-toggle:checked .quick-toggle-title, .quick-toggle:checked .quick-toggle-subtitle, .quick-toggle:checked .quick-toggle-icon, .quick-toggle:checked StLabel, .quick-toggle:checked StIcon, .quick-menu-toggle .quick-toggle-arrow:checked StIcon { color: {{on_primary_container}} !important; }
