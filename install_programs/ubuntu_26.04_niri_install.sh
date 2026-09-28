@@ -441,10 +441,6 @@ s05b_dms_currency() {
 }
 
 s05c_hyprland() {
-    if ! wm_is_hyprland; then
-        log "S6C_WM=$S6C_WM - Hyprland not requested, nothing to do."
-        return 0
-    fi
     if ! grep -rqs "cppiber/hyprland" /etc/apt/sources.list.d/; then
         sudo add-apt-repository -y "$HYPR_PPA" || die "could not add $HYPR_PPA."
     fi
@@ -648,10 +644,8 @@ s10_dotfiles() {
     fi
     cd "$HERE"
     fc-cache -f
-    if wm_is_hyprland; then
-        log "Creating the Hyprland files DMS generates and the repo does not track..."
-        hypr_setup_generated
-    fi
+    log "Creating the Hyprland files DMS generates and the repo does not track..."
+    hypr_setup_generated
 
     # settings.json is untracked (DMS owns it and rewrites it - see .gitignore).
     # Merge the S6C fleet keys in, adding only what is missing so a value the

@@ -68,13 +68,14 @@ when there is no terminal:
 TARGET_HOSTNAME='s6c-laptop-01' ./ubuntu_26.04_niri_install.sh
 ```
 
-**The compositor is a per-machine choice, niri by default.** Add `--wm hyprland`
-to `install.sh` (or set `S6C_WM=hyprland` for the installer) and the machine gets
-Hyprland from `ppa:cppiber/hyprland` as its default session, with DMS on top,
-alongside niri; both appear at the login screen and the greeter remembers the
-last one used. The choice is kept in `~/.local/state/s6c/wm`, so later update
-runs need no flag. niri is never removed: the login screen itself runs on it.
-`--wm niri` switches back. Neither switch needs a reboot, only a logout.
+**Two compositors, your pick at the login screen.** Every build installs both
+niri and Hyprland (from `ppa:cppiber/hyprland`), each with DMS on top, and the
+login screen lists both. Choose whichever tiling style you prefer; the greeter
+remembers the last one used, so you only choose once. `--wm hyprland` or
+`--wm niri` on `install.sh` (or `S6C_WM=` for the installer) sets the machine's
+*default* session, kept in `~/.local/state/s6c/wm`, and seeds it into the greeter;
+it is optional. niri is never removed: the login screen itself runs on it.
+Switching needs a logout, not a reboot.
 
 ```bash
 bash ~/.dotfiles/install_programs/install.sh --wm hyprland

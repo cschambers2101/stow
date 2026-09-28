@@ -9,9 +9,11 @@
 #
 # Usage: install.sh [--strict] [--no-pull] [--greeter] [--no-reboot] [--drive] [--wm niri|hyprland] [--help]
 #
-# --wm picks the compositor for this machine and is remembered in
-# ~/.local/state/s6c/wm; without it the machine keeps what it has (niri by default).
-# niri is installed either way, because the greeter runs on it.
+# Both compositors, niri and Hyprland, are installed on every machine and both
+# appear at the login screen; the greeter remembers whichever was used last.
+# --wm only sets the default session, seeded into the greeter once, and is
+# remembered in ~/.local/state/s6c/wm; without it the machine keeps what it has
+# (niri by default). niri is never removed, because the greeter runs on it.
 #
 # --drive runs the interactive Google Drive (rclone) setup for a staff machine.
 # Without it, a machine that already has the gdrive_s6c remote gets its mount
@@ -304,10 +306,8 @@ if [ -n "$conflicts" ]; then
 fi
 stow -R .
 log "restowed from $(git -C "$DOTFILES_DIR" log --oneline -1)"
-if wm_is_hyprland; then
-    hypr_setup_generated
-    log "Hyprland generated files present"
-fi
+hypr_setup_generated
+log "Hyprland generated files present"
 
 section "DankMaterialShell settings"
 # Phase A preserved the live file before converging, because the 8 Sep commit
