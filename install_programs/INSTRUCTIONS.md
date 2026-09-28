@@ -119,7 +119,7 @@ reported success and the machine looked fine.
    `qt6-gtk-platformtheme` is missing.
 3. **The wallpaper is the ladybird**, on both the greeter and the desktop. If
    the greeter shows a different one, the greeter sync (`dms-greeter sync`, section 10) did not run.
-4. **You can lock and unlock** with `Mod+Alt+L` on niri, `Super+Escape` on Hyprland. If unlocking rejects a correct
+4. **You can lock and unlock** with `Mod+Escape`. If unlocking rejects a correct
    password, the lock screen has no PAM stack: run `dms auth resolve-lock`
    (DMS 1.6+ keeps it per user; older DMS wrote `/etc/pam.d/dankshell`).
 5. **`systemctl --failed`** is empty.

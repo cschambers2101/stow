@@ -33,7 +33,7 @@ binds {
     Mod+Shift+N hotkey-overlay-title="Notepad" { spawn "dms" "ipc" "call" "notepad" "toggle"; }
 
     // === Security ===
-    Mod+Alt+L hotkey-overlay-title="Lock Screen" {
+    Mod+Escape hotkey-overlay-title="Lock Screen" {
         spawn "dank-lock.sh";
     }
     Mod+Shift+E { quit; }
@@ -213,6 +213,14 @@ binds {
     Mod+Equal { set-column-width "+10%"; }
     Mod+Shift+Minus { set-window-height "-10%"; }
     Mod+Shift+Equal { set-window-height "+10%"; }
+    Mod+Alt+Right { set-column-width "+20"; }
+    Mod+Alt+Left { set-column-width "-20"; }
+    Mod+Alt+Up { set-window-height "-20"; }
+    Mod+Alt+Down { set-window-height "+20"; }
+    Mod+Alt+L { set-column-width "+20"; }
+    Mod+Alt+H { set-column-width "-20"; }
+    Mod+Alt+K { set-window-height "-20"; }
+    Mod+Alt+J { set-window-height "+20"; }
 
     // === Screenshots ===
     XF86Launch1 { screenshot; }
@@ -227,6 +235,6 @@ binds {
     }
 
     // === System Controls ===
-    Mod+Escape allow-inhibiting=false { toggle-keyboard-shortcuts-inhibit; }
+    Mod+Shift+Escape allow-inhibiting=false { toggle-keyboard-shortcuts-inhibit; }
     Mod+Shift+P { power-off-monitors; }
 }

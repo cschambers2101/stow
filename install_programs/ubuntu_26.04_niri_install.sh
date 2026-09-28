@@ -957,7 +957,7 @@ print_summary() {
     echo "       or add this machine's public key at github.com/settings/keys:"
     [ -f "$HOME/.ssh/id_ed25519.pub" ] && sed 's/^/         /' "$HOME/.ssh/id_ed25519.pub"
     echo ""
-    echo "  Mod+Alt+L locks the screen (dank-lock.sh)."
+    echo "  Mod+Escape locks the screen (dank-lock.sh)."
     echo "  NVIDIA only: watch for the MOK enrolment screen on first boot."
     echo "-------------------------------------------------------"
     if [ "$SECURE_BOOT" = on ] || [ "$SECURE_BOOT" = unknown ]; then
