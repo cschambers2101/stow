@@ -11,8 +11,9 @@ end)
 
 hl.config({
 	input = {
-		-- empty inherits XKB_DEFAULT_LAYOUT (libxkbcommon), falls back to "us"
-		kb_layout = "",
+		-- matches /etc/default/keyboard (installer s13_identity); Hyprland does not read it
+		kb_layout = "gb",
+		kb_model = "pc105",
 		numlock_by_default = true,
 		follow_mouse = 0,
 		touchpad = {

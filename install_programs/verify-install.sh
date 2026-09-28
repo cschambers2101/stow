@@ -128,8 +128,10 @@ if [ -n "${HYPRLAND_INSTANCE_SIGNATURE:-}" ] && have_cmd hyprctl; then
     has "hyprctl version" "Hyprland" "$(hyprctl version 2>/dev/null | head -1)"
     eq "dms.service active" "active" "$(systemctl --user is-active dms.service 2>/dev/null)"
     eq "portal is hyprland" "active" "$(systemctl --user is-active xdg-desktop-portal-hyprland.service 2>/dev/null)"
+    has "hyprland keymap is UK" "English (UK)" "$(hyprctl devices -j 2>/dev/null | jq -r '[.keyboards[] | select(.main)][0].active_keymap // empty')"
 else
     skip "hyprctl configerrors empty" "not in a Hyprland session"
+    skip "hyprland keymap is UK" "not in a Hyprland session"
     skip "dms.service active" "not in a Hyprland session"
 fi
 
