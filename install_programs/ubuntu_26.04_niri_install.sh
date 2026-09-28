@@ -466,6 +466,10 @@ CONF
         sudo apt-get install -y --no-install-recommends "${pkgs[@]}" || die "could not install Hyprland from $HYPR_PPA."
         log "Hyprland $(pkg_version hyprland) installed from $HYPR_PPA."
     fi
+    if [ -f "$HYPR_UWSM_ENTRY" ]; then
+        sudo dpkg-divert --local --rename --divert "$HYPR_UWSM_ENTRY.disabled" --add "$HYPR_UWSM_ENTRY" >/dev/null
+        log "uwsm session entry hidden from the greeter (it ignores TryExec)."
+    fi
     case "$(apt-cache policy hyprland 2>/dev/null)" in
         *"${HYPR_PPA#ppa:}/"*) ;;
         *) warn "apt does not list $HYPR_PPA for hyprland - check $HYPR_PIN and the sources." ;;

@@ -110,6 +110,7 @@ if wm_is_hyprland; then
     eq "no swaync beside DMS" "" "$(dpkg -l sway-notification-center 2>/dev/null | awk '/^ii/{print $2}')"
     ok "hyprland apt pin" test -f "$HYPR_PIN"
     ok "hyprland session entry" test -f /usr/share/wayland-sessions/hyprland.desktop
+    ok "uwsm session entry hidden" test ! -f "$HYPR_UWSM_ENTRY"
     ok "hypr config is a stow symlink" test -L "$HOME/.config/hypr"
     ok "no stray hyprland.conf" test ! -e "$HOME/.config/hypr/hyprland.conf"
     HYPR_MISSING=""
@@ -128,6 +129,8 @@ if wm_is_hyprland; then
         skip "hyprctl configerrors empty" "not in a Hyprland session"
         skip "dms.service active" "not in a Hyprland session"
     fi
+elif grep -rqs "cppiber/hyprland" /etc/apt/sources.list.d/; then
+    ok "hyprland pin guards the ppa source" test -f "$HYPR_PIN"
 else
     ok "hyprland pin absent" test ! -f "$HYPR_PIN"
 fi

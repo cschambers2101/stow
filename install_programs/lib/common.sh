@@ -44,6 +44,7 @@ HYPR_PPA="ppa:cppiber/hyprland"
 HYPR_PPA_ORIGIN="LP-PPA-cppiber-hyprland"
 HYPR_PKGS="hyprland xdg-desktop-portal-hyprland xwayland"
 HYPR_PIN="/etc/apt/preferences.d/s6c-hyprland.pref"
+HYPR_UWSM_ENTRY="/usr/share/wayland-sessions/hyprland-uwsm.desktop"
 HYPR_MACHINE_LUA="$HOME/.config/hypr/dms/s6c-machine.lua"
 GREETER_MEMORY="/var/cache/dms-greeter/.local/state/memory.json"
 
