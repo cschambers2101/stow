@@ -1,0 +1,13 @@
+-- S6C keybinds for Hyprland. Mirrors the niri binds in .config/niri/dms/binds.kdl and config.kdl.
+hl.unbind("SUPER + T")
+hl.bind("SUPER + T", hl.dsp.exec_cmd("alacritty"))
+hl.bind("SUPER + E", hl.dsp.exec_cmd("nemo"))
+hl.bind("SUPER + SHIFT + Return", hl.dsp.exec_cmd("alacritty -e yazi"))
+hl.bind("SUPER + B", hl.dsp.exec_cmd("google-chrome-stable"))
+hl.unbind("SUPER + ALT + L")
+hl.bind("SUPER + ALT + L", hl.dsp.exec_cmd("dank-lock.sh"))
+hl.bind("XF86KbdBrightnessUp", hl.dsp.exec_cmd("sh -c \"brightnessctl -d '*kbd_backlight' set +10%\""), { locked = true })
+hl.bind("XF86KbdBrightnessDown", hl.dsp.exec_cmd("sh -c \"brightnessctl -d '*kbd_backlight' set 10%-\""), { locked = true })
+hl.bind("XF86AudioStop", hl.dsp.exec_cmd("dms ipc call mpris stop"), { locked = true })
+hl.bind("ALT + TAB", hl.dsp.exec_cmd("hyprctl dispatch cyclenext"))
+hl.bind("ALT + SHIFT + TAB", hl.dsp.exec_cmd("hyprctl dispatch cyclenext prev"))

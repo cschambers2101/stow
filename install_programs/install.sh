@@ -7,7 +7,11 @@
 # Both forms do the same thing. The script works out what the machine needs:
 # clone and full install, or converge on the latest build and update.
 #
-# Usage: install.sh [--strict] [--no-pull] [--greeter] [--no-reboot] [--drive] [--help]
+# Usage: install.sh [--strict] [--no-pull] [--greeter] [--no-reboot] [--drive] [--wm niri|hyprland] [--help]
+#
+# --wm picks the compositor for this machine and is remembered in
+# ~/.local/state/s6c/wm; without it the machine keeps what it has (niri by default).
+# niri is installed either way, because the greeter runs on it.
 #
 # --drive runs the interactive Google Drive (rclone) setup for a staff machine.
 # Without it, a machine that already has the gdrive_s6c remote gets its mount
@@ -40,17 +44,27 @@ PULL=yes
 FORCE_GREETER=no
 NO_REBOOT=no
 DRIVE=no
-for arg in "$@"; do
-    case "$arg" in
+WM_ARG=""
+ARGS=("$@")
+while [ $# -gt 0 ]; do
+    case "$1" in
         --strict)   STRICT=yes ;;
         --no-pull)  PULL=no ;;
         --greeter)  FORCE_GREETER=yes ;;
         --no-reboot) NO_REBOOT=yes ;;
         --drive)    DRIVE=yes ;;
-        --help|-h)  sed -n '2,14p' "$0"; exit 0 ;;
-        *)          echo "unknown option: $arg" >&2; exit 2 ;;
+        --wm)       WM_ARG="${2:-}"; [ -n "$WM_ARG" ] || { echo "--wm needs niri or hyprland" >&2; exit 2; }; shift ;;
+        --wm=*)     WM_ARG="${1#--wm=}" ;;
+        --help|-h)  sed -n '2,18p' "$0"; exit 0 ;;
+        *)          echo "unknown option: $1" >&2; exit 2 ;;
     esac
+    shift
 done
+case "$WM_ARG" in
+    ""|niri|hyprland) ;;
+    *) echo "--wm must be niri or hyprland (got '$WM_ARG')" >&2; exit 2 ;;
+esac
+[ -n "$WM_ARG" ] && export S6C_WM="$WM_ARG"
 
 # --- Phase A: standalone -------------------------------------------------------
 if [ -z "${S6C_INSTALL_PHASE_B:-}" ]; then
@@ -183,7 +197,7 @@ if [ -z "${S6C_INSTALL_PHASE_B:-}" ]; then
              S6C_PRESERVED_COUNT="$PRESERVED_COUNT" \
              S6C_DMS_PRESERVED="$DMS_PRESERVED" \
              S6C_TS="$TS" \
-             bash "$NEXT" "$@"
+             bash "$NEXT" "${ARGS[@]}"
 fi
 
 # --- Phase B: in-repo ----------------------------------------------------------
@@ -203,6 +217,14 @@ HEAD_BEFORE="$(git -C "$DOTFILES_DIR" rev-parse HEAD 2>/dev/null || echo none)"
 
 require_not_root
 require_cmds git stow
+require_valid_wm
+WM_SWITCH=no
+if [ -n "$WM_ARG" ]; then
+    mkdir -p "$STATE_DIR"
+    if [ "$(cat "$S6C_WM_FILE" 2>/dev/null)" != "$WM_ARG" ]; then WM_SWITCH=yes; fi
+    printf '%s\n' "$WM_ARG" > "$S6C_WM_FILE"
+fi
+log "compositor for this machine: $S6C_WM${WM_SWITCH:+ (switch requested)}"
 
 # The stamp is the primary signal, but it only started existing on 19 Sep 2026 --
 # so every machine already in the fleet lacks one. Treating those as fresh would
@@ -261,7 +283,7 @@ done < <(find "$HOME" "$HOME/.config" "$HOME/.local/bin" "$HOME/.local/share" -m
 log "removed $removed stale link(s)"
 
 section "Moving aside real files the repo now owns"
-for d in niri DankMaterialShell danksearch alacritty; do
+for d in niri hypr DankMaterialShell danksearch alacritty; do
     if [ -e "$HOME/.config/$d" ] && [ ! -L "$HOME/.config/$d" ]; then
         mv -v "$HOME/.config/$d" "$HOME/.config/$d.pre-stow.bak"
     fi
@@ -282,6 +304,10 @@ if [ -n "$conflicts" ]; then
 fi
 stow -R .
 log "restowed from $(git -C "$DOTFILES_DIR" log --oneline -1)"
+if wm_is_hyprland; then
+    hypr_setup_generated
+    log "Hyprland generated files present"
+fi
 
 section "DankMaterialShell settings"
 # Phase A preserved the live file before converging, because the 8 Sep commit
@@ -328,6 +354,13 @@ elif have_cmd dms-greeter || have_cmd dms; then
 else
     log "no dms/dms-greeter on PATH - skipping greeter sync"
 fi
+if [ "$WM_SWITCH" = yes ]; then
+    if sudo -n true 2>/dev/null || [ -t 0 ]; then
+        greeter_seed_session || warn "could not seed the greeter's default session - pick $(session_name) at the login screen once."
+    else
+        warn "no sudo and no terminal - pick $(session_name) at the login screen once; the greeter remembers it."
+    fi
+fi
 
 section "Git remote"
 if github_ssh_works; then
@@ -370,6 +403,7 @@ mkdir -p "$STATE_DIR"
     echo "commit=$(git -C "$DOTFILES_DIR" rev-parse HEAD 2>/dev/null || echo unknown)"
     echo "date=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
     echo "mode=$MODE"
+    echo "wm=$S6C_WM"
     echo "script=install.sh"
     if [ "$PRESERVED_COUNT" -gt 0 ] || [ -n "$DMS_PRESERVED" ]; then
         echo "preserved=$PRESERVE_DIR"
@@ -399,7 +433,9 @@ else
     REBOOT_WHY=""
 fi
 
-if [ -z "$REBOOT_WHY" ]; then
+if [ -z "$REBOOT_WHY" ] && [ "$WM_SWITCH" = yes ]; then
+    log "no reboot needed - log out and pick $(session_name) at the login screen"
+elif [ -z "$REBOOT_WHY" ]; then
     log "no reboot needed"
 elif [ "$NO_REBOOT" = yes ]; then
     warn "REBOOT REQUIRED - $REBOOT_WHY. Skipped: --no-reboot."

@@ -68,6 +68,18 @@ when there is no terminal:
 TARGET_HOSTNAME='s6c-laptop-01' ./ubuntu_26.04_niri_install.sh
 ```
 
+**The compositor is a per-machine choice, niri by default.** Add `--wm hyprland`
+to `install.sh` (or set `S6C_WM=hyprland` for the installer) and the machine gets
+Hyprland from `ppa:cppiber/hyprland` as its default session, with DMS on top,
+alongside niri; both appear at the login screen and the greeter remembers the
+last one used. The choice is kept in `~/.local/state/s6c/wm`, so later update
+runs need no flag. niri is never removed: the login screen itself runs on it.
+`--wm niri` switches back. Neither switch needs a reboot, only a logout.
+
+```bash
+bash ~/.dotfiles/install_programs/install.sh --wm hyprland
+```
+
 **School wifi is no longer one of them.** The S6C profile is written on every
 build using the BYOD key, so a laptop reaches the school network without anyone
 being asked. Override only for a different network or after a key change:

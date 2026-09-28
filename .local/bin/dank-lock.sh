@@ -10,7 +10,11 @@ dir="${XDG_RUNTIME_DIR:-/tmp}/danklock"
 mkdir -p "$dir" && chmod 700 "$dir"
 rm -f "$dir"/*.png
 
-out=$(niri msg --json outputs | jq -r 'keys[0]')
+if [[ -n ${HYPRLAND_INSTANCE_SIGNATURE:-} ]]; then
+    out=$(hyprctl -j monitors | jq -r '.[0].name')
+else
+    out=$(niri msg --json outputs | jq -r 'keys[0]')
+fi
 shot="$dir/$(date +%s%N).png"
 
 grim -o "$out" - | magick png:- -scale 10% -scale 1000% "$shot"

@@ -45,6 +45,19 @@
 .config/DankMaterialShell/.firstlaunch
 .config/DankMaterialShell/.changelog-*
 
+# Hyprland: the same split as niri above, in Lua. DMS rewrites colors.lua on
+# every theme change, outputs.lua from its Displays page and cursor.lua from its
+# Cursor page; s6c-machine.lua is written by the installer for this machine's
+# GPU; .dms-backups is where DMS sweeps stray files. hyprland.lua, binds.lua,
+# binds-user.lua, layout.lua and windowrules.lua are the fleet's and are tracked.
+.config/hypr/dms/colors.lua
+.config/hypr/dms/outputs.lua
+.config/hypr/dms/cursor.lua
+.config/hypr/dms/s6c-machine.lua
+.config/hypr/.dms-backups/
+.config/hypr/hyprland.conf
+.config/hypr/*.bak
+
 # dank-theme.toml is a matugen template output -- DMS lists it under
 # tags ["matugen","alacritty","terminal","template"] and rewrites it whenever a
 # theme is applied. It arrived tracked in e6a9664, and once ~/.config/alacritty

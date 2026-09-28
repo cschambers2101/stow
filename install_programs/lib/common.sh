@@ -35,6 +35,17 @@ YAZI_REPO_LINE="deb [arch=amd64 signed-by=$YAZI_KEYRING] https://yazi-rs.github.
 DANKINSTALL_URL="https://install.danklinux.com"
 FLATHUB_URL="https://flathub.org/repo/flathub.flatpakrepo"
 S6C_WALLPAPER="/usr/share/backgrounds/s6c/ladybird.jpg"
+S6C_WM_FILE="$HOME/.local/state/s6c/wm"
+if [ -z "${S6C_WM:-}" ] && [ -r "$S6C_WM_FILE" ]; then
+    S6C_WM="$(head -1 "$S6C_WM_FILE" | tr -d '[:space:]')"
+fi
+S6C_WM="${S6C_WM:-niri}"
+HYPR_PPA="ppa:cppiber/hyprland"
+HYPR_PPA_ORIGIN="LP-PPA-cppiber-hyprland"
+HYPR_PKGS="hyprland xdg-desktop-portal-hyprland xwayland"
+HYPR_PIN="/etc/apt/preferences.d/s6c-hyprland.pref"
+HYPR_MACHINE_LUA="$HOME/.config/hypr/dms/s6c-machine.lua"
+GREETER_MEMORY="/var/cache/dms-greeter/.local/state/memory.json"
 
 if [ -t 2 ]; then
     C_R=$'\033[31m'; C_G=$'\033[32m'; C_Y=$'\033[33m'; C_B=$'\033[34m'; C_0=$'\033[0m'
@@ -63,6 +74,14 @@ run_cleanup() {
 trap run_cleanup EXIT
 
 have_cmd() { command -v "$1" >/dev/null 2>&1; }
+wm_is_hyprland() { [ "$S6C_WM" = hyprland ]; }
+session_name() { if wm_is_hyprland; then printf 'hyprland'; else printf 'niri'; fi; }
+require_valid_wm() {
+    case "$S6C_WM" in
+        niri|hyprland) ;;
+        *) die "S6C_WM must be niri or hyprland (got '$S6C_WM')." ;;
+    esac
+}
 pkg_installed() { dpkg -s "$1" 2>/dev/null | grep -q '^Status: install ok installed'; }
 pkg_version() { dpkg-query -W -f='${Version}' "$1" 2>/dev/null; }
 pkg_candidate() { LC_ALL=C apt-cache policy "$1" 2>/dev/null | awk '/Candidate:/ {c=$2} END {print c}'; }
@@ -355,6 +374,75 @@ PYEOF
         return 1
     fi
     return 0
+}
+
+hypr_setup_generated() {
+    local d="$HOME/.config/hypr/dms"
+    [ -d "$d" ] || { warn "$d missing - are the dotfiles stowed?"; return 0; }
+    if [ ! -s "$d/colors.lua" ]; then
+        printf '%s\n' "-- Theme colours. DMS rewrites this file when a theme is applied." > "$d/colors.lua"
+    fi
+    if [ ! -s "$d/outputs.lua" ]; then
+        printf '%s\n\n%s\n' "-- Per-output monitor rules. DMS Settings > Displays writes this file." \
+            'hl.monitor({ output = "", mode = "preferred", position = "auto", scale = "auto" })' > "$d/outputs.lua"
+    fi
+    if [ ! -s "$d/cursor.lua" ]; then
+        printf '%s\n' "-- Cursor theme overrides. DMS Settings > Cursor writes this file." > "$d/cursor.lua"
+    fi
+    detect_gpu
+    if gpu_is nvidia; then
+        cat > "$HYPR_MACHINE_LUA" <<'LUA'
+-- Written by the installer for this machine's GPU. Not tracked.
+hl.env("LIBVA_DRIVER_NAME", "nvidia")
+hl.env("__GLX_VENDOR_LIBRARY_NAME", "nvidia")
+hl.env("NVD_BACKEND", "direct")
+LUA
+        log "Hyprland NVIDIA environment written to $HYPR_MACHINE_LUA"
+    elif [ ! -f "$HYPR_MACHINE_LUA" ]; then
+        printf '%s\n' "-- Written by the installer for this machine's GPU. Not tracked. Nothing needed here." > "$HYPR_MACHINE_LUA"
+    fi
+    local t="$HOME/.config/systemd/user/hyprland-session.target"
+    if [ ! -f "$t" ]; then
+        mkdir -p "$(dirname "$t")"
+        cat > "$t" <<'UNIT'
+[Unit]
+Description=Hyprland Session Target
+BindsTo=graphical-session.target
+Before=graphical-session.target
+Wants=graphical-session-pre.target
+After=graphical-session-pre.target
+UNIT
+        systemctl --user daemon-reload 2>/dev/null || true
+    fi
+}
+
+greeter_seed_session() {
+    local want
+    want="$(session_name).desktop"
+    sudo test -d "$(dirname "$(dirname "$GREETER_MEMORY")")" 2>/dev/null || { log "   no dms-greeter cache - greeter default session not seeded"; return 0; }
+    sudo python3 - "$GREETER_MEMORY" "$want" <<'PYEOF'
+import json, os, sys
+path, want = sys.argv[1:3]
+try:
+    with open(path) as fh:
+        data = json.load(fh)
+except (FileNotFoundError, ValueError):
+    data = {}
+if not isinstance(data, dict):
+    data = {}
+if data.get("lastSessionId") == want and data.get("lastSessionDesktopId") == want:
+    print(f"   greeter default session already {want}")
+    sys.exit(0)
+data["lastSessionId"] = want
+data["lastSessionDesktopId"] = want
+os.makedirs(os.path.dirname(path), exist_ok=True)
+tmp = path + ".tmp"
+with open(tmp, "w") as fh:
+    json.dump(data, fh, indent=2)
+os.replace(tmp, path)
+print(f"   greeter default session set to {want}")
+PYEOF
+    sudo chown -R greeter:greeter "$(dirname "$GREETER_MEMORY")" 2>/dev/null || true
 }
 
 detect_gpu() { GPU_INFO="$(lspci -nn 2>/dev/null | grep -iE 'vga|3d controller|display controller' || true)"; }

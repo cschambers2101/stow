@@ -75,7 +75,7 @@ if greeter_needs_gdm; then
         enabled) fail "greetd not enabled" "greetd is enabled — it will fight gdm" ;;
         *)       pass "greetd not enabled" "GPU quirk" ;;
     esac
-    has "gdm default session is niri" '"niri"' \
+    has "gdm default session is $(session_name)" "\"$(session_name)\"" \
         "$(busctl --system get-property org.freedesktop.Accounts "/org/freedesktop/Accounts/User$(id -u)" org.freedesktop.Accounts.User Session 2>/dev/null)"
 else
     eq "greetd active" "active" "$(systemctl is-active greetd 2>/dev/null)"
@@ -86,6 +86,40 @@ else
     esac
 fi
 ok "greetd waits for the GPU" test -f "$GREETD_GPU_WAIT"
+
+echo "--- compositor ($S6C_WM) ---"
+STAMP_WM="$(sed -n 's/^wm=//p' "$HOME/.local/state/s6c/build" 2>/dev/null | head -1)"
+if [ -z "$STAMP_WM" ]; then skip "stamp records the compositor" "no wm= line yet - run install.sh"
+else eq "stamp records the compositor" "$S6C_WM" "$STAMP_WM"; fi
+pkg "niri present for the greeter" "niri"
+if wm_is_hyprland; then
+    pkg "hyprland installed" "hyprland"
+    has "hyprland from $HYPR_PPA" "$HYPR_PPA_ORIGIN" "$(apt-cache policy hyprland 2>/dev/null | tr '\n' ' ')"
+    pkg "hyprland portal" "xdg-desktop-portal-hyprland"
+    eq "no swaync beside DMS" "" "$(dpkg -l sway-notification-center 2>/dev/null | awk '/^ii/{print $2}')"
+    ok "hyprland apt pin" test -f "$HYPR_PIN"
+    ok "hyprland session entry" test -f /usr/share/wayland-sessions/hyprland.desktop
+    ok "hypr config is a stow symlink" test -L "$HOME/.config/hypr"
+    ok "no stray hyprland.conf" test ! -e "$HOME/.config/hypr/hyprland.conf"
+    HYPR_MISSING=""
+    for f in colors outputs cursor binds binds-user layout windowrules s6c-machine; do
+        [ -s "$HOME/.config/hypr/dms/$f.lua" ] || HYPR_MISSING="$HYPR_MISSING $f"
+    done
+    if [ -z "$HYPR_MISSING" ]; then pass "hypr dms fragments present" "8 files"
+    else fail "hypr dms fragments present" "missing:$HYPR_MISSING - run install.sh"; fi
+    ok "hyprland session target" test -f "$HOME/.config/systemd/user/hyprland-session.target"
+    if [ -n "${HYPRLAND_INSTANCE_SIGNATURE:-}" ] && have_cmd hyprctl; then
+        eq "hyprctl configerrors empty" "" "$(hyprctl configerrors 2>/dev/null | head -1)"
+        has "hyprctl version" "Hyprland" "$(hyprctl version 2>/dev/null | head -1)"
+        eq "dms.service active" "active" "$(systemctl --user is-active dms.service 2>/dev/null)"
+        has "portal is hyprland" "hyprland" "$(busctl --user status org.freedesktop.impl.portal.desktop.hyprland 2>/dev/null | grep -m1 Comm= || true)"
+    else
+        skip "hyprctl configerrors empty" "not in a Hyprland session"
+        skip "dms.service active" "not in a Hyprland session"
+    fi
+else
+    ok "hyprland pin absent" test ! -f "$HYPR_PIN"
+fi
 
 echo "--- Qt plugins (silent bugs 7 and 8) ---"
 pkg "qt6-svg-plugins" "qt6-svg-plugins"
@@ -486,11 +520,11 @@ else
 
     NIRI_LOG="$(journalctl --user -b --no-pager 2>/dev/null | grep -c -i 'llvmpipe\|software rasteriz')"
     if [ -z "$(journalctl --user -b --no-pager 2>/dev/null | head -1)" ]; then
-        skip "niri not on llvmpipe" "no user journal available"
+        skip "compositor not on llvmpipe" "no user journal available"
     elif [ "${NIRI_LOG:-0}" = "0" ]; then
-        pass "niri not on llvmpipe" "hardware renderer"
+        pass "compositor not on llvmpipe" "hardware renderer"
     else
-        fail "niri not on llvmpipe" "software rendering — GBM allocator missing"
+        fail "compositor not on llvmpipe" "software rendering — GBM allocator missing"
     fi
 fi
 

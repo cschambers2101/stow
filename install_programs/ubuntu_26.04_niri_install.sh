@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Ubuntu 26.04 niri / DankMaterialShell student laptop build.
 # Usage: ubuntu_26.04_niri_install.sh [--list] [--only IDS] [--skip IDS] [--from ID] [--update] [--dry-run]
-# Env:   TARGET_HOSTNAME  PAPERCUT_SERVER  PAPERCUT_STRICT_SSL  S6C_PSK  S6C_PERSONAL  ALLOW_NO_WIFI
+# Env:   TARGET_HOSTNAME  PAPERCUT_SERVER  PAPERCUT_STRICT_SSL  S6C_PSK  S6C_PERSONAL  ALLOW_NO_WIFI  S6C_WM
 # Rationale for every step: projects/linux-device-build-2026/notes/installer-rationale.md (private workspace).
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -24,6 +24,7 @@ SECTIONS=(
     "4:s04_desktop_base:Ubuntu desktop base"
     "5:s05_dank_stack:Dank / niri stack"
     "5b:s05b_dms_currency:DMS package currency"
+    "5c:s05c_hyprland:Hyprland compositor"
     "6:s06_packages:Packages from the list"
     "6a:s06a_file_managers:Yazi repo and Nemo defaults"
     "7:s07_chrome:Google Chrome"
@@ -412,7 +413,7 @@ s05b_dms_currency() {
             if apt_install_soft "$pkg"; then upgraded=yes; fi
         fi
     done
-    for pkg in $DMS_SESSION_PKGS; do
+    for pkg in $DMS_SESSION_PKGS hyprland; do
         pkg_installed "$pkg" || continue
         if pkg_behind "$pkg"; then
             behind="${behind:+$behind, }$pkg $(pkg_version "$pkg") -> $(pkg_candidate "$pkg")"
@@ -431,12 +432,44 @@ s05b_dms_currency() {
     fi
     if [ -n "$behind" ]; then
         warn "DMS session packages are behind: $behind"
-        warn "They run inside the live session, so this section leaves them. Upgrade deliberately with '$0 --only 5' and reboot afterwards."
+        warn "They run inside the live session, so this section leaves them. Upgrade deliberately with '$0 --only 5' (DMS) or '$0 --only 5c' (Hyprland) and reboot afterwards."
     fi
     if [ "$upgraded" = no ] && [ -z "$behind" ]; then
         log "DMS packages are current."
     fi
     return 0
+}
+
+s05c_hyprland() {
+    if ! wm_is_hyprland; then
+        log "S6C_WM=$S6C_WM - Hyprland not requested, nothing to do."
+        return 0
+    fi
+    if ! grep -rqs "cppiber/hyprland" /etc/apt/sources.list.d/; then
+        sudo add-apt-repository -y "$HYPR_PPA" || die "could not add $HYPR_PPA."
+    fi
+    write_root_file "$HYPR_PIN" <<CONF
+Package: *
+Pin: release o=$HYPR_PPA_ORIGIN
+Pin-Priority: 100
+
+Package: hyprland hyprland-data hyprland-guiutils hyprland-protocols xdg-desktop-portal-hyprland wayland-protocols libhypr* libaquamarine* libudis86*
+Pin: release o=$HYPR_PPA_ORIGIN
+Pin-Priority: 500
+CONF
+    apt_update
+    local -a pkgs
+    read -ra pkgs <<<"$HYPR_PKGS"
+    if pkg_installed hyprland && ! pkg_behind hyprland; then
+        log "Hyprland $(pkg_version hyprland) is current."
+    else
+        sudo apt-get install -y --no-install-recommends "${pkgs[@]}" || die "could not install Hyprland from $HYPR_PPA."
+        log "Hyprland $(pkg_version hyprland) installed from $HYPR_PPA."
+    fi
+    case "$(apt-cache policy hyprland 2>/dev/null)" in
+        *"$HYPR_PPA_ORIGIN"*) ;;
+        *) warn "apt does not list $HYPR_PPA for hyprland - check $HYPR_PIN and the sources." ;;
+    esac
 }
 
 s06_packages() {
@@ -585,7 +618,7 @@ CONF
 
 s10_dotfiles() {
     local d f conflicts src
-    for d in niri DankMaterialShell danksearch alacritty; do
+    for d in niri hypr DankMaterialShell danksearch alacritty; do
         if [ -e "$HOME/.config/$d" ] && [ ! -L "$HOME/.config/$d" ]; then
             log "Removing dankinstall's default $d config (repo version wins)..."
             rm -rf "$HOME/.config/$d"
@@ -611,6 +644,10 @@ s10_dotfiles() {
     fi
     cd "$HERE"
     fc-cache -f
+    if wm_is_hyprland; then
+        log "Creating the Hyprland files DMS generates and the repo does not track..."
+        hypr_setup_generated
+    fi
 
     # settings.json is untracked (DMS owns it and rewrites it - see .gitignore).
     # Merge the S6C fleet keys in, adding only what is missing so a value the
@@ -658,6 +695,7 @@ s10_dotfiles() {
         elif DMS_PRIVESC=sudo "${sync[@]}"; then
             log "Greeter synced."
             dms auth resolve-lock --quiet >/dev/null 2>&1 || warn "'dms auth resolve-lock' failed - the lock screen builds its PAM stack on first use instead."
+            greeter_seed_session || warn "could not seed the greeter's default session - pick $(session_name) at the login screen once."
         else
             warn "greeter sync failed - the greeter starts but with default colours and no wallpaper. Re-run '${sync[*]}' by hand."
         fi
@@ -792,12 +830,12 @@ ExecStartPre=/bin/sh -c 'for i in $(seq 1 200); do ls /dev/dri/renderD* >/dev/nu
 EOF
     sudo systemctl daemon-reload
     if greeter_needs_gdm; then
-        warn "this GPU loses its eDP link under the niri greeter - using GDM as the login screen; niri stays the session."
+        warn "this GPU loses its eDP link under the niri greeter - using GDM as the login screen; $(session_name) stays the session."
         sudo systemctl disable greetd 2>/dev/null || true
         sudo systemctl enable gdm
         sudo busctl --system call org.freedesktop.Accounts "/org/freedesktop/Accounts/User$(id -u)" \
-            org.freedesktop.Accounts.User SetSession s niri \
-            || warn "could not make niri the default GDM session - pick niri at the login screen once."
+            org.freedesktop.Accounts.User SetSession s "$(session_name)" \
+            || warn "could not make $(session_name) the default GDM session - pick it at the login screen once."
     else
         sudo systemctl enable greetd
     fi
@@ -942,6 +980,7 @@ main() {
         return 0
     fi
     require_not_root
+    require_valid_wm
     sudo_keepalive
     preflight_secure_boot
     preflight_network
