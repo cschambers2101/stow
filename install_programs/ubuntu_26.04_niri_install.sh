@@ -467,7 +467,7 @@ CONF
         log "Hyprland $(pkg_version hyprland) installed from $HYPR_PPA."
     fi
     case "$(apt-cache policy hyprland 2>/dev/null)" in
-        *"$HYPR_PPA_ORIGIN"*) ;;
+        *"${HYPR_PPA#ppa:}/"*) ;;
         *) warn "apt does not list $HYPR_PPA for hyprland - check $HYPR_PIN and the sources." ;;
     esac
 }

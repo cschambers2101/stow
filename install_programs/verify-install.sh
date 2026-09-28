@@ -57,11 +57,22 @@ fi
 echo "--- system ---"
 eq "no failed units" "0" "$(systemctl list-units --state=failed --no-legend --plain 2>/dev/null | grep -c .)"
 if systemctl --user show-environment 2>/dev/null | grep -qE '^(WAYLAND_DISPLAY|DISPLAY)='; then
-    USER_FAILED="$(systemctl --user list-units --state=failed --no-legend --plain 2>/dev/null | grep -c .)"
-    if [ "${USER_FAILED:-0}" = "0" ]; then
-        pass "no failed user units" ""
+    GS_START="$(systemctl --user show -p ActiveEnterTimestampMonotonic --value graphical-session.target 2>/dev/null)"
+    USER_FAILED="" STALE_FAILED=""
+    for u in $(systemctl --user list-units --state=failed --no-legend --plain 2>/dev/null | awk '{print $1}'); do
+        t="$(systemctl --user show -p ExecMainExitTimestampMonotonic --value "$u" 2>/dev/null)"
+        if [ "${t:-0}" != "0" ] && [ "${GS_START:-0}" != "0" ] && [ "$t" -lt "$GS_START" ]; then
+            STALE_FAILED="$STALE_FAILED $u"
+        else
+            USER_FAILED="$USER_FAILED $u"
+        fi
+    done
+    if [ -n "$USER_FAILED" ]; then
+        fail "no failed user units" "${USER_FAILED# }"
+    elif [ -n "$STALE_FAILED" ]; then
+        pass "no failed user units" "failed before this session began, clear with systemctl --user reset-failed:$STALE_FAILED"
     else
-        fail "no failed user units" "$(systemctl --user list-units --state=failed --no-legend --plain 2>/dev/null | awk '{print $1}' | tr '\n' ' ')"
+        pass "no failed user units" ""
     fi
 else
     skip "no failed user units" "no graphical session — run from a desktop terminal, not SSH"
@@ -94,7 +105,7 @@ else eq "stamp records the compositor" "$S6C_WM" "$STAMP_WM"; fi
 pkg "niri present for the greeter" "niri"
 if wm_is_hyprland; then
     pkg "hyprland installed" "hyprland"
-    has "hyprland from $HYPR_PPA" "$HYPR_PPA_ORIGIN" "$(apt-cache policy hyprland 2>/dev/null | tr '\n' ' ')"
+    has "hyprland from $HYPR_PPA" "${HYPR_PPA#ppa:}/" "$(apt-cache policy hyprland 2>/dev/null | awk '/^ \*\*\*/{getline; $1=$1; print; exit}')"
     pkg "hyprland portal" "xdg-desktop-portal-hyprland"
     eq "no swaync beside DMS" "" "$(dpkg -l sway-notification-center 2>/dev/null | awk '/^ii/{print $2}')"
     ok "hyprland apt pin" test -f "$HYPR_PIN"
@@ -112,7 +123,7 @@ if wm_is_hyprland; then
         eq "hyprctl configerrors empty" "" "$(hyprctl configerrors 2>/dev/null | head -1)"
         has "hyprctl version" "Hyprland" "$(hyprctl version 2>/dev/null | head -1)"
         eq "dms.service active" "active" "$(systemctl --user is-active dms.service 2>/dev/null)"
-        has "portal is hyprland" "hyprland" "$(busctl --user status org.freedesktop.impl.portal.desktop.hyprland 2>/dev/null | grep -m1 Comm= || true)"
+        eq "portal is hyprland" "active" "$(systemctl --user is-active xdg-desktop-portal-hyprland.service 2>/dev/null)"
     else
         skip "hyprctl configerrors empty" "not in a Hyprland session"
         skip "dms.service active" "not in a Hyprland session"
