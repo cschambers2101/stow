@@ -46,13 +46,18 @@
 .config/DankMaterialShell/.changelog-*
 
 # Hyprland: the same split as niri above, in Lua. DMS rewrites colors.lua on
-# every theme change, outputs.lua from its Displays page and cursor.lua from its
-# Cursor page; s6c-machine.lua is written by the installer for this machine's
-# GPU; .dms-backups is where DMS sweeps stray files. hyprland.lua, binds.lua,
-# binds-user.lua, layout.lua and windowrules.lua are the fleet's and are tracked.
+# every theme change, outputs.lua from its Displays page, cursor.lua from its
+# Cursor page, and layout.lua and windowrules.lua every time it starts (seen
+# 28 Sep 2026: it stamps them "managed by DankMaterialShell"); s6c-machine.lua
+# is written by the installer for this machine's GPU; .dms-backups is where DMS
+# sweeps stray files. The installer writes stubs for all of these so hyprland.lua's
+# require() never fails. hyprland.lua, binds.lua and binds-user.lua are the
+# fleet's and are tracked.
 .config/hypr/dms/colors.lua
 .config/hypr/dms/outputs.lua
 .config/hypr/dms/cursor.lua
+.config/hypr/dms/layout.lua
+.config/hypr/dms/windowrules.lua
 .config/hypr/dms/s6c-machine.lua
 .config/hypr/.dms-backups/
 .config/hypr/hyprland.conf

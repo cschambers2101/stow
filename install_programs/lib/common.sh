@@ -390,6 +390,12 @@ hypr_setup_generated() {
     if [ ! -s "$d/cursor.lua" ]; then
         printf '%s\n' "-- Cursor theme overrides. DMS Settings > Cursor writes this file." > "$d/cursor.lua"
     fi
+    if [ ! -s "$d/layout.lua" ]; then
+        printf '%s\n' "-- Layout overrides. DMS rewrites this file when it starts." > "$d/layout.lua"
+    fi
+    if [ ! -s "$d/windowrules.lua" ]; then
+        printf '%s\n' "-- Window rules. DMS rewrites this file when it starts." > "$d/windowrules.lua"
+    fi
     detect_gpu
     if gpu_is nvidia; then
         cat > "$HYPR_MACHINE_LUA" <<'LUA'
