@@ -1,0 +1,128 @@
+[org/gnome/shell]
+disabled-extensions=['ubuntu-dock@ubuntu.com']
+
+[org/gnome/desktop/wm/keybindings]
+close=['<Super>q']
+toggle-maximized=['<Super>f']
+toggle-fullscreen=['<Shift><Super>f']
+minimize=@as []
+switch-applications=@as []
+switch-applications-backward=@as []
+switch-input-source=['<Alt><Super>space', 'XF86Keyboard']
+switch-input-source-backward=['<Shift><Alt><Super>space', '<Shift>XF86Keyboard']
+switch-to-workspace-1=['<Super>1']
+move-to-workspace-1=['<Shift><Super>1']
+switch-to-workspace-2=['<Super>2']
+move-to-workspace-2=['<Shift><Super>2']
+switch-to-workspace-3=['<Super>3']
+move-to-workspace-3=['<Shift><Super>3']
+switch-to-workspace-4=['<Super>4']
+move-to-workspace-4=['<Shift><Super>4']
+switch-to-workspace-5=['<Super>5']
+move-to-workspace-5=['<Shift><Super>5']
+switch-to-workspace-6=['<Super>6']
+move-to-workspace-6=['<Shift><Super>6']
+switch-to-workspace-7=['<Super>7']
+move-to-workspace-7=['<Shift><Super>7']
+switch-to-workspace-8=['<Super>8']
+move-to-workspace-8=['<Shift><Super>8']
+switch-to-workspace-9=['<Super>9']
+move-to-workspace-9=['<Shift><Super>9']
+switch-to-workspace-right=['<Super>Page_Down', '<Super>u', '<Super><Alt>Right', '<Control><Alt>Right']
+switch-to-workspace-left=['<Super>Page_Up', '<Super>i', '<Super><Alt>Left', '<Control><Alt>Left']
+move-to-workspace-right=['<Control><Super>Page_Down', '<Control><Super>u', '<Shift><Super>Page_Down']
+move-to-workspace-left=['<Control><Super>Page_Up', '<Control><Super>i', '<Shift><Super>Page_Up']
+move-to-monitor-left=['<Shift><Super>Left', '<Shift><Control><Super>Left']
+move-to-monitor-right=['<Shift><Super>Right', '<Shift><Control><Super>Right']
+move-to-monitor-up=['<Shift><Super>Up', '<Shift><Control><Super>Up']
+move-to-monitor-down=['<Shift><Super>Down', '<Shift><Control><Super>Down']
+
+[org/gnome/shell/keybindings]
+toggle-overview=['<Super>space', '<Super>o', '<Super>Tab']
+toggle-message-tray=['<Super>n']
+focus-active-notification=@as []
+show-screenshot-ui=['Print']
+screenshot=['<Control>Print']
+screenshot-window=['<Alt>Print']
+switch-to-application-1=@as []
+switch-to-application-2=@as []
+switch-to-application-3=@as []
+switch-to-application-4=@as []
+switch-to-application-5=@as []
+switch-to-application-6=@as []
+switch-to-application-7=@as []
+switch-to-application-8=@as []
+switch-to-application-9=@as []
+
+[org/gnome/mutter/wayland/keybindings]
+restore-shortcuts=['<Shift><Super>Escape']
+
+[org/gnome/mutter/keybindings]
+cancel-input-capture=@as []
+
+[org/gnome/shell/extensions/tiling-assistant]
+tile-left-half=['<Super>Left', '<Super>KP_4', '<Super>h']
+tile-right-half=['<Super>Right', '<Super>KP_6', '<Super>l']
+tile-maximize=['<Super>Up', '<Super>KP_5', '<Super>k']
+restore-window=['<Super>Down', '<Super>j']
+
+[org/gnome/settings-daemon/plugins/media-keys]
+screensaver=['<Super>Escape']
+rotate-video-lock-static=['XF86RotationLockToggle']
+logout=['<Shift><Super>e']
+custom-keybindings=['/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/s6c-terminal/', '/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/s6c-files/', '/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/s6c-browser/', '/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/s6c-yazi/', '/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/s6c-monitor/', '/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/s6c-monitor-cad/', '/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/s6c-power/', '/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/s6c-settings/', '/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/s6c-wallpaper/', '/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/s6c-notepad/', '/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/s6c-keys/']
+
+[org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/s6c-terminal]
+name='Terminal'
+command='alacritty'
+binding='<Super>t'
+
+[org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/s6c-files]
+name='Files'
+command='nemo'
+binding='<Super>e'
+
+[org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/s6c-browser]
+name='Web browser'
+command='google-chrome-stable'
+binding='<Super>b'
+
+[org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/s6c-yazi]
+name='Terminal file manager'
+command='alacritty -e yazi'
+binding='<Shift><Super>Return'
+
+[org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/s6c-monitor]
+name='System monitor'
+command='gnome-system-monitor'
+binding='<Super>m'
+
+[org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/s6c-monitor-cad]
+name='System monitor'
+command='gnome-system-monitor'
+binding='<Control><Alt>Delete'
+
+[org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/s6c-power]
+name='Power off or restart'
+command='gnome-session-quit --power-off'
+binding='<Super>x'
+
+[org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/s6c-settings]
+name='Settings'
+command='gnome-control-center'
+binding='<Super>comma'
+
+[org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/s6c-wallpaper]
+name='Wallpaper'
+command='gnome-control-center background'
+binding='<Super>y'
+
+[org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/s6c-notepad]
+name='Notepad'
+command='gnome-text-editor'
+binding='<Shift><Super>n'
+
+[org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/s6c-keys]
+name='Keyboard shortcuts'
+command='s6c-gnome-keys'
+binding='<Shift><Super>slash'
