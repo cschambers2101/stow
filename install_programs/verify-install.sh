@@ -422,15 +422,22 @@ fi
 echo "--- secure boot ---"
 SB_STATE="$(secure_boot_state)"
 NEEDS_DKMS=""
+NVIDIA_SIGNED=""
 lspci -nn 2>/dev/null | grep -iE "network|wireless" | grep -qi broadcom && NEEDS_DKMS="$NEEDS_DKMS broadcom"
-lspci -nn 2>/dev/null | grep -iE "vga|3d controller" | grep -qi nvidia   && NEEDS_DKMS="$NEEDS_DKMS nvidia"
+if lspci -nn 2>/dev/null | grep -iE "vga|3d controller" | grep -qi nvidia; then
+    if nvidia_module_prebuilt "$(newest_installed_kernel)"; then
+        NVIDIA_SIGNED=" (nvidia module is Canonical-signed, not DKMS)"
+    else
+        NEEDS_DKMS="$NEEDS_DKMS nvidia"
+    fi
+fi
 
 case "$SB_STATE" in
     off)         pass "secure boot off where DKMS needed" "disabled" ;;
     unsupported) pass "secure boot off where DKMS needed" "not supported by this firmware" ;;
     on)
         if [ -z "$NEEDS_DKMS" ]; then
-            pass "secure boot off where DKMS needed" "on — no DKMS hardware here; hibernate unavailable"
+            pass "secure boot off where DKMS needed" "on — no DKMS hardware here${NVIDIA_SIGNED}; hibernate unavailable"
         else
             fail "secure boot off where DKMS needed" "ON, and this machine has:$NEEDS_DKMS — those modules cannot load"
         fi ;;
@@ -516,9 +523,14 @@ else
         fi
         SB="$(mokutil --sb-state 2>/dev/null | head -1)"
         case "$SB" in
-            *disabled*)  pass "secure boot disabled" "$SB" ;;
-            "")          skip "secure boot disabled" "mokutil unavailable" ;;
-            *)           fail "secure boot disabled" "$SB — DKMS modules will not load" ;;
+            *disabled*)  pass "secure boot fits nvidia module" "$SB" ;;
+            "")          skip "secure boot fits nvidia module" "mokutil unavailable" ;;
+            *)
+                if nvidia_module_prebuilt "${NEWEST_K:-}"; then
+                    pass "secure boot fits nvidia module" "on — module is Canonical-signed, not DKMS"
+                else
+                    fail "secure boot fits nvidia module" "$SB — the nvidia module is DKMS-built and will not load"
+                fi ;;
         esac
         ;;
     *AMD*|*ATI*|*Radeon*)

@@ -472,6 +472,12 @@ newest_installed_kernel() {
         | awk '$1 == "ii" {sub(/^linux-image-/, "", $2); print $2}' | sort -V | tail -1
 }
 kernel_has_module() { modinfo -k "$1" "$2" >/dev/null 2>&1; }
+nvidia_module_prebuilt() {
+    local f
+    f="$(modinfo -k "${1:-$(uname -r)}" -F filename nvidia 2>/dev/null)" || return 1
+    [ -n "$f" ] || return 1
+    dpkg -S "$(readlink -f "$f")" 2>/dev/null | grep -q '^linux-modules-nvidia-'
+}
 
 nvidia_module_guard() {
     local kernel pkg=""
