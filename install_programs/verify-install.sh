@@ -102,6 +102,10 @@ echo "--- compositor ($S6C_WM) ---"
 STAMP_WM="$(sed -n 's/^wm=//p' "$HOME/.local/state/s6c/build" 2>/dev/null | head -1)"
 if [ -z "$STAMP_WM" ]; then skip "stamp records the compositor" "no wm= line yet - run install.sh"
 else eq "stamp records the compositor" "$S6C_WM" "$STAMP_WM"; fi
+RUNNING_WM="$(printf '%s' "${XDG_CURRENT_DESKTOP:-}" | tr 'A-Z' 'a-z')"
+if [ -n "$RUNNING_WM" ] && [ "$RUNNING_WM" != "$(session_name)" ]; then
+    skip "running compositor is the machine's choice" "running $RUNNING_WM, choice is $(session_name) - the checks below follow the choice"
+fi
 pkg "niri present for the greeter" "niri"
 if wm_is_hyprland; then
     pkg "hyprland installed" "hyprland"
