@@ -16,6 +16,10 @@ OAKFORD_SHA256="70:0D:4D:BA:40:46:29:25:31:7F:9E:C3:33:D5:D7:52:D4:C6:B5:C9:A1:B
 S6C_SSID="S6C"
 S6C_PSK_DEFAULT='!BY0D!S6C'
 NVM_VERSION="v0.40.3"
+# Ubuntu 26.04 ships rclone 1.60.1 (2022). Checksums from downloads.rclone.org/v<version>/SHA256SUMS.
+RCLONE_VERSION="1.75.1"
+RCLONE_DEB_SHA256_amd64="09c9f7606ed9e31eecc1eec26a89992cf2931a8d2d1a5f0ae2bb1c11630ffb15"
+RCLONE_DEB_SHA256_arm64="773f3a76615f91f7d4654183a537afddce3343c8d99ac1d74984f060f2ade2d9"
 NVM_HOME="$HOME/.nvm"
 YTDLP_URL="https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp"
 GREETER_PPA="ppa:avengemedia/danklinux"

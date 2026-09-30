@@ -530,6 +530,8 @@ else
 fi
 if [ -f "${XDG_CONFIG_HOME:-$HOME/.config}/systemd/user/rclone-mount.service" ]; then
     eq "rclone stopped around sleep" "enabled" "$(systemctl is-enabled rclone-sleep.service 2>/dev/null | head -1 | xargs)"
+    eq "rclone at pinned version" "$RCLONE_VERSION" "$(dpkg-query -W -f='${Version}' rclone 2>/dev/null)"
+    eq "rclone directory cache warmed" "success" "$(systemctl --user show -p Result --value rclone-warm.service 2>/dev/null)"
 else
     pass "rclone stopped around sleep" "no rclone mount — not needed"
 fi
