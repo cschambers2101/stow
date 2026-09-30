@@ -9,7 +9,7 @@ RCLONE_REMOTE="${S6C_RCLONE_REMOTE:-gdrive_s6c}"
 RCLONE_MOUNT_DIR="${S6C_RCLONE_MOUNT_DIR:-$HOME/gdrive_s6c}"
 RCLONE_UNIT="${S6C_RCLONE_UNIT:-${XDG_CONFIG_HOME:-$HOME/.config}/systemd/user/rclone-mount.service}"
 RCLONE_UNIT_DIR="$(dirname "$RCLONE_UNIT")"
-RCLONE_REWARM_INTERVAL="${S6C_RCLONE_REWARM_INTERVAL:-15min}"
+RCLONE_REWARM_CALENDAR="${S6C_RCLONE_REWARM_CALENDAR:-*:0/15}"
 RCLONE_RC_SOCKET_MIN="1.75.1"
 RCLONE_WARM_DIR="${S6C_RCLONE_WARM_DIR:-claude_cowork}"
 RCLONE_MOUNT_FLAGS="--vfs-cache-mode full --vfs-cache-max-age 24h --vfs-cache-max-size 10G --vfs-read-chunk-size 32M --dir-cache-time 1000h --poll-interval 1m"
@@ -156,12 +156,13 @@ UNIT
 rclone_rewarm_timer_text() {
     cat <<UNIT
 [Unit]
-Description=Re-warm the rclone directory cache every $RCLONE_REWARM_INTERVAL
+Description=Re-warm the rclone directory cache ($RCLONE_REWARM_CALENDAR)
 PartOf=rclone-mount.service
 
 [Timer]
-OnActiveSec=$RCLONE_REWARM_INTERVAL
-OnUnitActiveSec=$RCLONE_REWARM_INTERVAL
+# Wall-clock, because OnActiveSec restarted with every mount restart and daemon-reload.
+OnCalendar=$RCLONE_REWARM_CALENDAR
+AccuracySec=1min
 UNIT
 }
 
