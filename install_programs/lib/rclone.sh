@@ -24,9 +24,13 @@ rclone_remote_configured() {
 
 # 1.74+ refuses unauthenticated rc calls; a socket in the 0700 runtime dir keeps --rc-no-auth
 # private and out of reach of browsers. 1.60 has no socket support, so it keeps the TCP port.
-rclone_rc_serve_flags() {
+rclone_rc_uses_socket() {
     local v; v="$(rclone_installed_version)"
-    if [ -n "$v" ] && dpkg --compare-versions "$v" ge "$RCLONE_RC_SOCKET_MIN"; then
+    [ -n "$v" ] && dpkg --compare-versions "$v" ge "$RCLONE_RC_SOCKET_MIN"
+}
+
+rclone_rc_serve_flags() {
+    if rclone_rc_uses_socket; then
         printf '%s' '--rc --rc-addr unix://%t/rclone-rc.sock --rc-no-auth'
     else
         printf '%s' '--rc --rc-addr 127.0.0.1:5572'
@@ -34,8 +38,7 @@ rclone_rc_serve_flags() {
 }
 
 rclone_rc_client_flags() {
-    local v; v="$(rclone_installed_version)"
-    if [ -n "$v" ] && dpkg --compare-versions "$v" ge "$RCLONE_RC_SOCKET_MIN"; then
+    if rclone_rc_uses_socket; then
         printf '%s' '--unix-socket %t/rclone-rc.sock'
     else
         printf '%s' '--url 127.0.0.1:5572'
@@ -43,6 +46,13 @@ rclone_rc_client_flags() {
 }
 
 rclone_unit_text() {
+    local pre=""
+    if rclone_rc_uses_socket; then
+        pre="# rclone leaves its socket behind when a start fails (DNS not up at login or resume),
+# and every retry then fails to bind it.
+ExecStartPre=/bin/rm -f %t/rclone-rc.sock
+"
+    fi
     cat <<UNIT
 [Unit]
 Description=Rclone Google Drive Mount
@@ -52,7 +62,7 @@ Wants=rclone-warm.service rclone-rewarm.timer
 
 [Service]
 Type=simple
-# Long dir cache is safe because --poll-interval pulls Drive changes every minute.
+${pre}# Long dir cache is safe because --poll-interval pulls Drive changes every minute.
 ExecStart=/usr/bin/rclone mount $RCLONE_REMOTE: $RCLONE_MOUNT_DIR $RCLONE_MOUNT_FLAGS $(rclone_rc_serve_flags)
 ExecStop=/usr/bin/fusermount -uz $RCLONE_MOUNT_DIR
 Restart=on-failure
