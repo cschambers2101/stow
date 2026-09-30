@@ -8,7 +8,8 @@ S6C_RCLONE_LOADED=1
 RCLONE_REMOTE="${S6C_RCLONE_REMOTE:-gdrive_s6c}"
 RCLONE_MOUNT_DIR="${S6C_RCLONE_MOUNT_DIR:-$HOME/gdrive_s6c}"
 RCLONE_UNIT="${S6C_RCLONE_UNIT:-${XDG_CONFIG_HOME:-$HOME/.config}/systemd/user/rclone-mount.service}"
-RCLONE_WARM_UNIT="$(dirname "$RCLONE_UNIT")/rclone-warm.service"
+RCLONE_UNIT_DIR="$(dirname "$RCLONE_UNIT")"
+RCLONE_REWARM_INTERVAL="${S6C_RCLONE_REWARM_INTERVAL:-15min}"
 RCLONE_RC_SOCKET_MIN="1.75.1"
 RCLONE_WARM_DIR="${S6C_RCLONE_WARM_DIR:-claude_cowork}"
 RCLONE_MOUNT_FLAGS="--vfs-cache-mode full --vfs-cache-max-age 24h --vfs-cache-max-size 10G --vfs-read-chunk-size 32M --dir-cache-time 1000h --poll-interval 1m"
@@ -46,8 +47,8 @@ rclone_unit_text() {
 [Unit]
 Description=Rclone Google Drive Mount
 After=network-online.target
-# Separate unit so a failed warm-up never takes the mount down.
-Wants=rclone-warm.service
+# Separate units so a failed warm-up never takes the mount down.
+Wants=rclone-warm.service rclone-rewarm.timer
 
 [Service]
 Type=simple
@@ -125,6 +126,42 @@ rclone_install_pinned() {
     return 0
 }
 
+# Drive change polling drops the listing of every folder it reports as changed, and a busy
+# workspace goes partly cold again within hours, so re-warm it on a timer.
+rclone_rewarm_unit_text() {
+    local rc; rc="$(rclone_rc_client_flags)"
+    cat <<UNIT
+[Unit]
+Description=Re-warm the rclone directory cache for $RCLONE_WARM_DIR
+After=rclone-mount.service
+Requisite=rclone-mount.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/rclone rc $rc vfs/refresh dir=$RCLONE_WARM_DIR recursive=true
+TimeoutStartSec=10min
+UNIT
+}
+
+rclone_rewarm_timer_text() {
+    cat <<UNIT
+[Unit]
+Description=Re-warm the rclone directory cache every $RCLONE_REWARM_INTERVAL
+PartOf=rclone-mount.service
+
+[Timer]
+OnActiveSec=$RCLONE_REWARM_INTERVAL
+OnUnitActiveSec=$RCLONE_REWARM_INTERVAL
+UNIT
+}
+
+rclone_write_unit() {
+    local path="$1" want="$2"
+    [ -f "$path" ] && [ "$want" = "$(cat "$path")" ] && return 1
+    [ -f "$path" ] && cp -a "$path" "$path.bak-$(date -u +%Y%m%dT%H%M%SZ)"
+    printf '%s\n' "$want" > "$path"
+}
+
 rclone_mounted() { mountpoint -q "$RCLONE_MOUNT_DIR" 2>/dev/null; }
 
 rclone_wait_mounted() {
@@ -137,7 +174,7 @@ rclone_wait_mounted() {
 }
 
 rclone_converge_mount() {
-    local want changed=no
+    local changed=no
     if ! rclone_remote_configured; then
         log "no '$RCLONE_REMOTE' rclone remote on this machine - Drive mount skipped (set one up with: install.sh --drive)"
         return 0
@@ -146,18 +183,10 @@ rclone_converge_mount() {
     if rclone_install_pinned; then
         changed=yes
     fi
-    want="$(rclone_unit_text)"
-    if [ ! -f "$RCLONE_UNIT" ] || [ "$want" != "$(cat "$RCLONE_UNIT")" ]; then
-        [ -f "$RCLONE_UNIT" ] && cp -a "$RCLONE_UNIT" "$RCLONE_UNIT.bak-$(date -u +%Y%m%dT%H%M%SZ)"
-        printf '%s\n' "$want" > "$RCLONE_UNIT"
-        changed=yes
-    fi
-    want="$(rclone_warm_unit_text)"
-    if [ ! -f "$RCLONE_WARM_UNIT" ] || [ "$want" != "$(cat "$RCLONE_WARM_UNIT")" ]; then
-        [ -f "$RCLONE_WARM_UNIT" ] && cp -a "$RCLONE_WARM_UNIT" "$RCLONE_WARM_UNIT.bak-$(date -u +%Y%m%dT%H%M%SZ)"
-        printf '%s\n' "$want" > "$RCLONE_WARM_UNIT"
-        changed=yes
-    fi
+    rclone_write_unit "$RCLONE_UNIT" "$(rclone_unit_text)" && changed=yes
+    rclone_write_unit "$RCLONE_UNIT_DIR/rclone-warm.service" "$(rclone_warm_unit_text)" && changed=yes
+    rclone_write_unit "$RCLONE_UNIT_DIR/rclone-rewarm.service" "$(rclone_rewarm_unit_text)" && changed=yes
+    rclone_write_unit "$RCLONE_UNIT_DIR/rclone-rewarm.timer" "$(rclone_rewarm_timer_text)" && changed=yes
     systemctl --user daemon-reload || warn "systemctl --user daemon-reload failed"
     systemctl --user enable rclone-mount.service >/dev/null 2>&1 || true
     if [ "$changed" = yes ]; then
