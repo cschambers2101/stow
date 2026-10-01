@@ -51,6 +51,13 @@ hl.config({
 	},
 })
 
+-- Apple internal trackpads (T2 Macs): two-finger click is right-click, as on macOS.
+-- Other touchpads keep the libinput default (bottom-right corner), matching niri.
+hl.device({
+	name = "apple-inc.-apple-internal-keyboard-/-trackpad-1",
+	clickfinger_behavior = true,
+})
+
 hl.animation({ leaf = "windowsIn", enabled = true, speed = 3, bezier = "default" })
 hl.animation({ leaf = "windowsOut", enabled = true, speed = 3, bezier = "default" })
 hl.animation({ leaf = "workspaces", enabled = true, speed = 5, bezier = "default" })
