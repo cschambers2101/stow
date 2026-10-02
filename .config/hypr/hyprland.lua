@@ -42,6 +42,9 @@ hl.config({
 	misc = {
 		disable_hyprland_logo = true,
 		disable_splash_rendering = true,
+		-- any key or mouse movement wakes a display switched off with Super+Shift+P
+		key_press_enables_dpms = true,
+		mouse_move_enables_dpms = true,
 	},
 	dwindle = {
 		preserve_split = true,
