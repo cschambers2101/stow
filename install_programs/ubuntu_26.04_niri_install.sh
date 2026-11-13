@@ -205,15 +205,17 @@ preflight_network() {
 s00_clock() {
     sudo timedatectl set-ntp true
     if have_cmd chronyd && [ -d /etc/chrony ]; then
-        log "Letting chrony select unauthenticated sources (NTS is unreachable here)..."
+        log "Letting chrony select unauthenticated sources when NTS is unreachable..."
         write_root_file /etc/chrony/conf.d/50-s6c-authselectmode.conf <<'CONF'
 authselectmode ignore
 CONF
-        log "Adding plain-NTP sources (NTS needs TCP 4460, which is filtered here)..."
+        # Ubuntu's NTS pools carry 'prefer', so they win whenever TCP 4460 is
+        # open; these plain pools and the DC below are the fallback.
+        log "Adding plain-NTP fallback sources (NTS needs TCP 4460, which some networks filter)..."
         write_root_file /etc/chrony/sources.d/50-s6c-plain-ntp.sources <<'CONF'
-pool 0.pool.ntp.org iburst maxsources 2 prefer
-pool 1.pool.ntp.org iburst maxsources 2 prefer
-pool ntp.ubuntu.com iburst maxsources 2 prefer
+pool 0.pool.ntp.org iburst maxsources 2
+pool 1.pool.ntp.org iburst maxsources 2
+pool ntp.ubuntu.com iburst maxsources 2
 CONF
         log "Looking for a domain controller to use as a time fallback..."
         local domains hosts d
