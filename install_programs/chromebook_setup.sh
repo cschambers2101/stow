@@ -46,12 +46,9 @@ dotnet_sdk() {
 }
 
 github_cli() {
-    local keyring=/usr/share/keyrings/githubcli-archive-keyring.gpg
-    curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | sudo tee "$keyring" >/dev/null
-    sudo chmod go+r "$keyring"
-    echo "deb [arch=$(dpkg --print-architecture) signed-by=$keyring] https://cli.github.com/packages stable main" \
-        | write_root_file /etc/apt/sources.list.d/github-cli.list
-    apt_update
+    if gh_apt_source; then
+        apt_update
+    fi
     apt_install gh
 }
 
