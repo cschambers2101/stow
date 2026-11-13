@@ -389,24 +389,37 @@ s05_dank_stack() {
     local attempt ok=no
     for attempt in 1 2 3; do
         if curl -fsSL "$DANKINSTALL_URL" | DMS_PRIVESC=sudo sh -s -- \
-            --compositor niri --term alacritty --include-deps dms-greeter \
-            --danksearch --dankcalendar --yes; then
+            --compositor niri --term alacritty --include-deps dux-greeter \
+            --dux-search --dux-calendar --yes; then
             ok=yes
             break
         fi
-        warn "dankinstall attempt $attempt of 3 failed (Launchpad or the PPA mirror is often the cause)."
+        warn "duxinstall attempt $attempt of 3 failed (Launchpad or the PPA mirror is often the cause)."
         [ "$attempt" -lt 3 ] && sleep 60
     done
-    [ "$ok" = yes ] || die "dankinstall failed three times - re-run this script later."
+    [ "$ok" = yes ] || die "duxinstall failed three times - re-run this script later."
     local -a pkgs
     read -ra pkgs <<<"$DMS_LIVE_SAFE_PKGS $DMS_SESSION_PKGS"
-    log "Bringing the Dank packages to the PPA candidate - dankinstall leaves installed ones as they are."
+    log "Bringing the DMS packages to the PPA candidate - duxinstall leaves installed ones as they are."
     apt_install_soft "${pkgs[@]}"
 }
 
 s05b_dms_currency() {
+    dux_ppa_migrate || true
     apt_update
-    local pkg upgraded=no behind=""
+    local pkg pair old new upgraded=no behind=""
+    if dux_ppa_present dux-repo; then
+        for pair in $DUX_RENAMES; do
+            old="${pair%%:*}" new="${pair#*:}"
+            if ! pkg_installed "$old" || pkg_installed "$new"; then continue; fi
+            if [[ " $DMS_LIVE_SAFE_PKGS " == *" $new "* ]]; then
+                log "Installing $new, the Dux Labs name for $old - not a running process while a session is open."
+                if apt_install_soft "$new"; then upgraded=yes; fi
+            else
+                behind="${behind:+$behind, }$old -> $new (renamed)"
+            fi
+        done
+    fi
     for pkg in $DMS_LIVE_SAFE_PKGS; do
         pkg_installed "$pkg" || continue
         if pkg_behind "$pkg"; then

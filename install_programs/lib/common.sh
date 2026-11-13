@@ -22,12 +22,19 @@ RCLONE_DEB_SHA256_amd64="09c9f7606ed9e31eecc1eec26a89992cf2931a8d2d1a5f0ae2bb1c1
 RCLONE_DEB_SHA256_arm64="773f3a76615f91f7d4654183a537afddce3343c8d99ac1d74984f060f2ade2d9"
 NVM_HOME="$HOME/.nvm"
 YTDLP_URL="https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp"
-GREETER_PPA="ppa:avengemedia/danklinux"
-DMS_LIVE_SAFE_PKGS="dms-greeter"
-DMS_SESSION_PKGS="dms quickshell dgop danksearch dankcalendar-git"
+# Dank Linux became Dux Labs in DMS 2.1 (Nov 2026): the PPAs moved owner and four
+# packages were renamed. The old names survive as transitional packages that never
+# upgrade, so every list below uses the new names. Pairs are old:new, taken from
+# renamedPackages in duxlabs-dev/dux-shell core/internal/distros/base.go.
+GREETER_PPA="ppa:duxlabs/dux-repo"
+DUX_PPA_OWNER="duxlabs"
+LEGACY_DANK_PPA_OWNER="avengemedia"
+DUX_RENAMES="dms-greeter:dux-greeter danksearch:dux-search dankcalendar-git:dux-calendar-git dgop:dux-gop"
+DMS_LIVE_SAFE_PKGS="dux-greeter"
+DMS_SESSION_PKGS="dms quickshell dux-gop dux-search dux-calendar-git"
 GREETD_GPU_WAIT="/etc/systemd/system/greetd.service.d/wait-for-gpu.conf"
 GDM_GREETER_GPUS="1002:15e7"
-GREETER_STALE_HINT="no greeter sync command on this machine - /usr/bin/dms-greeter is the old launcher wrapper, which has no subcommands. Upgrade it with 'sudo apt update && sudo apt install dms-greeter' ($GREETER_PPA), then run 'dms-greeter sync'."
+GREETER_STALE_HINT="no greeter sync command on this machine - /usr/bin/dms-greeter is the old launcher wrapper, which has no subcommands. Upgrade it with 'sudo apt update && sudo apt install dux-greeter' ($GREETER_PPA), then run 'dms-greeter sync'."
 TPM_REPO="https://github.com/tmux-plugins/tpm"
 CLAUDE_INSTALL_URL="https://claude.ai/install.sh"
 CHROME_KEY_URL="https://dl.google.com/linux/linux_signing_key.pub"
@@ -36,7 +43,7 @@ CHROME_REPO_LINE="deb [arch=amd64 signed-by=$CHROME_KEYRING] http://dl.google.co
 YAZI_KEY_URL="https://yazi-rs.github.io/builds/yazi-keyring.gpg"
 YAZI_KEYRING="/usr/share/keyrings/yazi-keyring.gpg"
 YAZI_REPO_LINE="deb [arch=amd64 signed-by=$YAZI_KEYRING] https://yazi-rs.github.io/builds/ stable main"
-DANKINSTALL_URL="https://install.danklinux.com"
+DANKINSTALL_URL="https://install.duxlabs.dev"
 FLATHUB_URL="https://flathub.org/repo/flathub.flatpakrepo"
 S6C_WALLPAPER="/usr/share/backgrounds/s6c/ladybird.jpg"
 S6C_WM_FILE="$HOME/.local/state/s6c/wm"
@@ -153,6 +160,41 @@ apt_update() {
 }
 apt_install() { sudo apt-get install -y "$@"; }
 apt_install_soft() { sudo apt-get install -y "$@" || warn "could not install: $*"; }
+
+dux_ppa_present() { grep -rqsF "/$DUX_PPA_OWNER/$1/ubuntu" /etc/apt/sources.list.d/; }
+
+# Move the Dank Linux PPAs to their Dux Labs successors, as `dms migrate dux` does,
+# without its package swap (section 5B decides what is safe to install live). The old
+# sources go only once every successor is in, so a Launchpad outage leaves a machine
+# on the old PPAs rather than on none. A machine whose old sources were removed by
+# hand still gets the successors while dms is installed. Caller runs apt_update.
+dux_ppa_migrate() {
+    local project ppa
+    local -a legacy=() successors=() sources=()
+    for project in dms dms-git danklinux; do
+        mapfile -t sources < <(grep -rlsF "/$LEGACY_DANK_PPA_OWNER/$project/ubuntu" /etc/apt/sources.list.d/ || true)
+        [ "${#sources[@]}" -gt 0 ] || continue
+        legacy+=("${sources[@]}")
+        if [ "$project" = danklinux ]; then successors+=(dux-repo); else successors+=("$project"); fi
+    done
+    if [ "${#successors[@]}" -eq 0 ] && pkg_installed dms; then
+        successors=(dms dux-repo)
+    fi
+    for project in "${successors[@]}"; do
+        dux_ppa_present "$project" && continue
+        ppa="ppa:$DUX_PPA_OWNER/$project"
+        if ! sudo add-apt-repository -y -n "$ppa"; then
+            warn "could not add $ppa (is Launchpad down?) - the old Dank PPAs stay until the next run."
+            return 1
+        fi
+        log "added $ppa"
+    done
+    if [ "${#legacy[@]}" -gt 0 ]; then
+        sudo rm -f -- "${legacy[@]}"
+        log "removed the old Dank PPA sources: ${legacy[*]##*/}"
+    fi
+    return 0
+}
 
 apt_install_list() {
     local list="$1"
