@@ -499,6 +499,9 @@ s05d_gnome_keys() {
 }
 
 s06_packages() {
+    if gh_apt_source; then
+        apt_update
+    fi
     echo "ttf-mscorefonts-installer msttcorefonts/accepted-mscorefonts-eula select true" | sudo debconf-set-selections
     apt_install_list "$PKG_LIST"
 }

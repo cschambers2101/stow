@@ -43,6 +43,14 @@ CHROME_REPO_LINE="deb [arch=amd64 signed-by=$CHROME_KEYRING] http://dl.google.co
 YAZI_KEY_URL="https://yazi-rs.github.io/builds/yazi-keyring.gpg"
 YAZI_KEYRING="/usr/share/keyrings/yazi-keyring.gpg"
 YAZI_REPO_LINE="deb [arch=amd64 signed-by=$YAZI_KEYRING] https://yazi-rs.github.io/builds/ stable main"
+# Ubuntu 26.04 ships gh 2.46.0 (early 2024), whose 'gh pr edit' fails on every
+# repository since GitHub retired Projects (classic). GitHub's own repo is current.
+# The fingerprint is the signing key published in docs/install_linux.md of cli/cli.
+GH_KEY_URL="https://cli.github.com/packages/githubcli-archive-keyring.gpg"
+GH_KEY_FPR="7F38BBB59D064DBCB3D84D725612B36462313325"
+GH_KEYRING="/etc/apt/keyrings/githubcli-archive-keyring.gpg"
+GH_SOURCE="/etc/apt/sources.list.d/github-cli.list"
+GH_REPO_URL="https://cli.github.com/packages"
 DANKINSTALL_URL="https://install.duxlabs.dev"
 FLATHUB_URL="https://flathub.org/repo/flathub.flatpakrepo"
 S6C_WALLPAPER="/usr/share/backgrounds/s6c/ladybird.jpg"
@@ -160,6 +168,29 @@ apt_update() {
 }
 apt_install() { sudo apt-get install -y "$@"; }
 apt_install_soft() { sudo apt-get install -y "$@" || warn "could not install: $*"; }
+
+# Adds GitHub's apt repository for gh. Returns 1, writing nothing, when the key
+# cannot be fetched or is not the pinned one, so the build carries on with gh
+# from Ubuntu's archive. The caller runs apt_update afterwards.
+gh_apt_source() {
+    local key
+    key="$(mktemp)"
+    add_cleanup "rm -f '$key'"
+    if ! curl -fsSL "$GH_KEY_URL" -o "$key"; then
+        warn "could not fetch the GitHub CLI signing key - gh comes from Ubuntu's archive."
+        return 1
+    fi
+    if ! gpg --show-keys --with-colons "$key" 2>/dev/null | grep -q "^fpr:*$GH_KEY_FPR:"; then
+        warn "the GitHub CLI signing key does not match the pinned fingerprint - gh comes from Ubuntu's archive."
+        return 1
+    fi
+    if ! sudo install -D -m 0644 "$key" "$GH_KEYRING"; then
+        warn "could not install the GitHub CLI signing key - gh comes from Ubuntu's archive."
+        return 1
+    fi
+    printf 'deb [arch=%s signed-by=%s] %s stable main\n' "$(dpkg --print-architecture)" "$GH_KEYRING" "$GH_REPO_URL" \
+        | write_root_file "$GH_SOURCE"
+}
 
 dux_ppa_present() { grep -rqsF "/$DUX_PPA_OWNER/$1/ubuntu" /etc/apt/sources.list.d/; }
 

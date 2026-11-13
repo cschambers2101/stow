@@ -202,6 +202,10 @@ else
     skip "all list packages present" "list not found at $PKG_LIST"
 fi
 
+echo "--- GitHub CLI ---"
+ok "gh apt source" test -s "$GH_SOURCE"
+has "gh from GitHub's repo" "$GH_REPO_URL" "$(LC_ALL=C apt-cache policy gh 2>/dev/null | awk '/\*\*\*/ {getline; print}')"
+
 echo "--- file managers ---"
 ok "yazi apt source" test -s /etc/apt/sources.list.d/yazi.list
 ok "yazi installed" have_cmd yazi
