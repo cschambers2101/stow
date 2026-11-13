@@ -29,6 +29,7 @@ fzf
 git
 # gh: students clone/fork over HTTPS and authenticate with "gh auth login",
 # which avoids needing an SSH key at all. See section 15 of the install script.
+# Section 6 adds GitHub's own apt repository first, so this is a current gh.
 gh
 nala
 pandoc
