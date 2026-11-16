@@ -12,6 +12,18 @@
 # Both are reinstalled by the setup script, so nothing is lost by ignoring them.
 .local/bin/agy
 .local/bin/claude
+# Development tools land the same way: pipx links (uv, semgrep, diff-cover,
+# playwright) and links into ~/.local/opt (trivy, zap). Each points at one
+# machine's own install, so on any other machine it is a broken link.
+.local/bin/diff-cover
+.local/bin/diff-quality
+.local/bin/playwright
+.local/bin/pysemgrep
+.local/bin/semgrep
+.local/bin/trivy
+.local/bin/uv
+.local/bin/uvx
+.local/bin/zap.sh
 
 # niri / DankMaterialShell: auto-generated backups, matugen output, machine state
 .config/niri/config.kdl.backup*
@@ -59,6 +71,9 @@
 .config/hypr/dms/layout.lua
 .config/hypr/dms/windowrules.lua
 .config/hypr/dms/s6c-machine.lua
+# DMS writes input.lua from its touchpad and mouse settings. hyprland.lua does
+# not require it: the fleet's touchpad settings are in hyprland.lua itself.
+.config/hypr/dms/input.lua
 .config/hypr/.dms-backups/
 .config/hypr/hyprland.conf
 .config/hypr/*.bak
