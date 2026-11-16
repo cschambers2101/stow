@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+# cc-local-development launcher: runs the installed skill's git hook of this file's name (pre-commit, commit-msg or
+# pre-push) with the same arguments and input. The hooks' checks live in the skill, not in this repository.
+# The skill is CC_SKILL_DIR, else the link its install.sh writes.
+skill="${CC_SKILL_DIR:-$HOME/.local/share/cc-local-development}"
+# A relative folder would be read from the repository, whose files a pull request chooses.
+case "$skill" in
+  /* | [A-Za-z]:[/\\]*) ;;
+  *)
+    echo "cc-local-development: CC_SKILL_DIR must be a full path, not '$skill'. Set it to the installed skill's folder." >&2
+    exit 1
+    ;;
+esac
+hook="$skill/hooks/git/$(basename "$0")"
+if [[ ! -f "$hook" ]]; then
+  echo "cc-local-development: the skill is not installed on this machine (no $hook), so its checks cannot run. Install it with the install.sh in its repository, then try again." >&2
+  exit 1
+fi
+exec bash "$hook" "$@"

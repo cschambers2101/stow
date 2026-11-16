@@ -10,5 +10,15 @@
 ^/install_programs
 ^/_archive
 ^/test
+^/\.gitattributes
+^/\.githooks
+^/AGENTS\.md
+^/VERSION
+^/\.cc-local-development.*
+^/deploy
+^/docs
+^/artifacts
+^/cc-local-development\..*
+^/tools\.sha256
 .+~
 \#.*\#

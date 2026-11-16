@@ -71,3 +71,8 @@
 # alacritty.toml stays tracked; it imports this file by path, so the import
 # keeps working with the file untracked.
 .config/alacritty/dank-theme.toml
+artifacts/
+.cc-local-development/
+!coverage-baseline.json
+cc-local-development.local.env
+__pycache__/

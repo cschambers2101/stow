@@ -15,6 +15,11 @@ bats_load_library bats-support
 bats_load_library bats-assert
 bats_load_library bats-file
 
+# A git hook (pre-push runs verify) exports GIT_DIR and friends. Inherited, they point every git command in a test,
+# including those in a scratch repository, at this repository: a test's commit or push would land here.
+unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE GIT_OBJECT_DIRECTORY GIT_ALTERNATE_OBJECT_DIRECTORIES GIT_COMMON_DIR \
+  GIT_PREFIX GIT_NAMESPACE
+
 ROOT="$(git -C "$BATS_TEST_DIRNAME" rev-parse --show-toplevel)"
 export ROOT
 
