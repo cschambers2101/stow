@@ -6,6 +6,10 @@ hl.bind("SUPER + SHIFT + Return", hl.dsp.exec_cmd("alacritty -e yazi"))
 hl.bind("SUPER + B", hl.dsp.exec_cmd("google-chrome-stable"))
 hl.unbind("SUPER + ALT + L")
 hl.bind("SUPER + Escape", hl.dsp.exec_cmd("dank-lock.sh"), { description = "Lock Screen" })
+-- keycodes 20 and 21 are the minus and equal keys, which binds.lua already binds by name.
+-- Without these unbinds each SUPER+minus/equal press would resize twice.
+hl.unbind("SUPER + code:20")
+hl.unbind("SUPER + code:21")
 hl.bind("SUPER + ALT + right", hl.dsp.window.resize({ x = 20, y = 0, relative = true }), { repeating = true })
 hl.bind("SUPER + ALT + left", hl.dsp.window.resize({ x = -20, y = 0, relative = true }), { repeating = true })
 hl.bind("SUPER + ALT + up", hl.dsp.window.resize({ x = 0, y = -20, relative = true }), { repeating = true })
