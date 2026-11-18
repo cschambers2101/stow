@@ -1,5 +1,5 @@
 # shellcheck shell=bash
-# Shared set-up for a repository's bats tests (the cc-local-development Bash pack). Copy to
+# Shared set-up for a repository's bats tests. Copy to
 # test/test_helper/common.bash and load it first in each test file:
 #
 #   setup() {

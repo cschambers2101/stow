@@ -87,7 +87,5 @@
 # keeps working with the file untracked.
 .config/alacritty/dank-theme.toml
 artifacts/
-.cc-local-development/
 !coverage-baseline.json
-cc-local-development.local.env
 __pycache__/

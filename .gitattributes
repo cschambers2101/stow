@@ -2,5 +2,4 @@
 *.bash text eol=lf
 *.bats text eol=lf
 *.py text eol=lf
-.githooks/* text eol=lf
 bin/* text eol=lf
