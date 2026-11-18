@@ -72,10 +72,10 @@ container, replacing the last copy. Pass another ref or container as the two arg
 
 Cut a release only after the owner says "cut a release".
 
-1. Open a pull request from `beta` to `main`. Merge it with a merge commit. Never use `--delete-branch`.
-2. Set the version in `VERSION`. It is the release date as `YYYY.MM.DD`.
-3. Add a section for the version to `CHANGELOG.md`.
-4. Tag `v` plus the version on `main`, then publish a GitHub release for the tag.
+1. On a `chore/release-<version>` branch from `beta`, set `VERSION` to the release date as `YYYY.MM.DD` and add a
+   section for it to `CHANGELOG.md`. Merge that into `beta` as usual.
+2. Open a pull request from `beta` to `main`. Merge it with a merge commit. Never use `--delete-branch`.
+3. Tag `v` plus the version on `main`, then publish a GitHub release for the tag.
 
 ### Ask the owner first
 
