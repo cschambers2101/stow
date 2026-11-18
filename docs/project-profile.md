@@ -1,6 +1,6 @@
 # Project profile
 
-Set with Craig on 13 November 2026, when this repository adopted the cc-local-development process. Update it
+Set with Craig on 13 November 2026, when its working process was agreed. Update it
 whenever any of this changes. Never fill it in by guessing.
 
 | Item | Value |
@@ -20,7 +20,7 @@ whenever any of this changes. Never fill it in by guessing.
 | Type | LXD |
 | Host and how to reach it | ubuntu-craig-office, local `lxc` |
 | App container | `stow-dev`: Ubuntu 26.04, profiles `default` and `lan` (bridged onto the school LAN) |
-| Deploy | `deploy/dev-deploy.sh` copies `origin/beta` to `/home/ubuntu/stow-beta` in the container (`DEV_DEPLOY`) |
+| Deploy | `deploy/dev-deploy.sh` copies `origin/beta` to `/home/ubuntu/stow-beta` in the container (the command is in `AGENTS.md`) |
 | Testing there | Run the installer sections a change touches, as `ubuntu` (passwordless sudo): `lxc exec stow-dev -- sudo -iu ubuntu bash ~/stow-beta/install_programs/ubuntu_26.04_niri_install.sh --only <ids>`, then `verify-install.sh` |
 | What a container cannot test | Section 0's clock (chrony.service is skipped in containers; run `chronyd -x` by hand), the kernel, graphics, the greeter and suspend. Those are tested on a real machine, with Craig running sudo |
 
@@ -44,17 +44,18 @@ whenever any of this changes. Never fill it in by guessing.
 
 | Skill default | This project instead | Reason | Agreed on |
 |---------------|----------------------|--------|-----------|
-| The Bash pack runs in verify | Deferred (`PACKS_DEFERRED`); `VERIFY_EXTRA` runs `lint.sh` and the bats tests | The installer predates the standard (about 800 ShellCheck style findings, no tests for most of `lib/`). New code meets it; old files are brought up to it one at a time | 13 Nov 2026 |
+| Full Bash style checks (ShellCheck style findings, shfmt) on every file | Deferred; `lint.sh` and the bats tests are the checks | The installer predates the standard (about 800 ShellCheck style findings, no tests for most of `lib/`). New code meets it; old files are brought up to it one at a time | 13 Nov 2026 |
 | No GitHub Actions | `lint.yml` kept | Public repository, so Actions cost nothing | 13 Nov 2026 |
-| Semantic version in `VERSION` | Releases so far are dated tags (`v2026.11.13`) | Not yet reconciled with `release.sh`: ask Craig at the next release | 13 Nov 2026 (open) |
+| Semantic version in `VERSION` | Releases are dated tags (`v2026.11.16`); `VERSION` holds the date as `YYYY.MM.DD` | Craig chose dated versions | 16 Nov 2026 |
 
 ## Decisions and history
 
-- 2026-11-13: local mode (cc-local-development `switch-to-local.sh`): added `AGENTS.md` with the process block.
+- 2026-11-13: local mode: added `AGENTS.md` with the process.
 
-- 2026-11-13: local mode (cc-local-development `switch-to-local.sh`): kept `.github/workflows/lint.yml` on GitHub on the user's answer (it uses Actions minutes).
+- 2026-11-13: local mode: kept `.github/workflows/lint.yml` on GitHub on the user's answer (it uses Actions minutes).
 
 - 2026-11-13: profile written with Craig: Bash only, the Bash pack deferred for existing code, dev is `stow-dev`.
 
-- 2026-11-16: adopted with cc-local-development v5.0.0 rather than the 13 November branch: no copy of the skill's
-  scripts in the repository; `.githooks/` holds launchers that run the installed skill's hooks.
+- 2026-11-16: moved to launcher hooks in `.githooks/`.
+- 2026-11-18: dropped the external process scripts and the git hooks. `AGENTS.md` now carries the commands, merge,
+  dev deploy and release steps.

@@ -1,4 +1,4 @@
-# Runbook: stow-wt-adopt5
+# Runbook
 
 ## Environments
 
@@ -9,11 +9,13 @@
 
 ## Deploying to dev
 
-`~/.local/share/cc-local-development/scripts/deploy-dev-lxd.sh deploy/dev-lxd.env`
+`bash <(git show origin/beta:deploy/dev-deploy.sh) origin/beta stow-dev`
+
+See `AGENTS.md` for what it does.
 
 ## Rolling back dev
 
-`~/.local/share/cc-local-development/scripts/rollback-dev-lxd.sh deploy/dev-lxd.env <snapshot-name>`
+Deploy the earlier ref the same way, for example `bash <(git show origin/beta:deploy/dev-deploy.sh) <ref> stow-dev`.
 
 ## Deploying to production
 

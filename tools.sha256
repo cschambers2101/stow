@@ -1,6 +1,0 @@
-# Checksums of the tools this repository downloads (the cc-local-development Bash pack). verify checks every line
-# with sha256sum -c (shasum -a 256 -c on macOS); lines starting with # are notes. One line per file:
-#
-#   <sha256>  <path from the repository root>
-#
-# Take the checksum from the project's release page, not from the file you downloaded, and record the tool in TOOLS.md.
