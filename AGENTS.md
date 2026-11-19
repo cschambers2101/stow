@@ -12,6 +12,9 @@ how to deploy to dev and how to release.
   When the same rule turns up in more than one place, move it into one shared place first, then use it.
 - Write a failing test first, then the code that makes it pass.
 - Stay inside the task. Note anything else in `docs/tech-debt.md`. Report a security problem straight away.
+- Write as the maintainer. Comments are welcome where they explain why. Never refer to an assistant or tool that
+  helped write the code, in scripts, comments, generated unit files or docs; refer to the Drive workspace as "the
+  workspace". The repository is public and deployed to student machines. Commit messages are exempt.
 
 ### The ten principles, in priority order
 
